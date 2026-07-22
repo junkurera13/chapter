@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 
 import heroImage from "@/app/assets/sidequest-coast.jpg";
-import { SidequestWordmark } from "@/components/SidequestWordmark";
 
 import { GoogleLoginButton } from "./GoogleLoginButton";
 import styles from "./page.module.css";
@@ -23,7 +22,13 @@ export default function LoginPage() {
 
       <header className={styles.header}>
         <Link href="/" aria-label="Sidequest home">
-          <SidequestWordmark className={styles.wordmark} />
+          <Image
+            className={styles.brandMark}
+            src="/sidequest-mark.svg"
+            alt=""
+            width={108}
+            height={108}
+          />
         </Link>
       </header>
 

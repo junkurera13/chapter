@@ -31,20 +31,11 @@
   transform: translateX(-50%);
 }
 
-.wordmark {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: #171612;
-  font-size: 1.05rem;
-  font-weight: 650;
-  letter-spacing: -0.035em;
-  line-height: 1;
-}
-
-.wordmark svg {
-  width: 1.45rem;
-  height: 1.45rem;
+.brandMark {
+  display: block;
+  width: 108px;
+  height: 108px;
+  object-fit: contain;
 }
 
 .card {

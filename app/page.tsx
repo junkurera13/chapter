@@ -1,8 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import heroImage from "@/app/assets/sidequest-coast.jpg";
-import { SidequestWordmark } from "@/components/SidequestWordmark";
+import InteractiveCardStack from "@/components/aicanvas/interactive-card-stack";
 
 import styles from "./page.module.css";
 
@@ -21,38 +20,24 @@ export default function Home() {
 
   return (
     <main className={styles.page}>
-      <Image
-        src={heroImage}
-        alt=""
-        className={styles.image}
-        fill
-        priority
-        placeholder="blur"
-        sizes="100vw"
-      />
-      <div className={styles.wash} aria-hidden="true" />
+      <h1 className={styles.title}>
+        Experiences that feel strangely meant for you.
+      </h1>
 
-      <header className={styles.header}>
-        <SidequestWordmark className={styles.wordmark} />
-      </header>
+      <div className={styles.stack}>
+        <InteractiveCardStack />
+      </div>
 
-      <div className={styles.content}>
-        <h1 className={styles.title}>
-          Experiences that feel strangely meant for you.
-        </h1>
-        <p className={styles.body}>
-          Sidequest is an agent that turns a memory and a free afternoon into
-          one real-world experience — composed for you, not recommended at you.
-        </p>
-        <div className={styles.actions}>
-          <a href={startHref} className={styles.action}>
-            Text Sidequest
-          </a>
-          <Link href="/app" className={styles.appAction}>
-            <span>Open app</span>
-            <span aria-hidden="true">→</span>
-          </Link>
-        </div>
+      <div className={styles.actions}>
+        <a href={startHref} className={styles.action}>
+          <span className={styles.actionMark} aria-hidden="true">
+            <Image src="/sidequest-mark.svg" alt="" width={32} height={32} />
+          </span>
+          Text Sidequest
+        </a>
+        <Link href="/login" className={styles.loginAction}>
+          Log in
+        </Link>
       </div>
     </main>
   );
