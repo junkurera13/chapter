@@ -2,7 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 import InteractiveCardStack from "@/components/aicanvas/interactive-card-stack";
-import OrbRow from "@/components/landing/orb-row";
+import MojikoConnection from "@/components/landing/mojiko-connection";
+import OrbWorldReveal from "@/components/landing/orb-world-reveal";
 
 import styles from "./page.module.css";
 
@@ -49,10 +50,10 @@ export default function Home() {
         aria-labelledby="orb-world-title"
       >
         <h2 id="orb-world-title">One memory becomes a world.</h2>
-        <div className={styles.orbRow}>
-          <OrbRow />
-        </div>
+        <OrbWorldReveal />
       </section>
+
+      <MojikoConnection />
     </main>
   );
 }
