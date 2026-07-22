@@ -6,12 +6,14 @@ import { motion, type PanInfo, useReducedMotion } from "framer-motion";
 
 import ceramicImage from "@/app/assets/ceramics-class.jpg";
 import mojikoImage from "@/app/assets/mojiko-waterfront.jpg";
+import odysseyImage from "@/app/assets/odyssey-cinema.png";
+import sushiImage from "@/app/assets/sushi-shibuya.webp";
 import { categoryOrbGradient } from "@/app/app/categoryAppearance";
 
 interface Card {
   id: number;
   orientation: "portrait" | "landscape";
-  kind?: "moment" | "ceramics" | "birdwatching";
+  kind?: "moment" | "ceramics" | "birdwatching" | "sushi" | "odyssey";
   title?: string;
   image: string;
   href?: string;
@@ -43,9 +45,9 @@ const CARDS: Card[] = [
   {
     id: 2,
     orientation: "portrait",
-    title: "Blue and gold macaw",
-    image:
-      "https://ik.imagekit.io/aitoolkit/interactive-card-stack/blue-and-gold-macaw-jungle-perch.jpg",
+    kind: "sushi",
+    title: "A first Sushi experience in Nishi-Ogikubo",
+    image: sushiImage.src,
   },
   {
     id: 3,
@@ -59,9 +61,9 @@ const CARDS: Card[] = [
   {
     id: 4,
     orientation: "portrait",
-    title: "Northern mockingbird",
-    image:
-      "https://ik.imagekit.io/aitoolkit/interactive-card-stack/northern-mockingbird-autumn-woodland.jpg",
+    kind: "odyssey",
+    title: "Four seats for The Odyssey at Babylon",
+    image: odysseyImage.src,
   },
 ];
 
@@ -84,6 +86,7 @@ const SLOTS_MOBILE: Slot[] = [
 const SPRING = { type: "spring" as const, stiffness: 280, damping: 26 };
 const MOUNT_SPRING = { type: "spring" as const, stiffness: 200, damping: 22 };
 const STAGGER_S = 0.08;
+const AUTO_ADVANCE_MS = 8000;
 const BREATH_Y_FOCUS = [0, -14, 0, 10, 0];
 const BREATH_Y_REST = [0, -8, 0, 6, 0];
 const BREATH_ROTATE_FOCUS = [0, 1.5, 0, -1.5, 0];
@@ -102,7 +105,7 @@ const TITLE_STYLE: CSSProperties = {
   paddingRight: 34,
   fontFamily: "var(--font-sidequest-sans), sans-serif",
   fontWeight: 600,
-  fontSize: "15px",
+  fontSize: "16px",
   lineHeight: 1.3,
   letterSpacing: "-0.01em",
   color: "#1a1a19",
@@ -145,9 +148,11 @@ const OPEN_CHIP = (
 );
 
 export default function InteractiveCardStack() {
-  const [order, setOrder] = useState<number[]>([0, 1, 2, 3, 4]);
+  const [order, setOrder] = useState<number[]>([0, 1, 3, 2, 4]);
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragDelta = useRef(0);
   const reduceMotion = useReducedMotion();
@@ -166,6 +171,14 @@ export default function InteractiveCardStack() {
     return () => mediaQuery.removeEventListener("change", updateViewport);
   }, []);
 
+  useEffect(() => {
+    const updateVisibility = () => setIsPageVisible(!document.hidden);
+
+    updateVisibility();
+    document.addEventListener("visibilitychange", updateVisibility);
+    return () => document.removeEventListener("visibilitychange", updateVisibility);
+  }, []);
+
   const focusCard = useCallback((cardId: number) => {
     setOrder((previous) => {
       const index = previous.indexOf(cardId);
@@ -181,6 +194,13 @@ export default function InteractiveCardStack() {
         : [previous[previous.length - 1], ...previous.slice(0, previous.length - 1)],
     );
   }, []);
+
+  useEffect(() => {
+    if (reduceMotion || isPaused || !isPageVisible) return;
+
+    const timeout = window.setTimeout(() => step(1), AUTO_ADVANCE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [isPageVisible, isPaused, order, reduceMotion, step]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -225,6 +245,20 @@ export default function InteractiveCardStack() {
       <div
         ref={containerRef}
         className="relative flex w-full flex-col items-center gap-4"
+        onPointerEnter={(event) => {
+          if (event.pointerType === "mouse") setIsPaused(true);
+        }}
+        onPointerLeave={(event) => {
+          if (event.pointerType === "mouse") setIsPaused(false);
+        }}
+        onFocusCapture={() => setIsPaused(true)}
+        onBlurCapture={(event) => {
+          if (
+            !event.currentTarget.contains(event.relatedTarget as Node | null)
+          ) {
+            setIsPaused(false);
+          }
+        }}
       >
         <div
           role="group"
@@ -240,6 +274,8 @@ export default function InteractiveCardStack() {
             const isMoment = card.kind === "moment";
             const isCeramics = card.kind === "ceramics";
             const isBirdwatching = card.kind === "birdwatching";
+            const isSushi = card.kind === "sushi";
+            const isOdyssey = card.kind === "odyssey";
             const transition =
               !reduceMotion && !mounted
                 ? { ...MOUNT_SPRING, delay: slotIndex * STAGGER_S }
@@ -294,7 +330,9 @@ export default function InteractiveCardStack() {
                 onDragEnd={handleDragEnd}
                 style={{
                   containerType:
-                    isCeramics || isBirdwatching ? "inline-size" : undefined,
+                    isCeramics || isBirdwatching || isSushi || isOdyssey
+                      ? "inline-size"
+                      : undefined,
                   cursor: isFocus ? "grab" : "pointer",
                   zIndex: slot.zIndex,
                 }}
@@ -319,7 +357,11 @@ export default function InteractiveCardStack() {
                       ? "calc(68.5px + 62.5cqw)"
                       : isBirdwatching
                         ? "calc(68.5px + 62.5cqw)"
-                        : undefined,
+                        : isSushi
+                          ? "calc(56px + 125cqw)"
+                          : isOdyssey
+                            ? "calc(58.6px + 125cqw)"
+                            : undefined,
                     padding: 10,
                     boxShadow: isFocus ? SHADOW_FOCUS : SHADOW_REST,
                   }}
@@ -337,7 +379,7 @@ export default function InteractiveCardStack() {
                   {isMoment ? (
                     <>
                       <div className="relative px-3 pb-4 pt-3">
-                        <p className="m-0 font-[family-name:var(--font-sidequest-sans)] text-[0.94rem] font-normal leading-[1.32] tracking-[-0.025em] text-[#77716f] sm:text-[1.02rem]">
+                        <p className="m-0 font-[family-name:var(--font-sidequest-sans)] text-[16px] font-normal leading-[1.32] tracking-[-0.025em] text-[#77716f]">
                           You and{" "}
                           <span className="inline-flex items-baseline gap-0.5 font-semibold text-[#1c1c19]">
                             <span
@@ -395,9 +437,11 @@ export default function InteractiveCardStack() {
                         style={{ padding: "14px 12px 16px 12px" }}
                       >
                         <p
+                          className="text-[16px]"
                           style={{
                             ...TITLE_STYLE,
                             paddingRight: 0,
+                            fontSize: undefined,
                             fontWeight: 400,
                             color: "#77716f",
                             WebkitLineClamp: 3,
@@ -456,7 +500,7 @@ export default function InteractiveCardStack() {
                   ) : isBirdwatching ? (
                     <>
                       <div className="relative px-3 pb-4 pt-3">
-                        <p className="m-0 font-[family-name:var(--font-sidequest-sans)] text-[0.88rem] font-normal leading-[1.3] tracking-[-0.025em] text-[#77716f] sm:text-[0.98rem]">
+                        <p className="m-0 font-[family-name:var(--font-sidequest-sans)] text-[16px] font-normal leading-[1.3] tracking-[-0.025em] text-[#77716f]">
                           <span className="inline-flex items-baseline gap-0.5 font-semibold text-[#1c1c19]">
                             <span
                               className="relative top-[0.16em] inline-block h-[0.9em] w-[0.9em] rounded-full border border-white/80"
@@ -533,6 +577,124 @@ export default function InteractiveCardStack() {
                           fetchPriority={isFocus ? "high" : "low"}
                           draggable={false}
                           className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
+                        />
+                      </div>
+                    </>
+                  ) : isSushi ? (
+                    <>
+                      <div className="relative px-3 pb-4 pt-3">
+                        <p className="m-0 font-[family-name:var(--font-sidequest-sans)] text-[16px] font-normal leading-[1.3] tracking-[-0.025em] text-[#77716f]">
+                          You&apos;ve never tried{" "}
+                          <span className="inline-flex items-baseline gap-0.5 font-semibold text-[#1c1c19]">
+                            <span
+                              className="relative top-[0.16em] inline-block h-[0.9em] w-[0.9em] rounded-full border border-white/80"
+                              style={{
+                                background: categoryOrbGradient("interest"),
+                                boxShadow:
+                                  "inset 3px 4px 5px rgba(255,255,255,0.24), inset -2px -3px 5px rgba(24,17,13,0.18), 0 2px 5px rgba(47,34,24,0.13)",
+                              }}
+                              aria-hidden="true"
+                            />
+                            Sushi
+                          </span>
+                          {", but I think you’ll like it. This spot in "}
+                          <span className="inline-flex items-baseline gap-0.5 font-semibold text-[#1c1c19]">
+                            <svg
+                              aria-hidden="true"
+                              viewBox="0 0 20 20"
+                              className="relative top-[0.15em] h-[1em] w-[1em] shrink-0"
+                            >
+                              <path
+                                fill="#e5484d"
+                                d="M10 1.5A6.1 6.1 0 0 0 3.9 7.6c0 4.45 5.37 9.62 5.6 9.84a.72.72 0 0 0 1 0c.23-.22 5.6-5.39 5.6-9.84A6.1 6.1 0 0 0 10 1.5Z"
+                              />
+                              <circle cx="10" cy="7.45" r="2.15" fill="#fff" />
+                            </svg>
+                            Nishi-Ogikubo
+                          </span>{" "}
+                          has Udon and Tempura too, just in case.
+                        </p>
+                      </div>
+                      <div
+                        className="relative min-h-0 w-full flex-1 overflow-hidden"
+                        style={{ borderRadius: 10 }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={card.image}
+                          alt=""
+                          loading={isFocus ? "eager" : "lazy"}
+                          fetchPriority={isFocus ? "high" : "low"}
+                          draggable={false}
+                          className="absolute inset-0 h-full w-full object-cover object-center"
+                        />
+                      </div>
+                    </>
+                  ) : isOdyssey ? (
+                    <>
+                      <div className="relative px-3 pb-4 pt-3">
+                        <p className="m-0 font-[family-name:var(--font-sidequest-sans)] text-[16px] font-normal leading-[1.3] tracking-[-0.025em] text-[#77716f]">
+                          Your{" "}
+                          <span className="inline-flex items-baseline gap-0.5 font-semibold text-[#1c1c19]">
+                            <svg
+                              aria-hidden="true"
+                              viewBox="0 0 20 20"
+                              fill="none"
+                              className="relative top-[0.15em] h-[1em] w-[1em] shrink-0"
+                              stroke="currentColor"
+                              strokeWidth="1.45"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <rect x="3" y="4.5" width="14" height="12" rx="2.2" />
+                              <path d="M6.5 2.8v3.1M13.5 2.8v3.1M3 8h14" />
+                            </svg>
+                            4pm Meeting
+                          </span>{" "}
+                          moved. There are 4 seats in rows J-K{" "}
+                          for{" "}
+                          <span className="inline-flex items-baseline gap-0.5 font-semibold text-[#1c1c19]">
+                            <span
+                              className="relative top-[0.16em] inline-block h-[0.9em] w-[0.9em] rounded-full border border-white/80"
+                              style={{
+                                background: categoryOrbGradient("interest"),
+                                boxShadow:
+                                  "inset 3px 4px 5px rgba(255,255,255,0.24), inset -2px -3px 5px rgba(24,17,13,0.18), 0 2px 5px rgba(47,34,24,0.13)",
+                              }}
+                              aria-hidden="true"
+                            />
+                            The Odyssey
+                          </span>{" "}
+                          at{" "}
+                          <span className="inline-flex items-baseline gap-0.5 font-semibold text-[#1c1c19]">
+                            <svg
+                              aria-hidden="true"
+                              viewBox="0 0 20 20"
+                              className="relative top-[0.15em] h-[1em] w-[1em] shrink-0"
+                            >
+                              <path
+                                fill="#e5484d"
+                                d="M10 1.5A6.1 6.1 0 0 0 3.9 7.6c0 4.45 5.37 9.62 5.6 9.84a.72.72 0 0 0 1 0c.23-.22 5.6-5.39 5.6-9.84A6.1 6.1 0 0 0 10 1.5Z"
+                              />
+                              <circle cx="10" cy="7.45" r="2.15" fill="#fff" />
+                            </svg>
+                            Babylon
+                          </span>
+                          {". Want to go?"}
+                        </p>
+                      </div>
+                      <div
+                        className="relative min-h-0 w-full flex-1 overflow-hidden"
+                        style={{ borderRadius: 10 }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={card.image}
+                          alt=""
+                          loading={isFocus ? "eager" : "lazy"}
+                          fetchPriority={isFocus ? "high" : "low"}
+                          draggable={false}
+                          className="absolute inset-0 h-full w-full object-cover object-[center_45%]"
                         />
                       </div>
                     </>
