@@ -1,0 +1,24 @@
+{
+  "name": "SidequestConnection",
+  "type": "object",
+  "properties": {
+    "pair_key": {
+      "type": "string",
+      "description": "Stable sorted pair of SidequestUser IDs for idempotency"
+    },
+    "user_a_id": { "type": "string" },
+    "user_b_id": { "type": "string" },
+    "user_a_node_id": { "type": "string" },
+    "user_b_node_id": { "type": "string" },
+    "invite_id": { "type": "string" },
+    "status": { "type": "string", "enum": ["accepted", "blocked"] },
+    "created_at": { "type": "number" }
+  },
+  "required": ["pair_key", "user_a_id", "user_b_id", "invite_id", "status", "created_at"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

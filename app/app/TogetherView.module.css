@@ -1,0 +1,238 @@
+.together,
+.state,
+.loading {
+  min-height: 100svh;
+  padding: 84px 24px 132px;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(215, 166, 243, 0.12), transparent 30%),
+    #fff;
+  color: #25211d;
+}
+
+.together {
+  width: min(680px, 100%);
+  margin: 0 auto;
+}
+
+.header {
+  max-width: 520px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: rgba(70, 48, 81, 0.48);
+  font-size: 10px;
+  font-weight: 680;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.header h1,
+.state h1 {
+  margin: 10px 0 0;
+  color: #25211d;
+  font-family: var(--font-sidequest-serif), Georgia, serif;
+  font-size: clamp(36px, 6vw, 58px);
+  font-weight: 430;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.header > p:last-child {
+  margin: 17px 0 0;
+  color: rgba(45, 39, 34, 0.48);
+  font-size: 13px;
+}
+
+.people {
+  display: grid;
+  gap: 2px;
+  margin-top: 54px;
+  border-top: 1px solid rgba(57, 48, 43, 0.08);
+}
+
+.person {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 13px;
+  min-height: 68px;
+  padding: 12px 2px;
+  align-items: center;
+  border-bottom: 1px solid rgba(57, 48, 43, 0.08);
+}
+
+.personOrb {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ead7f5, #b77ae0 64%, #7f4dac);
+  box-shadow:
+    inset 7px 8px 12px rgba(255, 255, 255, 0.35),
+    inset -5px -6px 10px rgba(39, 19, 52, 0.2),
+    0 5px 14px rgba(93, 55, 118, 0.12);
+  color: rgba(48, 26, 62, 0.72);
+  font-size: 13px;
+  font-weight: 680;
+}
+
+.personName {
+  overflow: hidden;
+  color: rgba(37, 33, 29, 0.84);
+  font-size: 15px;
+  font-weight: 590;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.personStatus {
+  color: rgba(67, 93, 73, 0.52);
+  font-size: 10px;
+  font-weight: 620;
+}
+
+.pending {
+  margin-top: 34px;
+}
+
+.pending > p {
+  margin: 0;
+  color: rgba(49, 44, 38, 0.38);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.pending > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.pending span {
+  padding: 7px 10px;
+  border: 1px solid rgba(76, 60, 85, 0.09);
+  border-radius: 999px;
+  background: rgba(234, 215, 245, 0.24);
+  color: rgba(52, 41, 58, 0.58);
+  font-size: 11px;
+}
+
+.addButton,
+.state button {
+  min-height: 44px;
+  padding: 11px 18px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: #25211d;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.addButton {
+  margin-top: 42px;
+}
+
+.addButton:focus-visible,
+.state button:focus-visible {
+  outline: 2px solid #9c76b0;
+  outline-offset: 3px;
+}
+
+.state {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.state h1 {
+  max-width: 560px;
+}
+
+.stateCopy {
+  max-width: 430px;
+  margin: 18px 0 0;
+  color: rgba(45, 39, 34, 0.54);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.state button {
+  margin-top: 24px;
+}
+
+.emptyOrbs {
+  position: relative;
+  width: 72px;
+  height: 48px;
+  margin-bottom: 24px;
+}
+
+.emptyOrbs span {
+  position: absolute;
+  top: 2px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  box-shadow: 0 7px 18px rgba(91, 56, 111, 0.12);
+}
+
+.emptyOrbs span:first-child {
+  left: 0;
+  background: linear-gradient(145deg, #ffd4e1, #f0719d 66%, #c94674);
+}
+
+.emptyOrbs span:last-child {
+  right: 0;
+  background: linear-gradient(145deg, #ead7f5, #b77ae0 66%, #7f4dac);
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+}
+
+.loading span {
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(183, 122, 224, 0.18);
+  border-top-color: #b77ae0;
+  border-radius: 50%;
+  animation: together-spin 700ms linear infinite;
+}
+
+@keyframes together-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (max-width: 620px) {
+  .together,
+  .state,
+  .loading {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .header h1,
+  .state h1 {
+    font-size: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading span {
+    animation: none;
+  }
+}

@@ -1,22 +1,20 @@
 import { BASE44_APP_ID } from "./base44Client";
-import type {
-  QuestRecord,
-  QuestSource,
-  UserProfile,
-} from "./backendTypes";
 
-type GenerateQuestArgs = {
-  request: string;
-  country?: string;
-  memorySummary?: string;
-  localContext?: string;
-  phone?: string;
-  initialRequest?: string;
-  followupAnswer?: string;
-  source?: QuestSource;
-};
+export class Base44FunctionError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "Base44FunctionError";
+  }
+}
 
-async function invoke<T>(functionName: string, data: Record<string, unknown>) {
+async function invoke<T>(
+  functionName: string,
+  data: Record<string, unknown>,
+  accessToken?: string,
+) {
   const response = await fetch(
     `https://base44.app/api/apps/${BASE44_APP_ID}/functions/${functionName}`,
     {
@@ -25,6 +23,7 @@ async function invoke<T>(functionName: string, data: Record<string, unknown>) {
         Accept: "application/json",
         "Content-Type": "application/json",
         "X-App-Id": BASE44_APP_ID,
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: JSON.stringify(data),
       cache: "no-store",
@@ -33,55 +32,43 @@ async function invoke<T>(functionName: string, data: Record<string, unknown>) {
 
   const payload = (await response.json()) as T | { error?: string };
   if (!response.ok) {
-    throw new Error(
+    throw new Base44FunctionError(
       "error" in (payload as { error?: string })
         ? (payload as { error?: string }).error || "Base44 request failed"
         : "Base44 request failed",
+      response.status,
     );
   }
 
   return payload as T;
 }
 
-async function invokeData<T>(data: Record<string, unknown>): Promise<T> {
-  const response = await invoke<{ value: T }>("sidequest-data", data);
+export async function invokeSidequestData<T>(
+  data: Record<string, unknown>,
+  accessToken?: string,
+): Promise<T> {
+  const response = await invoke<{ value: T }>(
+    "sidequest-data",
+    data,
+    accessToken,
+  );
   return response.value;
 }
 
-export async function generateQuest(args: GenerateQuestArgs) {
-  return invoke<{ id: string; url: string; title: string }>(
-    "generate-quest",
-    args,
+export function connectMyPhone(
+  args: {
+    phone: string;
+    country?: string;
+    currentCity?: string;
+    latitude?: number;
+    longitude?: number;
+    assignedPhone?: string;
+    signedUpAt?: number;
+  },
+  accessToken: string,
+) {
+  return invokeSidequestData<{ viewer: import("./base44Auth").AuthenticatedViewer }>(
+    { action: "connectMyPhone", ...args },
+    accessToken,
   );
-}
-
-export function getQuestByShortId(args: { shortId: string }) {
-  return invokeData<QuestRecord | null>({
-    action: "getQuestByShortId",
-    ...args,
-  });
-}
-
-export function listRecentQuests(args: { limit?: number }) {
-  return invokeData<QuestRecord[]>({ action: "listRecentQuests", ...args });
-}
-
-export function listQuestsByPhone(args: { phone: string; limit?: number }) {
-  return invokeData<QuestRecord[]>({ action: "listQuestsByPhone", ...args });
-}
-
-export function getUserByPhone(args: { phone: string }) {
-  return invokeData<UserProfile | null>({ action: "getUserByPhone", ...args });
-}
-
-export function upsertUserByPhone(args: {
-  phone: string;
-  country?: string;
-  currentCity?: string;
-  latitude?: number;
-  longitude?: number;
-  assignedPhone?: string;
-  signedUpAt?: number;
-}) {
-  return invokeData<unknown>({ action: "upsertUserByPhone", ...args });
 }

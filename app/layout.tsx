@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import {
   DM_Sans,
+  Instrument_Sans,
   Newsreader,
-  Pixelify_Sans,
-  VT323,
 } from "next/font/google";
 import "./globals.css";
 
@@ -18,16 +17,9 @@ const sidequestSerif = Newsreader({
   style: ["normal", "italic"],
 });
 
-const pixelifySans = Pixelify_Sans({
-  variable: "--font-pixelify-sans",
+const sidequestInstrument = Instrument_Sans({
+  variable: "--font-sidequest-instrument",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const vt323 = VT323({
-  variable: "--font-vt323",
-  subsets: ["latin"],
-  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -44,7 +36,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sidequestSans.variable} ${sidequestSerif.variable} ${pixelifySans.variable} ${vt323.variable} h-full antialiased`}
+      className={`${sidequestSans.variable} ${sidequestSerif.variable} ${sidequestInstrument.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-[#f3efe7] font-[family-name:var(--font-sidequest-sans)] text-[#1c1c19]">
         {children}

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MAX_MOMENT_ORB_RADIUS,
   MAX_ORB_RADIUS,
   MIN_ORB_RADIUS,
+  MOMENT_ORB_SCALE,
   SELF_ORB_RADIUS,
   resolveOrbSizes,
 } from "./orbSizing";
@@ -51,7 +53,19 @@ describe("resolveOrbSizes", () => {
     expect(nodes[1].radius).toBeGreaterThan(nodes[0].radius);
   });
 
-  it("does not use category as a hidden size bias", () => {
+  it("makes moments slightly larger than equally salient place nodes", () => {
+    const nodes = resolveOrbSizes(
+      [
+        { key: "place", category: "place", salience: 0.7 },
+        { key: "moment", category: "experience", salience: 0.7 },
+      ],
+      [],
+    );
+
+    expect(nodes[1].radius).toBeCloseTo(nodes[0].radius * MOMENT_ORB_SCALE, 2);
+  });
+
+  it("does not otherwise use category as a hidden size bias", () => {
     const nodes = resolveOrbSizes(
       [
         { key: "place", category: "place", salience: 0.7 },
@@ -74,7 +88,11 @@ describe("resolveOrbSizes", () => {
 
     for (const node of nodes) {
       expect(node.radius).toBeGreaterThanOrEqual(MIN_ORB_RADIUS);
-      expect(node.radius).toBeLessThanOrEqual(MAX_ORB_RADIUS);
+      expect(node.radius).toBeLessThanOrEqual(
+        node.category === "experience"
+          ? MAX_MOMENT_ORB_RADIUS
+          : MAX_ORB_RADIUS,
+      );
     }
   });
 

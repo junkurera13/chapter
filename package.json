@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "@base44/sdk": "^0.8.3",
+    "@chat-adapter/state-memory": "^4.34.0",
+    "@photon-ai/chat-adapter-imessage": "^3.0.1",
     "@types/three": "^0.184.1",
+    "chat": "^4.34.0",
     "libphonenumber-js": "^1.13.2",
     "next": "16.2.6",
     "postprocessing": "^6.39.1",
@@ -22,9 +25,9 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "base44": "^0.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "base44": "^0.1.5",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",

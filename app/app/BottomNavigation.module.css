@@ -73,13 +73,17 @@
   object-fit: contain;
 }
 
+.account {
+  position: absolute;
+  right: 22px;
+  bottom: calc((var(--dock-size) - 42px) / 2);
+  pointer-events: auto;
+}
+
 .profile {
   --profile-size: 42px;
 
-  position: absolute;
-  right: 22px;
-  /* Vertically center with the 52px nav pill */
-  bottom: calc((var(--dock-size) - var(--profile-size)) / 2);
+  position: relative;
   display: grid;
   width: var(--profile-size);
   height: var(--profile-size);
@@ -91,17 +95,92 @@
   background: #000;
   color: #fff;
   cursor: pointer;
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1;
-  pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
 }
 
 .profile:focus-visible {
   outline: 2px solid #666;
+  outline-offset: 2px;
+}
+
+.accountMenu {
+  position: absolute;
+  right: 0;
+  bottom: 54px;
+  width: min(264px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid rgba(31, 29, 25, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 48px rgba(38, 31, 21, 0.16);
+  color: #1d1b18;
+  text-align: left;
+  backdrop-filter: blur(18px);
+}
+
+.accountName {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountEmail {
+  margin-top: 2px;
+  overflow: hidden;
+  color: rgba(29, 27, 24, 0.55);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.messagingStatus {
+  margin-top: 13px;
+  color: #53816d;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.connectPhone {
+  width: 100%;
+  margin-top: 13px;
+  padding: 10px 12px;
+  border: 1px solid rgba(29, 27, 24, 0.13);
+  border-radius: 11px;
+  background: transparent;
+  color: #1d1b18;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.connectPhone:focus-visible {
+  outline: 2px solid #80786c;
+  outline-offset: 2px;
+}
+
+.signOut {
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px 12px;
+  appearance: none;
+  border: 0;
+  border-radius: 11px;
+  background: #1d1b18;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.signOut:focus-visible {
+  outline: 2px solid #80786c;
   outline-offset: 2px;
 }
 
@@ -298,7 +377,7 @@
   background: transparent;
   color: rgba(255, 255, 255, 0.66);
   cursor: pointer;
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
   font-size: 13.5px;
   font-weight: 550;
   letter-spacing: -0.012em;

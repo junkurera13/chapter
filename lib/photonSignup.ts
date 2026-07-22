@@ -73,7 +73,7 @@ export async function createSharedPhotonUser({
       const assigned = body.data?.assignedPhoneNumber;
       if (!assigned) {
         throw new PhotonSignupError(
-          "messaging service returned an unexpected response.",
+          "The messaging service returned an unexpected response.",
           res.status,
           body.code,
           body,
@@ -89,7 +89,7 @@ export async function createSharedPhotonUser({
     }
 
     throw new PhotonSignupError(
-      photonMessage(body) ?? "messaging service signup failed.",
+      photonMessage(body) ?? "Messaging service signup failed.",
       res.status,
       body.code,
       body,

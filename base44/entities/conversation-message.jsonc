@@ -3,6 +3,12 @@
   "type": "object",
   "properties": {
     "phone": { "type": "string" },
+    "external_id": { "type": "string", "description": "Provider message ID used for idempotency" },
+    "reply_to_external_id": { "type": "string" },
+    "thread_id": { "type": "string" },
+    "channel": { "type": "string", "enum": ["imessage", "web"] },
+    "delivery_status": { "type": "string", "enum": ["pending", "sent"] },
+    "provider_message_id": { "type": "string" },
     "role": { "type": "string", "enum": ["user", "agent"] },
     "text": { "type": "string" },
     "created_at": { "type": "number" }

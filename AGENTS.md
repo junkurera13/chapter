@@ -4,25 +4,18 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-<!-- convex-ai-start -->
+<!-- base44-agent-start -->
 
-This project uses [Convex](https://convex.dev) as its backend.
+This competition build uses Base44 as its backend. Before changing Base44
+entities, functions, agents, authentication, or SDK calls, read
+`.agents/skills/base44-sdk/SKILL.md` completely and follow its routing to the
+relevant reference.
 
-When working on Convex code, **always read
-`convex/_generated/ai/guidelines.md` first** for important guidelines on
-how to correctly use Convex APIs and patterns. The file contains rules that
-override what you may have learned about Convex from training data.
+The Photon iMessage connection is part of the current product. Do not remove or
+replace `app/api/imessage/`, `app/api/signup/`, `lib/photonSignup.ts`,
+`lib/sidequestBot.ts`, or `lib/sidequestMessaging.ts` as legacy code without
+first tracing the complete account-to-message flow.
 
-Convex agent skills for common tasks can be installed by running
-`npx convex ai-files install`.
+Do not deploy Base44 resources unless the user explicitly asks for a deployment.
 
-<!-- convex-ai-end -->
-
-<!-- eve-agent-start -->
-
-This project contains an experimental [Eve](https://vercel.com/eve) agent under
-`agent/`. Eve is still a fast-moving preview, so before changing agent code,
-read the matching guide in `node_modules/eve/docs/` and keep the `eve` version
-pinned exactly in `package.json`.
-
-<!-- eve-agent-end -->
+<!-- base44-agent-end -->

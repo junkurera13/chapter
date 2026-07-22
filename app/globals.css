@@ -3,21 +3,6 @@
 :root {
   --background: #f3efe7;
   --foreground: #1c1c19;
-  --pixel-yellow: #f8e600;
-  --pixel-pink: #ff3dec;
-  --pixel-green: #08ff80;
-  --pixel-black: #000000;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-pixel-yellow: var(--pixel-yellow);
-  --color-pixel-pink: var(--pixel-pink);
-  --color-pixel-green: var(--pixel-green);
-  --color-pixel-black: var(--pixel-black);
-  --font-pixel: var(--font-pixelify-sans);
-  --font-mono: var(--font-vt323);
 }
 
 *,
@@ -39,100 +24,12 @@ body {
   font-smooth: always;
 }
 
-/* Re-enable smooth, antialiased text on specific containers that want a
-   modern, professional feel (cards, admin, generator). The body keeps
-   the pixel-art look for the landing page. */
-.text-smooth,
-.text-smooth * {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-smooth: always;
-}
-
-/* Soft elevated card surface for the sleeker views. */
-.card-surface {
-  background-color: rgba(24, 24, 27, 0.6);
-  border: 1px solid rgba(63, 63, 70, 0.6);
-  backdrop-filter: blur(8px);
-}
-
-.card-surface:hover {
-  border-color: rgba(82, 82, 91, 0.8);
-}
-
-button,
 textarea,
 input {
   font: inherit;
 }
 
-/* Pixel-art image rendering — keeps logo crisp at any size */
-.image-pixelated {
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-}
-
-/* Chunky stair-step shadow that mimics pixel-art drop shadow.
-   Multiple offsets create the "stacked pixels" look. */
-.pixel-shadow-pink {
-  box-shadow:
-    4px 0 0 0 var(--pixel-pink),
-    0 4px 0 0 var(--pixel-pink),
-    4px 4px 0 0 var(--pixel-pink),
-    8px 4px 0 0 var(--pixel-pink),
-    4px 8px 0 0 var(--pixel-pink),
-    8px 8px 0 0 var(--pixel-pink);
-}
-
-.pixel-shadow-yellow {
-  box-shadow:
-    4px 0 0 0 var(--pixel-yellow),
-    0 4px 0 0 var(--pixel-yellow),
-    4px 4px 0 0 var(--pixel-yellow),
-    8px 4px 0 0 var(--pixel-yellow),
-    4px 8px 0 0 var(--pixel-yellow),
-    8px 8px 0 0 var(--pixel-yellow);
-}
-
-.pixel-shadow-black {
-  box-shadow:
-    4px 0 0 0 var(--pixel-black),
-    0 4px 0 0 var(--pixel-black),
-    4px 4px 0 0 var(--pixel-black),
-    8px 4px 0 0 var(--pixel-black),
-    4px 8px 0 0 var(--pixel-black),
-    8px 8px 0 0 var(--pixel-black);
-}
-
-/* CRT scanline overlay — subtle, doesn't kill readability */
-.scanlines::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 2px,
-    rgba(0, 0, 0, 0.18) 3px,
-    rgba(0, 0, 0, 0.18) 3px
-  );
-  z-index: 50;
-  mix-blend-mode: multiply;
-}
-
-/* Blink animation for cursor / accent text */
-@keyframes blink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
-}
-
-.pixel-blink {
-  animation: blink 1s steps(2) infinite;
+button {
+  font: inherit;
+  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
 }

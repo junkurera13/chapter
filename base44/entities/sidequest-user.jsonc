@@ -2,10 +2,16 @@
   "name": "SidequestUser",
   "type": "object",
   "properties": {
+    "auth_user_id": {
+      "type": "string",
+      "description": "Base44 authenticated user ID for the private app account"
+    },
+    "email": {
+      "type": "string",
+      "description": "Verified email supplied by Base44 authentication"
+    },
     "phone": { "type": "string", "description": "E.164 phone number" },
     "first_seen_at": { "type": "number" },
-    "state": { "type": "string", "enum": ["idle", "awaiting_followup"], "default": "idle" },
-    "pending_request": { "type": "string" },
     "country": { "type": "string" },
     "name": { "type": "string" },
     "home_city": { "type": "string" },
@@ -17,36 +23,16 @@
     "longitude": { "type": "number" },
     "signed_up_at": { "type": "number" },
     "assigned_phone": { "type": "string" },
-    "first_sidequest_window_text": { "type": "string" },
     "onboarding_step": {
       "type": "string",
       "enum": [
         "needs_memory_invite",
         "awaiting_memory",
-        "awaiting_first_window",
-        "first_quest_ready",
-        "needs_cold_quest",
-        "awaiting_cold_response",
-        "awaiting_name",
-        "awaiting_mirror",
-        "awaiting_location",
-        "complete"
+        "memory_ready"
       ]
-    },
-    "mirror_answers": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "question": { "type": "string" },
-          "answer": { "type": "string" },
-          "asked_at": { "type": "number" }
-        },
-        "required": ["question", "answer", "asked_at"]
-      }
     }
   },
-  "required": ["phone", "first_seen_at"],
+  "required": ["first_seen_at"],
   "rls": {
     "create": { "user_condition": { "role": "admin" } },
     "read": { "user_condition": { "role": "admin" } },

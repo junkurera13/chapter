@@ -1,0 +1,81 @@
+.statePage {
+  display: grid;
+  min-height: 100svh;
+  place-content: center;
+  place-items: center;
+  gap: 12px;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(235, 219, 197, 0.22), transparent 30%),
+    #fff;
+  text-align: center;
+}
+
+.mark {
+  width: 112px;
+  height: 112px;
+  animation: breathe 1.8s ease-in-out infinite;
+}
+
+.eyebrow {
+  color: rgba(31, 29, 25, 0.48);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.stateCard {
+  width: min(100%, 420px);
+  padding: 36px;
+  border: 1px solid #e8e2d8;
+  border-radius: 28px;
+  background: #faf8f4;
+  box-shadow: 0 20px 60px rgba(43, 37, 28, 0.08);
+}
+
+.stateCard h1 {
+  margin-top: 14px;
+  font-family: var(--font-sidequest-serif), Georgia, serif;
+  font-size: 42px;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.stateCard > p:not(.eyebrow) {
+  margin-top: 16px;
+  color: #6b655c;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.stateCard button {
+  margin-top: 24px;
+  padding: 13px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #181713;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: scale(0.96);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark {
+    animation: none;
+  }
+}

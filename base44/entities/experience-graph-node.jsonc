@@ -4,6 +4,22 @@
   "properties": {
     "phone": { "type": "string" },
     "memory_id": { "type": "string" },
+    "owner_user_id": {
+      "type": "string",
+      "description": "SidequestUser that owns this private node"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": ["memory", "connection"]
+    },
+    "linked_user_id": {
+      "type": "string",
+      "description": "SidequestUser represented by an accepted people node"
+    },
+    "connection_id": {
+      "type": "string",
+      "description": "Accepted SidequestConnection represented by this node"
+    },
     "key": { "type": "string" },
     "category": {
       "type": "string",
@@ -22,7 +38,7 @@
     "evidence": { "type": "string" },
     "created_at": { "type": "number" }
   },
-  "required": ["phone", "memory_id", "key", "kind", "label", "description", "certainty", "confidence", "evidence", "created_at"],
+  "required": ["key", "kind", "label", "description", "certainty", "confidence", "evidence", "created_at"],
   "rls": {
     "create": { "user_condition": { "role": "admin" } },
     "read": { "user_condition": { "role": "admin" } },

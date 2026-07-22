@@ -1,57 +1,91 @@
-import type { QuestPayload } from "./quest";
+import type {
+  ExperienceFamiliarity,
+  ExperienceNodeCategory,
+  ExperiencePolarity,
+  ExperienceRelation,
+} from "./experienceOntology";
 
-export type QuestOutcome = "won" | "lost" | "skipped";
-export type QuestSource = "admin" | "imessage" | "terminal";
-
-export type QuestRecord = QuestPayload & {
-  shortId: string;
-  request: string;
-  phone?: string;
-  initialRequest?: string;
-  followupAnswer?: string;
-  source?: QuestSource;
+export type ExperienceGraphNodeRecord = {
+  id: string;
+  memoryId?: string;
+  ownerUserId?: string;
+  sourceType: "memory" | "connection";
+  linkedUserId?: string;
+  connectionId?: string;
+  inviteStatus?: "pending";
+  category: ExperienceNodeCategory;
+  subtype: string;
+  kind: string;
+  label: string;
+  description: string;
+  certainty: "fact" | "hypothesis";
+  confidence: number;
+  salience: number;
+  evidence: string;
   createdAt: number;
-  outcome?: QuestOutcome;
-  outcomeAt?: number;
+};
+
+export type ExperienceGraphEdgeRecord = {
+  id: string;
+  memoryId: string;
+  fromNodeId: string;
+  toNodeId: string;
+  relation: ExperienceRelation;
+  polarity: ExperiencePolarity;
+  familiarity: ExperienceFamiliarity;
+  strength: number;
+  certainty: "fact" | "hypothesis";
+  createdAt: number;
+};
+
+export type ExperienceGraphRecord = {
+  memoryCount: number;
+  onboardingStep?: OnboardingStep;
+  nodes: ExperienceGraphNodeRecord[];
+  edges: ExperienceGraphEdgeRecord[];
 };
 
 export type OnboardingStep =
   | "needs_memory_invite"
   | "awaiting_memory"
-  | "awaiting_first_window"
-  | "first_quest_ready"
-  | "needs_cold_quest"
-  | "awaiting_cold_response"
-  | "awaiting_name"
-  | "awaiting_mirror"
-  | "awaiting_location"
-  | "complete";
+  | "memory_ready";
 
-export type ConversationState = "idle" | "awaiting_followup";
-
-export type MirrorAnswer = {
-  question: string;
-  answer: string;
-  askedAt: number;
+export type SidequestConnectionRecord = {
+  id: string;
+  nodeId?: string;
+  name: string;
+  connectedAt: number;
 };
 
-export type UserProfile = {
-  phone: string;
-  firstSeenAt: number;
-  state?: ConversationState;
-  pendingRequest?: string;
-  country?: string;
-  name?: string;
-  homeCity?: string;
-  currentCity?: string;
-  onVacation?: boolean;
-  notes?: string;
-  memoryUpdatedAt?: number;
-  signedUpAt?: number;
-  assignedPhone?: string;
-  firstSidequestWindowText?: string;
-  latitude?: number;
-  longitude?: number;
-  onboardingStep?: OnboardingStep;
-  mirrorAnswers?: MirrorAnswer[];
+export type PendingConnectionInviteRecord = {
+  id: string;
+  nodeId: string;
+  name: string;
+  createdAt: number;
+  expiresAt: number;
+};
+
+export type MyConnectionsRecord = {
+  accepted: SidequestConnectionRecord[];
+  pending: PendingConnectionInviteRecord[];
+};
+
+export type ConnectionInvitePreview = {
+  status: "pending" | "accepted" | "expired" | "unavailable";
+  inviterName?: string;
+  invitedName?: string;
+  expiresAt?: number;
+};
+
+export type CreatedConnectionInvite = {
+  inviteId: string;
+  token: string;
+  invitedName: string;
+  expiresAt: number;
+};
+
+export type AcceptedConnectionInvite = {
+  connected: true;
+  connectionId: string;
+  friendName?: string;
 };

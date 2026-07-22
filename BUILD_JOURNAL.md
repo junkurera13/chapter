@@ -1,58 +1,42 @@
 # Build journal
 
-## July 22, 2026 — migration day
+## July 22, 2026 — memory-first foundation
 
-### Starting point
+The current competition build contains only the foundation of the new
+Sidequest:
 
-Sidequest already had a finished interface and product direction. For this backend-focused competition, the goal was deliberately narrow: preserve every visible part of the frontend and rebuild the runtime backend with Base44.
+- Base44 Google authentication and private account ownership;
+- in-app phone connection and Photon shared-line signup;
+- the signed iMessage webhook;
+- idempotent conversation storage and delivery tracking;
+- one-experience onboarding and structured memory extraction;
+- private experience-graph nodes and edges; and
+- the interactive **You** world backed by the authenticated graph.
 
-I created a separate Base44 project and a separate local folder so the original Sidequest codebase remained untouched.
+The **Now** experience is intentionally unimplemented. The next product step is
+to design that experience from the new vision instead of inheriting any earlier
+generation format.
 
-### Backend model
+## July 22, 2026 — people become real connections
 
-The existing data model was mapped into six Base44 entities:
+The people layer now preserves individual identity and introduces the first
+careful piece of **Together**:
 
-- quests and their three real-world stops
-- phone-based Sidequest profiles and onboarding state
-- conversation history
-- source memories
-- experience-graph nodes
-- experience-graph edges
+- the extraction prompt requires one node per explicitly named person and
+  forbids collapsing named friends into a generic group;
+- the existing Fukuoka graph was migrated surgically from one Travel
+  Companions node to Daniel, Samuel, Shinmog, and Aron without regenerating the
+  rest of the graph;
+- a people-node modal can create a private, single-use connection invite;
+- Base44 stores only the SHA-256 token hash and resolves acceptance through the
+  exact invite, never a name match;
+- accepting creates an accepted connection, links the inviter’s existing node,
+  and creates a reciprocal people node for the invitee without copying private
+  memory evidence; and
+- Together lists accepted people and pending invitations, while shared **Now**
+  experiences remain explicitly unimplemented.
 
-Direct access is governed by entity access rules. The frontend only receives the exact shapes it needs from backend functions.
-
-### AI quest generation
-
-The main generation path moved into the `generate-quest` Base44 function. It:
-
-1. accepts the user's free-text constraints;
-2. calls Base44 `Core.InvokeLLM` with live web context;
-3. requires a strict JSON schema with exactly three stops;
-4. validates every field again in the function;
-5. writes the result to the `Quest` entity; and
-6. returns the existing `/q/<short-id>` URL shape expected by the UI.
-
-This keeps model access, web grounding, validation, and persistence inside the Base44 backend.
-
-### Existing UI integration
-
-Only backend adapters and imports changed. The page markup, component markup, CSS, assets, motion, and routes were copied unchanged. The app's existing quest generator, mission page, admin list, user lookup, and signup upsert now call Base44 instead of Convex.
-
-The browser SDK's default analytics initialization makes an anonymous `auth.me()` request. Because this app intentionally has public generation, the frontend uses Base44's public function HTTP endpoint instead; the deployed functions still use the Base44 SDK for all privileged work. This removed a harmless but noisy 401 without adding authentication UI or changing the product experience.
-
-### Base44 agent
-
-The project also includes `sidequest_composer`, a Base44 agent configured with user-scoped memory and the deployed `generate-quest` function as a tool. Its instructions preserve Sidequest's concise, friend-like voice and require specific, grounded places rather than generic suggestions.
-
-### End-to-end proof
-
-Two live Base44 quests were generated during verification. The latest test returned `/q/c6186ca7`, persisted it, rendered it from the production frontend, and surfaced it in the recent-quests admin view.
-
-The final production pass checked:
-
-- successful local and Vercel production builds;
-- exact visible-text parity between original and competition routes;
-- successful browser-side generation through Base44;
-- successful Base44 quest reads from the mission and admin pages;
-- zero production console errors; and
-- `scrollWidth === clientWidth === 390` on the mobile mission and admin views.
+Verification passed with 46 tests, ESLint, a Next.js production build, Deno
+type-checking, live Base44 graph/invite calls, and a 390px public invitation
+browser pass with no console errors or horizontal overflow. A genuine second
+Google account is still required to perform the final human acceptance click.

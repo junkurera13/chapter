@@ -1,6 +1,9 @@
 "use client";
 
-import { useRef, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+
+import type { AuthenticatedViewer } from "../../lib/base44Auth";
+import { getBase44BrowserClient } from "../../lib/base44BrowserClient";
 import styles from "./BottomNavigation.module.css";
 
 export const SIDEQUEST_TABS = ["Now", "You", "Together"] as const;
@@ -9,13 +12,51 @@ export type SidequestTabIndex = 0 | 1 | 2;
 type BottomNavigationProps = {
   activeIndex: SidequestTabIndex;
   onChange: (index: SidequestTabIndex) => void;
+  viewer: AuthenticatedViewer;
+  onConnectPhone: () => void;
 };
 
 export default function BottomNavigation({
   activeIndex,
   onChange,
+  viewer,
+  onConnectPhone,
 }: BottomNavigationProps) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+
+  const initial = (viewer.name?.trim() || viewer.email).charAt(0).toUpperCase();
+
+  useEffect(() => {
+    if (!accountOpen) return;
+
+    function closeAccount(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !accountRef.current?.contains(event.target)
+      ) {
+        setAccountOpen(false);
+      }
+    }
+
+    function closeOnEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") setAccountOpen(false);
+    }
+
+    window.addEventListener("pointerdown", closeAccount);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("pointerdown", closeAccount);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [accountOpen]);
+
+  function signOut() {
+    getBase44BrowserClient().auth.logout(
+      new URL("/", window.location.origin).toString(),
+    );
+  }
 
   function selectTab(index: SidequestTabIndex, moveFocus = false) {
     onChange(index);
@@ -88,13 +129,42 @@ export default function BottomNavigation({
         aria-hidden="true"
       />
 
-      <button
-        type="button"
-        className={styles.profile}
-        aria-label="Profile"
-      >
-        U
-      </button>
+      <div className={styles.account} ref={accountRef}>
+        {accountOpen ? (
+          <div className={styles.accountMenu} id="sidequest-account-menu">
+            <p className={styles.accountName}>{viewer.name || "Your account"}</p>
+            <p className={styles.accountEmail}>{viewer.email}</p>
+            {viewer.messagingConnected ? (
+              <p className={styles.messagingStatus}>iMessage connected</p>
+            ) : (
+              <button
+                type="button"
+                className={styles.connectPhone}
+                onClick={() => {
+                  setAccountOpen(false);
+                  onConnectPhone();
+                }}
+              >
+                Connect iMessage
+              </button>
+            )}
+            <button type="button" className={styles.signOut} onClick={signOut}>
+              Sign out
+            </button>
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          className={styles.profile}
+          aria-label="Your account"
+          aria-expanded={accountOpen}
+          aria-controls="sidequest-account-menu"
+          onClick={() => setAccountOpen((open) => !open)}
+        >
+          {initial}
+        </button>
+      </div>
     </div>
   );
 }

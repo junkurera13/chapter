@@ -4,16 +4,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import {
+  EXPERIENCE_NODE_CATEGORIES,
   EXPERIENCE_CATEGORY_META,
   getExperienceRelationLabel,
   humanizeExperienceSubtype,
 } from "../../lib/experienceOntology";
 import { formatNodeLabel } from "../../lib/displayText";
+import { createConnectionInvite } from "../../lib/base44Connections";
+import { publicInviteUrl } from "../../lib/publicAppUrl";
 import {
-  worldEdges,
-  worldNodes,
   type WorldEdge,
   type WorldNode,
+  type WorldNodeCategory,
 } from "./graphData";
 import {
   loadOrbLayout,
@@ -55,10 +57,13 @@ import styles from "./YouView.module.css";
 const INITIAL_CAMERA_DESKTOP = new THREE.Vector3(0, 0.12, 10.25);
 const INITIAL_CAMERA_MOBILE = new THREE.Vector3(0, 0.1, 19);
 const CONNECTION_SEGMENTS = 28;
-const WORLD_NODE_BY_KEY = new Map(worldNodes.map((node) => [node.key, node]));
+const LEGEND_CATEGORY_ORDER: readonly WorldNodeCategory[] = [
+  "self",
+  ...EXPERIENCE_NODE_CATEGORIES,
+];
 
 type RenderedConnection = {
-  edge: (typeof worldEdges)[number];
+  edge: WorldEdge;
   line: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>;
   curve: THREE.QuadraticBezierCurve3;
   point: THREE.Vector3;
@@ -67,10 +72,14 @@ type RenderedConnection = {
   totalDrawCount: number;
 };
 
-function worldCategoryLabel(node: (typeof worldNodes)[number]) {
-  return node.category === "self"
+function worldCategoryLabel(node: WorldNode) {
+  return worldCategoryName(node.category);
+}
+
+function worldCategoryName(category: WorldNodeCategory) {
+  return category === "self"
     ? "You"
-    : EXPERIENCE_CATEGORY_META[node.category].label;
+    : EXPERIENCE_CATEGORY_META[category].label;
 }
 
 function seededRandom(seedText: string) {
@@ -219,24 +228,48 @@ function softenBoundary(value: number, limit: number) {
   return Math.sign(value) * (limit + softenedOvershoot);
 }
 
-export default function YouView() {
+export default function YouView({
+  nodes: worldNodes,
+  edges: worldEdges,
+  onInviteCreated,
+}: {
+  nodes: readonly WorldNode[];
+  edges: readonly WorldEdge[];
+  onInviteCreated?: () => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRefs = useRef(new Map<string, HTMLButtonElement>());
   const selectedKeyRef = useRef<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-
+  const [inviteState, setInviteState] = useState<{
+    nodeId: string;
+    status: "creating" | "ready" | "shared" | "error";
+    url?: string;
+  } | null>(null);
+  const worldNodeByKey = useMemo(
+    () => new Map(worldNodes.map((node) => [node.key, node])),
+    [worldNodes],
+  );
+  const legendCategories = useMemo(() => {
+    const presentCategories = new Set(
+      worldNodes.map((node) => node.category),
+    );
+    return LEGEND_CATEGORY_ORDER.filter((category) =>
+      presentCategories.has(category),
+    );
+  }, [worldNodes]);
 
   const selectedNode = useMemo(
-    () => (selectedKey ? (WORLD_NODE_BY_KEY.get(selectedKey) ?? null) : null),
-    [selectedKey],
+    () => (selectedKey ? (worldNodeByKey.get(selectedKey) ?? null) : null),
+    [selectedKey, worldNodeByKey],
   );
   const connectedItems = useMemo(() => {
     if (!selectedKey) return [];
 
     const items: Array<{
-      node: (typeof worldNodes)[number];
-      edge: (typeof worldEdges)[number];
+      node: WorldNode;
+      edge: WorldEdge;
       direction: "forward" | "reverse";
     }> = [];
 
@@ -250,7 +283,7 @@ export default function YouView() {
       if (!direction) continue;
 
       const connectedKey = direction === "forward" ? edge.to : edge.from;
-      const node = WORLD_NODE_BY_KEY.get(connectedKey);
+      const node = worldNodeByKey.get(connectedKey);
       if (node) items.push({ node, edge, direction });
     }
 
@@ -259,11 +292,63 @@ export default function YouView() {
         second.edge.strength - first.edge.strength ||
         first.node.label.localeCompare(second.node.label),
     );
-  }, [selectedKey]);
+  }, [selectedKey, worldEdges, worldNodeByKey]);
 
   useEffect(() => {
     selectedKeyRef.current = selectedKey;
   }, [selectedKey]);
+
+  async function prepareInvite(node: WorldNode) {
+    setInviteState({ nodeId: node.key, status: "creating" });
+    try {
+      const invite = await createConnectionInvite(node.key);
+      setInviteState({
+        nodeId: node.key,
+        status: "ready",
+        url: publicInviteUrl(invite.token),
+      });
+      onInviteCreated?.();
+    } catch (error) {
+      console.error("Could not create a Sidequest connection invite", error);
+      setInviteState({ nodeId: node.key, status: "error" });
+    }
+  }
+
+  function shareInvite(node: WorldNode, url: string) {
+    const name = formatNodeLabel(node.label);
+    const markShared = () => {
+      setInviteState({ nodeId: node.key, status: "shared", url });
+    };
+
+    if (navigator.share) {
+      void navigator
+        .share({
+          title: `${name}, join me on Sidequest`,
+          text: "I found you in my Sidequest world. Connect with me so we can build what comes next together.",
+          url,
+        })
+        .then(markShared)
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          console.error("Could not open the share sheet", error);
+        });
+      return;
+    }
+
+    if (navigator.clipboard) {
+      void navigator.clipboard
+        .writeText(url)
+        .then(markShared)
+        .catch((error) => {
+          console.error("Could not copy the invite", error);
+          setInviteState({ nodeId: node.key, status: "error", url });
+        });
+      return;
+    }
+
+    window.prompt("Copy this private Sidequest invite", url);
+    markShared();
+  }
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -638,7 +723,7 @@ export default function YouView() {
 
     function requestCameraFocus(nodeKey: string) {
       const mesh = meshes.get(nodeKey);
-      const node = WORLD_NODE_BY_KEY.get(nodeKey);
+      const node = worldNodeByKey.get(nodeKey);
       if (!mesh || !node) return;
 
       resetCursorOffset(nodeKey);
@@ -1108,7 +1193,7 @@ export default function YouView() {
             .copy(cursorAwayWorld)
             .normalize()
             .applyQuaternion(inverseWorldQuaternion);
-          const node = WORLD_NODE_BY_KEY.get(influencedKey);
+          const node = worldNodeByKey.get(influencedKey);
           if (node) {
             const maximumOffset = Math.min(
               node.radius * CURSOR_MAX_RADIUS_FRACTION,
@@ -1447,7 +1532,7 @@ export default function YouView() {
       for (const texture of textures) texture.dispose();
       renderer.dispose();
     };
-  }, []);
+  }, [worldEdges, worldNodeByKey, worldNodes]);
 
   return (
     <div className={styles.world} ref={containerRef}>
@@ -1457,6 +1542,25 @@ export default function YouView() {
         ref={canvasRef}
         aria-label="An interactive three-dimensional map of your memories"
       />
+
+      <aside
+        className={styles.legend}
+        aria-label="Orb legend"
+      >
+        <h2>Legend</h2>
+        <ul className={styles.legendList}>
+          {legendCategories.map((category) => (
+            <li key={category}>
+              <span
+                className={styles.legendOrb}
+                aria-hidden="true"
+                style={{ background: categoryOrbGradient(category) }}
+              />
+              <span>{worldCategoryName(category)}</span>
+            </li>
+          ))}
+        </ul>
+      </aside>
 
       <div className={styles.labels} aria-label="Memory graph nodes">
         {worldNodes.map((node) => (
@@ -1509,18 +1613,74 @@ export default function YouView() {
             </div>
             <h2>{formatNodeLabel(selectedNode.label)}</h2>
             <p className={styles.description}>{selectedNode.description}</p>
+            {selectedNode.category === "people" ? (
+              selectedNode.linkedUserId || selectedNode.connectionId ? (
+                <div className={styles.connectedStatus}>
+                  <span aria-hidden="true" />
+                  Connected on Sidequest
+                </div>
+              ) : (
+                <div className={styles.inviteAction}>
+                  <button
+                    type="button"
+                    disabled={
+                      inviteState?.nodeId === selectedNode.key &&
+                      inviteState.status === "creating"
+                    }
+                    onClick={() => {
+                      const currentInvite =
+                        inviteState?.nodeId === selectedNode.key
+                          ? inviteState
+                          : null;
+                      if (currentInvite?.url && currentInvite.status !== "error") {
+                        shareInvite(selectedNode, currentInvite.url);
+                      } else {
+                        void prepareInvite(selectedNode);
+                      }
+                    }}
+                  >
+                    {inviteState?.nodeId === selectedNode.key &&
+                    inviteState.status === "creating"
+                      ? "Making invite…"
+                      : inviteState?.nodeId === selectedNode.key &&
+                          (inviteState.status === "ready" ||
+                            inviteState.status === "shared")
+                        ? inviteState.status === "shared"
+                          ? "Share invite again"
+                          : "Share invite"
+                        : inviteState?.nodeId === selectedNode.key &&
+                            inviteState.status === "error"
+                          ? "Try invite again"
+                          : `Invite ${formatNodeLabel(selectedNode.label)}`}
+                  </button>
+                  <p>
+                    {inviteState?.nodeId === selectedNode.key &&
+                    inviteState.status === "ready"
+                      ? "Your private link is ready."
+                      : inviteState?.nodeId === selectedNode.key &&
+                          inviteState.status === "shared"
+                        ? "Invite ready to send."
+                        : selectedNode.inviteStatus === "pending"
+                          ? "An invite is open. Make a fresh one to resend it."
+                          : "They’ll get you in their world when they accept."}
+                  </p>
+                </div>
+              )
+            ) : null}
             <div className={styles.evidence}>
               <span>
                 {selectedNode.category === "self"
-                  ? "how this world grows"
-                  : "from what you told sidequest"}
+                  ? "How this world grows"
+                  : selectedNode.sourceType === "connection"
+                    ? "How you connected"
+                    : "From what you told Sidequest"}
               </span>
               <p>{selectedNode.evidence}</p>
             </div>
             {connectedItems.length > 0 ? (
               <div className={styles.connections}>
                 <div className={styles.connectionsHeading}>
-                  <span className={styles.connectionsLabel}>in your world</span>
+                  <span className={styles.connectionsLabel}>In your world</span>
                   <span className={styles.connectionsCount}>
                     {connectedItems.length} direct
                   </span>

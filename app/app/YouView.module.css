@@ -38,6 +38,64 @@
   touch-action: none;
 }
 
+.legend {
+  position: absolute;
+  z-index: 8;
+  top: 24px;
+  left: 24px;
+  width: 184px;
+  padding: 17px 18px 18px;
+  border: 1px solid rgba(57, 51, 44, 0.09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow:
+    0 12px 36px rgba(42, 35, 27, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  pointer-events: none;
+  backdrop-filter: blur(20px) saturate(1.08);
+}
+
+.legend h2 {
+  margin: 0;
+  color: #2b2824;
+  font-family: var(--font-sidequest-serif), Georgia, serif;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.legendList {
+  display: grid;
+  gap: 9px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendList li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: rgba(38, 35, 31, 0.76);
+  font-size: 12px;
+  font-weight: 520;
+  letter-spacing: -0.012em;
+  line-height: 1;
+}
+
+.legendOrb {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  box-shadow:
+    inset 4px 5px 7px rgba(255, 255, 255, 0.24),
+    inset -3px -4px 6px rgba(24, 17, 13, 0.18),
+    0 2px 6px rgba(47, 34, 24, 0.13);
+}
+
 .labels {
   position: absolute;
   z-index: 3;
@@ -60,7 +118,7 @@
   box-shadow: 0 2px 10px rgba(50, 41, 31, 0.05);
   color: rgba(35, 32, 28, 0.72);
   cursor: pointer;
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
   font-size: 12px;
   font-weight: 540;
   letter-spacing: -0.01em;
@@ -228,6 +286,73 @@
   line-height: 1.5;
 }
 
+.inviteAction {
+  margin-top: 18px;
+}
+
+.inviteAction button {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 16px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: #25211d;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  transition:
+    opacity 150ms ease,
+    transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.inviteAction button:active {
+  transform: scale(0.98);
+}
+
+.inviteAction button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.inviteAction button:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 2px;
+}
+
+.inviteAction p {
+  margin: 7px 2px 0;
+  color: rgba(49, 44, 38, 0.44);
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.connectedStatus {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 11px 13px;
+  align-items: center;
+  border: 1px solid rgba(88, 118, 98, 0.12);
+  border-radius: 999px;
+  background: rgba(226, 239, 230, 0.48);
+  color: #53705c;
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.connectedStatus span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6f9a7b;
+  box-shadow: 0 0 0 4px rgba(111, 154, 123, 0.12);
+}
+
 .evidence {
   margin-top: 20px;
   padding-top: 17px;
@@ -299,7 +424,7 @@
   background: rgba(255, 255, 255, 0.38);
   color: rgba(42, 38, 33, 0.62);
   cursor: pointer;
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
   text-align: left;
   -webkit-tap-highlight-color: transparent;
   transition:
@@ -382,6 +507,32 @@
 }
 
 @media (max-width: 700px) {
+  .legend {
+    top: 16px;
+    left: 16px;
+    width: 174px;
+    padding: 15px 16px 16px;
+    border-radius: 14px;
+  }
+
+  .legend h2 {
+    font-size: 17px;
+  }
+
+  .legendList {
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .legendList li {
+    font-size: 11px;
+  }
+
+  .legendOrb {
+    width: 16px;
+    height: 16px;
+  }
+
   .inspector {
     top: auto;
     right: 16px;
@@ -410,6 +561,7 @@
 @media (prefers-reduced-motion: reduce) {
   .inspector,
   .closeButton,
+  .inviteAction button,
   .connectionButton {
     transition: none !important;
   }
@@ -417,6 +569,7 @@
 
 @media (prefers-reduced-transparency: reduce) {
   .nodeLabel,
+  .legend,
   .inspector {
     background: #fff;
     backdrop-filter: none;
@@ -425,6 +578,7 @@
 
 @media (prefers-contrast: more) {
   .nodeLabel,
+  .legend,
   .inspector,
   .connectionButton {
     border-color: rgba(25, 22, 19, 0.42);

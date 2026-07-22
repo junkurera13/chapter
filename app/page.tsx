@@ -6,7 +6,7 @@ import { SidequestWordmark } from "@/components/SidequestWordmark";
 
 import styles from "./page.module.css";
 
-const PREFILLED_MESSAGE = "hey";
+const PREFILLED_MESSAGE = "Hey";
 
 function getStartHref() {
   const phone = process.env.NEXT_PUBLIC_SIDEQUEST_PHONE?.trim();

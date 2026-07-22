@@ -1,0 +1,29 @@
+{
+  "name": "ConnectionInvite",
+  "type": "object",
+  "properties": {
+    "inviter_user_id": { "type": "string" },
+    "inviter_node_id": { "type": "string" },
+    "invited_name": { "type": "string" },
+    "token_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the bearer token; the raw token is never stored"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "accepted", "revoked", "expired"]
+    },
+    "expires_at": { "type": "number" },
+    "accepted_by_user_id": { "type": "string" },
+    "connection_id": { "type": "string" },
+    "created_at": { "type": "number" },
+    "accepted_at": { "type": "number" }
+  },
+  "required": ["inviter_user_id", "inviter_node_id", "invited_name", "token_hash", "status", "expires_at", "created_at"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

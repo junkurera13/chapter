@@ -1,6 +1,9 @@
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
-import { upsertUserByPhone } from "@/lib/base44Functions";
+import {
+  Base44FunctionError,
+  connectMyPhone,
+} from "@/lib/base44Functions";
 import { clientIpFromHeaders, lookupIpGeo } from "@/lib/ipGeo";
 import { createSharedPhotonUser, PhotonSignupError } from "@/lib/photonSignup";
 
@@ -16,11 +19,19 @@ function countryFromParsedPhone(region: string | undefined) {
 }
 
 export async function POST(request: Request) {
+  const authorization = request.headers.get("authorization");
+  const accessToken = authorization?.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length).trim()
+    : "";
+  if (!accessToken) {
+    return Response.json({ error: "Sign in before connecting a phone." }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
+    return Response.json({ error: "Invalid JSON." }, { status: 400 });
   }
 
   const phone =
@@ -29,13 +40,13 @@ export async function POST(request: Request) {
       : undefined;
 
   if (typeof phone !== "string" || phone.trim().length === 0) {
-    return Response.json({ error: "phone required" }, { status: 400 });
+    return Response.json({ error: "Phone required." }, { status: 400 });
   }
 
   const parsed = parsePhoneNumberFromString(phone.trim(), "US");
   if (!parsed?.isValid()) {
     return Response.json(
-      { error: "that doesnt look like a valid phone number" },
+      { error: "That doesn’t look like a valid phone number." },
       { status: 400 },
     );
   }
@@ -43,13 +54,40 @@ export async function POST(request: Request) {
   const e164 = parsed.format("E.164");
   const country = countryFromParsedPhone(parsed.country);
 
-  const projectId = process.env.PHOTON_PROJECT_ID;
-  const projectSecret = process.env.PHOTON_PROJECT_SECRET;
+  const ip = clientIpFromHeaders(request.headers);
+  const geo = ip ? await lookupIpGeo(ip) : undefined;
+
+  try {
+    await connectMyPhone(
+      {
+        phone: e164,
+        country,
+        currentCity: geo?.city,
+        latitude: geo?.latitude,
+        longitude: geo?.longitude,
+      },
+      accessToken,
+    );
+  } catch (cause) {
+    if (cause instanceof Base44FunctionError) {
+      return Response.json(
+        { error: cause.message },
+        { status: cause.status === 401 || cause.status === 409 ? cause.status : 502 },
+      );
+    }
+    console.error("Base44 phone connection failed:", cause);
+    return Response.json({ error: "Couldn’t connect your account. Try again." }, { status: 502 });
+  }
+
+  const projectId =
+    process.env.IMESSAGE_PROJECT_ID ?? process.env.PHOTON_PROJECT_ID;
+  const projectSecret =
+    process.env.IMESSAGE_PROJECT_SECRET ?? process.env.PHOTON_PROJECT_SECRET;
 
   if (!projectId || !projectSecret) {
-    console.error("missing PHOTON_PROJECT_ID or PHOTON_PROJECT_SECRET");
+    console.error("missing IMESSAGE_PROJECT_ID or IMESSAGE_PROJECT_SECRET");
     return Response.json(
-      { error: "server isn't configured. try again later." },
+      { error: "The server isn’t configured. Try again later." },
       { status: 500 },
     );
   }
@@ -68,8 +106,8 @@ export async function POST(request: Request) {
         {
           error:
             cause.status === 429
-              ? "line setup is busy rn. wait a few sec and try again."
-              : `couldnt set up your sidequest line (${cause.status}${
+              ? "Line setup is busy right now. Wait a few seconds and try again."
+              : `Couldn’t set up your Sidequest line (${cause.status}${
                   cause.message ? `: ${cause.message}` : ""
                 }).`,
           photonStatus: cause.status,
@@ -81,32 +119,31 @@ export async function POST(request: Request) {
 
     console.error("photon signup network error:", cause);
     return Response.json(
-      { error: "couldnt reach the messaging service. try again." },
+      { error: "Couldn’t reach the messaging service. Try again." },
       { status: 502 },
     );
   }
 
-  // Silently resolve a rough city from the requester's IP. This is the
-  // "magic moment" — the agent later acts as if it knows where they are
-  // without ever having asked. Best-effort, no permission prompt.
-  const ip = clientIpFromHeaders(request.headers);
-  const geo = ip ? await lookupIpGeo(ip) : undefined;
-
-  // Create / update the Base44 user record. Best-effort: if it fails the
-  // user can still text the agent and we'll create them on first message.
   try {
-    await upsertUserByPhone({
-      phone: e164,
-      country,
-      currentCity: geo?.city,
-      latitude: geo?.latitude,
-      longitude: geo?.longitude,
-      assignedPhone: assigned,
-      signedUpAt: Date.now(),
-    });
-  } catch (cause) {
-    console.error("Base44 upsert during signup failed:", cause);
-  }
+    const connected = await connectMyPhone(
+      {
+        phone: e164,
+        country,
+        currentCity: geo?.city,
+        latitude: geo?.latitude,
+        longitude: geo?.longitude,
+        assignedPhone: assigned,
+        signedUpAt: Date.now(),
+      },
+      accessToken,
+    );
 
-  return Response.json({ assignedPhone: assigned });
+    return Response.json({ assignedPhone: assigned, viewer: connected.viewer });
+  } catch (cause) {
+    console.error("Base44 final phone connection failed:", cause);
+    return Response.json(
+      { error: "Your line was created, but the account link failed. Try again." },
+      { status: 502 },
+    );
+  }
 }
