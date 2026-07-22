@@ -135,6 +135,7 @@ export default function OrbRow({ onRevealComplete }: OrbRowProps) {
     let revealStartTime: number | null = null;
     let revealCompleteNotified = false;
     let revealCompleteTimer = 0;
+    let isStageVisible = false;
 
     const finishReveal = (delay = DESCRIPTION_DELAY_MS) => {
       if (revealCompleteNotified || revealCompleteTimer) return;
@@ -182,35 +183,50 @@ export default function OrbRow({ onRevealComplete }: OrbRowProps) {
       });
       if (allRevealed) finishReveal();
       renderer.render(scene, camera);
+      animationFrame = isStageVisible
+        ? window.requestAnimationFrame(animate)
+        : 0;
+    };
+
+    const startAnimation = () => {
+      if (animationFrame || !isStageVisible) return;
+      previousTime = performance.now();
       animationFrame = window.requestAnimationFrame(animate);
     };
 
-    let revealObserver: IntersectionObserver | null = null;
+    let stageObserver: IntersectionObserver | null = null;
 
     if (reduceMotion.matches) {
       stage.dataset.revealing = "true";
       finishReveal(0);
     } else {
-      revealObserver = new IntersectionObserver(
+      stageObserver = new IntersectionObserver(
         ([entry]) => {
+          isStageVisible = entry.isIntersecting;
+
           if (entry.isIntersecting && entry.intersectionRatio >= 0.35) {
             beginReveal();
-            revealObserver?.disconnect();
+          }
+
+          if (isStageVisible) {
+            startAnimation();
+          } else {
+            window.cancelAnimationFrame(animationFrame);
+            animationFrame = 0;
           }
         },
         {
           root: stage.closest("main"),
-          threshold: [0.35],
+          threshold: [0, 0.35],
         },
       );
-      revealObserver.observe(stage);
-      animationFrame = window.requestAnimationFrame(animate);
+      stageObserver.observe(stage);
     }
 
     return () => {
       window.cancelAnimationFrame(animationFrame);
       window.clearTimeout(revealCompleteTimer);
-      revealObserver?.disconnect();
+      stageObserver?.disconnect();
       resizeObserver.disconnect();
       for (const { mesh } of meshes) {
         mesh.geometry.dispose();

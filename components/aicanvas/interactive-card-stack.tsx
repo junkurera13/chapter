@@ -2,7 +2,12 @@
 
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, type PanInfo, useReducedMotion } from "framer-motion";
+import {
+  motion,
+  type PanInfo,
+  useInView,
+  useReducedMotion,
+} from "framer-motion";
 
 import ceramicImage from "@/app/assets/ceramics-class.jpg";
 import mojikoImage from "@/app/assets/mojiko-waterfront.jpg";
@@ -156,6 +161,7 @@ export default function InteractiveCardStack() {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragDelta = useRef(0);
   const reduceMotion = useReducedMotion();
+  const isInView = useInView(containerRef, { amount: 0.05 });
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setMounted(true));
@@ -196,11 +202,11 @@ export default function InteractiveCardStack() {
   }, []);
 
   useEffect(() => {
-    if (reduceMotion || isPaused || !isPageVisible) return;
+    if (reduceMotion || isPaused || !isPageVisible || !isInView) return;
 
     const timeout = window.setTimeout(() => step(1), AUTO_ADVANCE_MS);
     return () => window.clearTimeout(timeout);
-  }, [isPageVisible, isPaused, order, reduceMotion, step]);
+  }, [isInView, isPageVisible, isPaused, order, reduceMotion, step]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -287,12 +293,12 @@ export default function InteractiveCardStack() {
               : isMobile
                 ? "w-[clamp(150px,48vw,205px)]"
                 : "w-[clamp(190px,23vw,255px)]";
-            const breathY = reduceMotion
+            const breathY = reduceMotion || !isInView
               ? 0
               : isFocus
                 ? BREATH_Y_FOCUS
                 : BREATH_Y_REST;
-            const breathRotate = reduceMotion
+            const breathRotate = reduceMotion || !isInView
               ? 0
               : isFocus
                 ? BREATH_ROTATE_FOCUS
@@ -367,7 +373,7 @@ export default function InteractiveCardStack() {
                   }}
                   animate={{ y: breathY, rotate: breathRotate }}
                   transition={
-                    reduceMotion
+                    reduceMotion || !isInView
                       ? { duration: 0 }
                       : {
                           duration: 7 + card.id * 0.6,
