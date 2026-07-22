@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import InteractiveCardStack from "@/components/aicanvas/interactive-card-stack";
+import OrbRow from "@/components/landing/orb-row";
 
 import styles from "./page.module.css";
 
@@ -20,25 +21,38 @@ export default function Home() {
 
   return (
     <main className={styles.page}>
-      <h1 className={styles.title}>
-        Experiences that feel strangely meant for you.
-      </h1>
+      <section className={styles.hero}>
+        <h1 className={styles.title}>
+          Experiences that feel strangely meant for you.
+        </h1>
 
-      <div className={styles.stack}>
-        <InteractiveCardStack />
-      </div>
+        <div className={styles.stack}>
+          <InteractiveCardStack />
+        </div>
 
-      <div className={styles.actions}>
-        <a href={startHref} className={styles.action}>
-          <span className={styles.actionMark} aria-hidden="true">
-            <Image src="/sidequest-mark.svg" alt="" width={32} height={32} />
-          </span>
-          Text Sidequest
-        </a>
-        <Link href="/login" className={styles.loginAction}>
-          Log in
-        </Link>
-      </div>
+        <div className={styles.actions}>
+          <a href={startHref} className={styles.action}>
+            <span className={styles.actionMark} aria-hidden="true">
+              <Image src="/sidequest-mark.svg" alt="" width={32} height={32} />
+            </span>
+            Text Sidequest
+          </a>
+          <Link href="/login" className={styles.loginAction}>
+            Log in
+          </Link>
+        </div>
+      </section>
+
+      <section
+        id="orbs"
+        className={styles.orbSection}
+        aria-labelledby="orb-world-title"
+      >
+        <h2 id="orb-world-title">One memory becomes a world.</h2>
+        <div className={styles.orbRow}>
+          <OrbRow />
+        </div>
+      </section>
     </main>
   );
 }

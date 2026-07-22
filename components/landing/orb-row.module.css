@@ -1,0 +1,72 @@
+.row {
+  width: 100%;
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+  height: clamp(10rem, 20vw, 18rem);
+}
+
+.canvas,
+.labels {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas {
+  display: block;
+}
+
+.labels {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  list-style: none;
+  text-align: center;
+}
+
+.labels li {
+  justify-self: center;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 1.1rem;
+  font-weight: 620;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.28),
+    0 1px 2px rgba(20, 18, 17, 0.56),
+    0 3px 10px rgba(20, 18, 17, 0.34);
+  white-space: nowrap;
+}
+
+.labels li:nth-child(1),
+.labels li:nth-child(7) {
+  transform: translateY(clamp(-46px, -3.2vw, -16px));
+}
+
+.labels li:nth-child(2),
+.labels li:nth-child(6) {
+  transform: translateY(clamp(-26px, -1.8vw, -9px));
+}
+
+.labels li:nth-child(3),
+.labels li:nth-child(5) {
+  transform: translateY(clamp(-8px, -0.58vw, -3px));
+}
+
+@media (max-width: 640px) {
+  .stage {
+    height: 7.5rem;
+  }
+
+  .labels li {
+    font-size: 0.68rem;
+  }
+}

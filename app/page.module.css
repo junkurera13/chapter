@@ -5,15 +5,20 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 
   position: relative;
+  min-height: 100svh;
+  overflow-x: clip;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.hero {
+  position: relative;
   display: flex;
   min-height: 100svh;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   padding: clamp(1.5rem, 4vh, 3rem) clamp(1rem, 4vw, 3rem);
-  color: var(--ink);
-  background: var(--paper);
 }
 
 .loginAction {
@@ -182,6 +187,33 @@
     0 5px 10px rgba(239, 102, 149, 0.2);
 }
 
+.orbSection {
+  position: relative;
+  display: flex;
+  min-height: 100svh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(6rem, 12vh, 9rem) clamp(1.25rem, 4vw, 3rem);
+}
+
+.orbSection h2 {
+  max-width: 11ch;
+  margin: 0;
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-size: clamp(3rem, 6.2vw, 5.75rem);
+  font-weight: 500;
+  letter-spacing: -0.065em;
+  line-height: 0.94;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.orbRow {
+  width: min(calc(100vw - 2rem), 100rem);
+  margin-top: clamp(3.5rem, 8vh, 6rem);
+}
+
 @media (hover: hover) and (pointer: fine) {
   .action:hover {
     background:
@@ -228,7 +260,7 @@
 }
 
 @media (max-width: 640px) {
-  .page {
+  .hero {
     justify-content: flex-start;
     padding-top: max(1.75rem, env(safe-area-inset-top));
     padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
@@ -249,6 +281,21 @@
   .action {
     min-width: 12.25rem;
     padding-inline: 1rem;
+  }
+
+  .orbSection {
+    min-height: auto;
+    padding-top: 8rem;
+    padding-bottom: 8rem;
+  }
+
+  .orbSection h2 {
+    font-size: clamp(3rem, 14vw, 4rem);
+  }
+
+  .orbRow {
+    width: calc(100% + 0.5rem);
+    margin-top: 3.5rem;
   }
 }
 
