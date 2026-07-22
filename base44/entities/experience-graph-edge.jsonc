@@ -1,0 +1,30 @@
+{
+  "name": "ExperienceGraphEdge",
+  "type": "object",
+  "properties": {
+    "phone": { "type": "string" },
+    "memory_id": { "type": "string" },
+    "from_node_id": { "type": "string" },
+    "to_node_id": { "type": "string" },
+    "relation": {
+      "type": "string",
+      "enum": ["lived", "cares_about", "shared_with", "happened_at", "involved", "evoked", "shaped_by", "supported", "reflects", "part_of", "drawn_to", "familiar_with", "curious_about", "avoids", "requires", "reinforces", "contrasts_with", "discovered_through"]
+    },
+    "polarity": { "type": "string", "enum": ["positive", "negative", "mixed", "neutral"] },
+    "familiarity": { "type": "string", "enum": ["familiar", "new", "mixed", "not_applicable"] },
+    "strength": { "type": "number" },
+    "relationship": { "type": "string" },
+    "description": { "type": "string" },
+    "certainty": { "type": "string", "enum": ["fact", "hypothesis"] },
+    "confidence": { "type": "number" },
+    "evidence": { "type": "string" },
+    "created_at": { "type": "number" }
+  },
+  "required": ["phone", "memory_id", "from_node_id", "to_node_id", "relationship", "description", "certainty", "confidence", "evidence", "created_at"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

@@ -1,0 +1,362 @@
+@property --candy-hi {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #dff0ff;
+}
+
+@property --candy-mid {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #c2e2ff;
+}
+
+@property --candy-lo {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #a5d0f5;
+}
+
+@property --candy-deep {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #8dbce8;
+}
+
+@property --candy-glow {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(150, 195, 235, 0.32);
+}
+
+@property --candy-ink {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #1a2430;
+}
+
+.chrome {
+  --chrome-bottom: max(20px, env(safe-area-inset-bottom));
+  --chrome-side: 16px;
+  --dock-size: 52px;
+  --logo-size: 108px;
+
+  position: fixed;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  bottom: var(--chrome-bottom);
+  /* Tall enough for the larger logo; dock stays bottom-aligned inside */
+  height: var(--logo-size);
+  padding: 0 var(--chrome-side);
+  pointer-events: none;
+}
+
+.dock {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: min(294px, calc(100vw - 32px));
+  height: var(--dock-size);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.logo {
+  position: absolute;
+  left: 6px;
+  /* Vertically center logo with the 52px nav pill */
+  bottom: calc((var(--dock-size) - var(--logo-size)) / 2);
+  display: block;
+  width: var(--logo-size);
+  height: var(--logo-size);
+  pointer-events: none;
+  object-fit: contain;
+}
+
+.profile {
+  --profile-size: 42px;
+
+  position: absolute;
+  right: 22px;
+  /* Vertically center with the 52px nav pill */
+  bottom: calc((var(--dock-size) - var(--profile-size)) / 2);
+  display: grid;
+  width: var(--profile-size);
+  height: var(--profile-size);
+  place-items: center;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: #000;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile:focus-visible {
+  outline: 2px solid #666;
+  outline-offset: 2px;
+}
+
+.tabs {
+  --tabs-dur: 280ms;
+  --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Cool blue-teal crystal — default / Now */
+  --candy-hi: #b9dfe2;
+  --candy-mid: #81c8cd;
+  --candy-lo: #5ca8ae;
+  --candy-deep: #407f85;
+  --candy-glow: rgba(82, 166, 172, 0.25);
+  --candy-ink: #173638;
+
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 5px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background:
+    radial-gradient(
+      120% 90% at 50% -35%,
+      rgba(255, 255, 255, 0.13) 0%,
+      rgba(255, 255, 255, 0) 56%
+    ),
+    linear-gradient(180deg, #252422 0%, #191817 100%);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    0 7px 22px rgba(22, 18, 12, 0.11),
+    0 2px 6px rgba(22, 18, 12, 0.1);
+  transition:
+    --candy-hi var(--tabs-dur) var(--tabs-ease),
+    --candy-mid var(--tabs-dur) var(--tabs-ease),
+    --candy-lo var(--tabs-dur) var(--tabs-ease),
+    --candy-deep var(--tabs-dur) var(--tabs-ease),
+    --candy-glow var(--tabs-dur) var(--tabs-ease),
+    --candy-ink var(--tabs-dur) var(--tabs-ease);
+}
+
+/* Raspberry crystal — You */
+.tabs[data-active="1"] {
+  --candy-hi: #ffd4e1;
+  --candy-mid: #ff9fbd;
+  --candy-lo: #f0719d;
+  --candy-deep: #c94674;
+  --candy-glow: rgba(239, 102, 149, 0.25);
+  --candy-ink: #371521;
+}
+
+/* Grape crystal — Together */
+.tabs[data-active="2"] {
+  --candy-hi: #ead7f5;
+  --candy-mid: #d7a6f3;
+  --candy-lo: #b77ae0;
+  --candy-deep: #7f4dac;
+  --candy-glow: rgba(174, 111, 216, 0.25);
+  --candy-ink: #2b1739;
+}
+
+.candy {
+  position: absolute;
+  z-index: 0;
+  top: 6px;
+  left: 6px;
+  width: calc(((100% - 10px) / 3) - 2px);
+  height: 38px;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 999px;
+  background:
+    /* Curved end-cap refraction keeps the original capsule silhouette. */
+    radial-gradient(
+      54% 110% at 0% 48%,
+      rgba(255, 255, 255, 0.54) 0%,
+      rgba(255, 255, 255, 0.15) 40%,
+      transparent 72%
+    ),
+    radial-gradient(
+      54% 110% at 100% 52%,
+      color-mix(in srgb, var(--candy-deep) 82%, black 18%) 0%,
+      color-mix(in srgb, var(--candy-deep) 35%, transparent) 44%,
+      transparent 72%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--candy-hi) 92%, white 8%) 0%,
+      var(--candy-mid) 25%,
+      var(--candy-lo) 70%,
+      var(--candy-deep) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 1px 0 0 rgba(255, 255, 255, 0.34),
+    inset -1px 0 0 rgba(20, 12, 25, 0.12),
+    inset 0 -2px 2px rgba(41, 18, 36, 0.2);
+  filter:
+    drop-shadow(0 0 5px var(--candy-glow))
+    drop-shadow(0 2px 2px rgba(8, 5, 3, 0.22));
+  transform: translate3d(0, 0, 0);
+  transition:
+    transform var(--tabs-dur) var(--tabs-ease),
+    background var(--tabs-dur) var(--tabs-ease),
+    box-shadow var(--tabs-dur) var(--tabs-ease),
+    filter var(--tabs-dur) var(--tabs-ease);
+  will-change: transform;
+}
+
+/* Raised top face: inset from the darker bevel like a candy crystal. */
+.candy::before {
+  position: absolute;
+  inset: 3px 4px 6px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      114deg,
+      transparent 0 24%,
+      rgba(255, 255, 255, 0.18) 25% 42%,
+      transparent 43% 100%
+    ),
+    radial-gradient(
+      125% 100% at 50% -25%,
+      rgba(255, 255, 255, 0.28) 0%,
+      rgba(255, 255, 255, 0) 56%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--candy-hi) 90%, white 10%) 0%,
+      var(--candy-mid) 42%,
+      var(--candy-lo) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    inset 1px 0 0 rgba(255, 255, 255, 0.28),
+    inset -1px 0 0 rgba(24, 12, 28, 0.1),
+    0 1px 1px rgba(76, 30, 56, 0.16);
+  content: "";
+  pointer-events: none;
+  transition: transform 140ms var(--tabs-ease);
+}
+
+/* One clean specular streak keeps the material glassy rather than glossy. */
+.candy::after {
+  position: absolute;
+  top: 5px;
+  right: 16px;
+  left: 15px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 12%,
+    rgba(255, 255, 255, 0.48) 38%,
+    rgba(255, 255, 255, 0.24) 68%,
+    transparent 100%
+  );
+  content: "";
+  filter: blur(0.25px);
+  pointer-events: none;
+  transform: skewX(-14deg);
+}
+
+.tabs:has(.tab:active) .candy::before {
+  transform: translateY(1px);
+}
+
+.tabs[data-active="1"] .candy {
+  transform: translate3d(calc(100% + 2px), 0, 0);
+}
+
+.tabs[data-active="2"] .candy {
+  transform: translate3d(calc(200% + 4px), 0, 0);
+}
+
+.tab {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  height: 42px;
+  padding: 0 6px;
+  place-items: center;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.66);
+  cursor: pointer;
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-size: 13.5px;
+  font-weight: 550;
+  letter-spacing: -0.012em;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: color var(--tabs-dur) var(--tabs-ease);
+}
+
+.tab span {
+  transform: scale(1);
+  transition: transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tab[aria-selected="true"] {
+  color: var(--candy-ink);
+}
+
+.tab:active span {
+  transform: scale(0.96);
+}
+
+.tab:focus-visible {
+  outline: 2px solid #a99578;
+  outline-offset: -4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tab:not([aria-selected="true"]):hover {
+    color: rgba(255, 255, 255, 0.84);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabs,
+  .candy,
+  .tab,
+  .tab span {
+    transition: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .tabs {
+    border-color: rgba(255, 255, 255, 0.35);
+  }
+
+  .tab {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .tab[aria-selected="true"] {
+    color: #000;
+  }
+
+  .candy {
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.25),
+      0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+}

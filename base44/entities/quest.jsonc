@@ -1,0 +1,47 @@
+{
+  "name": "Quest",
+  "type": "object",
+  "properties": {
+    "short_id": { "type": "string", "description": "Public short identifier used in /q links" },
+    "request": { "type": "string", "description": "The complete request used to compose the quest" },
+    "phone": { "type": "string", "description": "Optional E.164 phone number associated with the quest" },
+    "initial_request": { "type": "string" },
+    "followup_answer": { "type": "string" },
+    "source": {
+      "type": "string",
+      "enum": ["admin", "imessage", "terminal"],
+      "default": "admin"
+    },
+    "title": { "type": "string" },
+    "brief": { "type": "string" },
+    "stops": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "map_search": { "type": "string" },
+          "estimated_cost": { "type": "string" }
+        },
+        "required": ["name", "description", "map_search", "estimated_cost"]
+      }
+    },
+    "budget": { "type": "string" },
+    "invite_text": { "type": "string" },
+    "backup": { "type": "string" },
+    "created_at": { "type": "number" },
+    "outcome": {
+      "type": "string",
+      "enum": ["won", "lost", "skipped"]
+    },
+    "outcome_at": { "type": "number" }
+  },
+  "required": ["short_id", "request", "title", "brief", "stops", "budget", "invite_text", "backup", "created_at"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

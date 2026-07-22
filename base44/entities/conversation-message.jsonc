@@ -1,0 +1,17 @@
+{
+  "name": "ConversationMessage",
+  "type": "object",
+  "properties": {
+    "phone": { "type": "string" },
+    "role": { "type": "string", "enum": ["user", "agent"] },
+    "text": { "type": "string" },
+    "created_at": { "type": "number" }
+  },
+  "required": ["phone", "role", "text", "created_at"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

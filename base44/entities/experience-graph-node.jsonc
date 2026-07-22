@@ -1,0 +1,32 @@
+{
+  "name": "ExperienceGraphNode",
+  "type": "object",
+  "properties": {
+    "phone": { "type": "string" },
+    "memory_id": { "type": "string" },
+    "key": { "type": "string" },
+    "category": {
+      "type": "string",
+      "enum": ["experience", "people", "place", "activity", "interest", "feeling", "condition", "pattern"]
+    },
+    "subtype": { "type": "string" },
+    "kind": {
+      "type": "string",
+      "enum": ["person", "place", "activity", "setting", "emotion", "motif", "constraint", "context", "memory"]
+    },
+    "label": { "type": "string" },
+    "description": { "type": "string" },
+    "certainty": { "type": "string", "enum": ["fact", "hypothesis"] },
+    "confidence": { "type": "number" },
+    "salience": { "type": "number" },
+    "evidence": { "type": "string" },
+    "created_at": { "type": "number" }
+  },
+  "required": ["phone", "memory_id", "key", "kind", "label", "description", "certainty", "confidence", "evidence", "created_at"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

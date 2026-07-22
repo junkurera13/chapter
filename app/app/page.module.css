@@ -1,0 +1,10 @@
+.canvas {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  background: #fff;
+}
+
+.panel {
+  min-height: 100svh;
+}

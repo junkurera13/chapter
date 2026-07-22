@@ -1,0 +1,21 @@
+{
+  "name": "ExperienceMemory",
+  "type": "object",
+  "properties": {
+    "phone": { "type": "string" },
+    "source": { "type": "string", "enum": ["onboarding", "reflection"] },
+    "raw_text": { "type": "string" },
+    "status": { "type": "string", "enum": ["pending", "complete", "failed"] },
+    "summary": { "type": "string" },
+    "error": { "type": "string" },
+    "created_at": { "type": "number" },
+    "processed_at": { "type": "number" }
+  },
+  "required": ["phone", "source", "raw_text", "status", "created_at"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
