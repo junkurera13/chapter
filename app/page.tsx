@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import InteractiveCardStack from "@/components/aicanvas/interactive-card-stack";
+import MemoryIntoExperience from "@/components/landing/memory-into-experience";
 import MojikoConnection from "@/components/landing/mojiko-connection";
 import OrbWorldReveal from "@/components/landing/orb-world-reveal";
 
@@ -52,6 +53,8 @@ export default function Home() {
         <h2 id="orb-world-title">One memory becomes a world.</h2>
         <OrbWorldReveal />
       </section>
+
+      <MemoryIntoExperience />
 
       <MojikoConnection />
     </main>
