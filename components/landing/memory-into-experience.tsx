@@ -700,7 +700,8 @@ export default function MemoryIntoExperience() {
             filter: resultBlur,
           }}
         >
-          So new experiences feel like you, without repeating what came before.
+          So new experiences feel like you, without ever feeling like anything
+          you&apos;ve done.
         </motion.p>
 
         <motion.article
