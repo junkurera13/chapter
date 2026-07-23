@@ -50,7 +50,7 @@ export default function Home() {
         className={styles.orbSection}
         aria-labelledby="orb-world-title"
       >
-        <h2 id="orb-world-title">One memory becomes a world.</h2>
+        <h2 id="orb-world-title">Your memories become a world.</h2>
         <OrbWorldReveal />
       </section>
 

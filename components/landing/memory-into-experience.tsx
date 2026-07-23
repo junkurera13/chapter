@@ -432,20 +432,36 @@ export default function MemoryIntoExperience() {
     offset: ["start start", "end end"],
   });
 
+  const distillationOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.18, 0.3, 0.34, 1],
+    [1, 1, 0, 0, 0],
+  );
+  const distillationY = useTransform(
+    scrollYProgress,
+    [0, 0.18, 0.34, 1],
+    [0, 0, -12, -12],
+  );
   const sentenceScale = useTransform(
     scrollYProgress,
-    [0, 0.42, 0.72, 1],
-    [1, 0.92, 1.08, 1.08],
+    [0, 0.3, 0.42, 0.72, 1],
+    [1, 1, 0.92, 1.08, 1.08],
   );
   const sentenceOpacity = useTransform(
     scrollYProgress,
-    [0, 0.62, 0.75, 1],
-    [1, 1, 0, 0],
+    [0, 0.26, 0.34, 0.62, 0.75, 1],
+    [0, 0, 1, 1, 0, 0],
   );
   const leftSentenceX = useTransform(
     scrollYProgress,
     [0, 0.38, 0.58, 0.73, 1],
-    [0, 0, -140, -260, -260],
+    [
+      "0px",
+      "0px",
+      compactLayout ? "-150px" : "-22vw",
+      compactLayout ? "-230px" : "-32vw",
+      compactLayout ? "-230px" : "-32vw",
+    ],
   );
   const rightSentenceX = useTransform(
     scrollYProgress,
@@ -512,24 +528,39 @@ export default function MemoryIntoExperience() {
     [0, 0.72, 0.83, 1],
     [0, 0, 1, 1],
   );
+  const resultOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.79, 0.85, 1],
+    [0, 0, 1, 1],
+  );
+  const resultY = useTransform(
+    scrollYProgress,
+    [0, 0.79, 0.85, 1],
+    [14, 14, 0, 0],
+  );
+  const resultBlur = useTransform(
+    scrollYProgress,
+    [0, 0.79, 0.85, 1],
+    ["blur(3px)", "blur(3px)", "blur(0px)", "blur(0px)"],
+  );
   const messageOpacity = useTransform(
     scrollYProgress,
-    [0, 0.78, 0.86, 1],
+    [0, 0.87, 0.94, 1],
     [0, 0, 1, 1],
   );
   const messageY = useTransform(
     scrollYProgress,
-    [0, 0.78, 0.86, 1],
+    [0, 0.87, 0.94, 1],
     [34, 34, 0, 0],
   );
   const messageScale = useTransform(
     scrollYProgress,
-    [0, 0.78, 0.86, 1],
+    [0, 0.87, 0.94, 1],
     [0.97, 0.97, 1, 1],
   );
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    const nextShown = latest >= 0.82;
+    const nextShown = latest >= 0.91;
     if (messageShownRef.current === nextShown) return;
     messageShownRef.current = nextShown;
     messageCopyRef.current?.classList.toggle("is-shown", nextShown);
@@ -614,39 +645,63 @@ export default function MemoryIntoExperience() {
           aria-hidden="true"
         />
 
-        <motion.div
-          className={styles.storyCopy}
-          style={{ scale: sentenceScale, opacity: sentenceOpacity }}
-        >
-          <h2
-            id="memory-experience-title"
-            className={styles.sentence}
-            aria-label="What stays with you shapes what comes next."
+        <div className={styles.storyCopy}>
+          <motion.div
+            className={styles.storyPhase}
+            style={{ opacity: distillationOpacity, y: distillationY }}
           >
-            <motion.span
-              style={
-                {
-                  x: leftSentenceX,
-                  "--mobile-sentence-y": leftSentenceMobileY,
-                } as MotionStyle
-              }
-              aria-hidden="true"
+            <h2
+              id="memory-experience-title"
+              className={`${styles.sentence} ${styles.distillationSentence}`}
             >
-              What stays with you
-            </motion.span>
-            <motion.span
-              style={
-                {
-                  x: rightSentenceX,
-                  "--mobile-sentence-y": rightSentenceMobileY,
-                } as MotionStyle
-              }
-              aria-hidden="true"
+              Each memory is distilled into what made it meaningful.
+            </h2>
+          </motion.div>
+
+          <motion.div
+            className={styles.storyPhase}
+            style={{ scale: sentenceScale, opacity: sentenceOpacity }}
+          >
+            <p
+              className={styles.sentence}
+              aria-label="Then it’s added to your world."
             >
-              shapes what comes next.
-            </motion.span>
-          </h2>
-        </motion.div>
+              <motion.span
+                style={
+                  {
+                    x: leftSentenceX,
+                    "--mobile-sentence-y": leftSentenceMobileY,
+                  } as MotionStyle
+                }
+                aria-hidden="true"
+              >
+                Then it’s added
+              </motion.span>
+              <motion.span
+                style={
+                  {
+                    x: rightSentenceX,
+                    "--mobile-sentence-y": rightSentenceMobileY,
+                  } as MotionStyle
+                }
+                aria-hidden="true"
+              >
+                to your world.
+              </motion.span>
+            </p>
+          </motion.div>
+        </div>
+
+        <motion.p
+          className={styles.resultCopy}
+          style={{
+            opacity: resultOpacity,
+            y: resultY,
+            filter: resultBlur,
+          }}
+        >
+          So new experiences feel like you, without repeating what came before.
+        </motion.p>
 
         <motion.article
           className={styles.messageCard}

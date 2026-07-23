@@ -227,21 +227,6 @@
   transform: translateY(-0.75rem);
 }
 
-.orbPrinciple {
-  --stagger-dur: 1000ms;
-
-  max-width: 58rem;
-  margin: clamp(3rem, 7vh, 5rem) 0 0;
-  color: var(--ink);
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
-  font-size: clamp(1.08rem, 1.55vw, 1.3rem);
-  font-weight: 430;
-  letter-spacing: -0.035em;
-  line-height: 1.3;
-  text-align: center;
-  text-wrap: balance;
-}
-
 @media (hover: hover) and (pointer: fine) {
   .action:hover {
     background:
@@ -326,11 +311,6 @@
     margin-top: 3.5rem;
   }
 
-  .orbPrinciple {
-    max-width: 19rem;
-    margin-top: 3rem;
-    font-size: 1.05rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

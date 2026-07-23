@@ -228,6 +228,7 @@
   z-index: 4;
   inset: 0;
   background:
+    linear-gradient(270deg, rgba(12, 15, 14, 0.28), transparent 42%),
     linear-gradient(90deg, rgba(16, 20, 18, 0.52), transparent 49%),
     linear-gradient(180deg, transparent 51%, rgba(12, 15, 14, 0.32));
   opacity: 0;
@@ -238,17 +239,21 @@
   position: absolute;
   z-index: 5;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  padding: 1.5rem;
   color: #000;
   font-family: var(--font-sidequest-sans), system-ui, sans-serif;
   text-align: center;
   translate: 0 -2.5svh;
-  transform-origin: center;
   pointer-events: none;
+}
+
+.storyPhase {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  transform-origin: center;
   will-change: transform, opacity;
 }
 
@@ -274,14 +279,39 @@
   will-change: transform;
 }
 
+.distillationSentence {
+  display: block;
+  max-width: 18ch;
+}
+
+.resultCopy {
+  position: absolute;
+  z-index: 5;
+  bottom: clamp(2rem, 5vw, 4.5rem);
+  left: clamp(1.25rem, 5vw, 5rem);
+  width: min(30rem, calc(100vw - 2.5rem));
+  margin: 0;
+  color: #fff;
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-size: clamp(1.4rem, 2.15vw, 2.15rem);
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 1.03;
+  text-align: left;
+  text-shadow: 0 2px 20px rgba(8, 12, 10, 0.28);
+  text-wrap: balance;
+  pointer-events: none;
+  will-change: transform, opacity, filter;
+}
+
 .messageCard {
   --stagger-dur: 620ms;
   --stagger-stagger: 90ms;
 
   position: absolute;
   z-index: 6;
-  bottom: clamp(2rem, 5vw, 4.5rem);
-  left: clamp(1.25rem, 5vw, 5rem);
+  top: clamp(2rem, 5vw, 4.5rem);
+  right: clamp(1.25rem, 5vw, 5rem);
   width: min(calc(100vw - 2.5rem), 27rem);
   padding: 1rem 1rem 1.3rem;
   border: 1px solid rgba(255, 255, 255, 0.7);
@@ -465,7 +495,7 @@
     letter-spacing: -0.055em;
   }
 
-  .storyCopy {
+  .storyPhase {
     padding-inline: 0.75rem;
   }
 
@@ -480,13 +510,22 @@
 
   .imageVeil {
     background:
+      linear-gradient(270deg, rgba(12, 15, 14, 0.32), transparent 68%),
       linear-gradient(180deg, transparent 36%, rgba(12, 15, 14, 0.48)),
       linear-gradient(90deg, rgba(16, 20, 18, 0.12), transparent 72%);
   }
 
+  .resultCopy {
+    bottom: max(1.25rem, env(safe-area-inset-bottom));
+    left: 1rem;
+    width: min(19rem, calc(100vw - 2rem));
+    font-size: clamp(1.3rem, 6vw, 1.65rem);
+  }
+
   .messageCard {
     right: 1rem;
-    bottom: max(1rem, env(safe-area-inset-bottom));
+    top: max(1rem, env(safe-area-inset-top));
+    bottom: auto;
     left: 1rem;
     width: auto;
     padding: 0.9rem 0.9rem 1.15rem;
@@ -520,9 +559,11 @@
   }
 
   .imageVeil,
+  .resultCopy,
   .messageCard {
     opacity: 1 !important;
     transform: none !important;
+    filter: none !important;
   }
 
   .messageCard :global(.t-stagger-line) {
