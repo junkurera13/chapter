@@ -1,0 +1,166 @@
+.section {
+  display: flex;
+  min-height: 115svh;
+  overflow-x: clip;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(7rem, 13vh, 10rem) clamp(1rem, 3vw, 2.5rem);
+  background: #fff;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.section h2 {
+  max-width: 15ch;
+  margin: 0;
+  color: #1c1c19;
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-size: clamp(3rem, 6.1vw, 5.7rem);
+  font-weight: 500;
+  letter-spacing: -0.065em;
+  line-height: 0.95;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.memory {
+  position: relative;
+  width: min(94vw, 76rem);
+  aspect-ratio: 2.7 / 1;
+  margin-top: clamp(3.5rem, 7vh, 5.5rem);
+  overflow: hidden;
+  border-radius: clamp(2.5rem, 7vw, 7rem);
+  box-shadow:
+    0 28px 64px rgba(24, 43, 50, 0.11),
+    0 6px 18px rgba(24, 43, 50, 0.07);
+  isolation: isolate;
+}
+
+.memoryHalf {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.memoryHalfLeft {
+  clip-path: inset(0 50% 0 0);
+}
+
+.memoryHalfRight {
+  clip-path: inset(0 0 0 50%);
+}
+
+.image {
+  object-fit: cover;
+  object-position: center 54%;
+}
+
+.imageVeil {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(16, 36, 43, 0.2), transparent 23%, transparent 77%, rgba(16, 36, 43, 0.2)),
+    linear-gradient(180deg, transparent 52%, rgba(12, 36, 43, 0.2));
+  pointer-events: none;
+}
+
+.person {
+  position: absolute;
+  z-index: 2;
+  bottom: clamp(1.3rem, 3vw, 2.25rem);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #fff;
+  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-size: clamp(0.88rem, 1.3vw, 1.05rem);
+  font-weight: 590;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-shadow: 0 2px 10px rgba(6, 24, 30, 0.52);
+}
+
+.personYou {
+  left: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+.personSamuel {
+  right: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+.personOrb {
+  width: 1.45rem;
+  height: 1.45rem;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 50%;
+  box-shadow:
+    inset 4px 5px 7px rgba(255, 255, 255, 0.24),
+    inset -3px -4px 6px rgba(24, 17, 13, 0.18),
+    0 3px 8px rgba(10, 25, 30, 0.28);
+}
+
+.copy {
+  width: min(100%, 43rem);
+  margin-top: clamp(2.5rem, 5vh, 4rem);
+  text-align: center;
+}
+
+.copy p {
+  margin: 0;
+  color: rgba(28, 28, 25, 0.82);
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-size: clamp(1.3rem, 2.35vw, 1.9rem);
+  font-weight: 450;
+  letter-spacing: -0.045em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+@media (max-width: 640px) {
+  .section {
+    min-height: auto;
+    padding-top: 8rem;
+    padding-bottom: 8rem;
+  }
+
+  .section h2 {
+    font-size: clamp(3rem, 13vw, 4rem);
+  }
+
+  .memory {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    margin-top: 3.5rem;
+    border-radius: 2.75rem;
+  }
+
+  .image {
+    object-position: 48% center;
+  }
+
+  .personOrb {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  .copy {
+    margin-top: 2.75rem;
+  }
+
+  .copy p {
+    font-size: 1.35rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memoryHalf,
+  .person,
+  .copy,
+  .section h2 {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}

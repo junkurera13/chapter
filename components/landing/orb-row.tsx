@@ -8,23 +8,34 @@ import {
   createWorldOrbTexture,
 } from "@/app/app/orbMaterial";
 import {
-  EXPERIENCE_CATEGORY_META,
   EXPERIENCE_NODE_CATEGORIES,
+  type ExperienceNodeCategory,
 } from "@/lib/experienceOntology";
 
 import styles from "./orb-row.module.css";
 
-const ORB_REVEAL_MS = 600;
-const ORB_PAUSE_MS = 100;
+const ORB_REVEAL_MS = 500;
+const ORB_PAUSE_MS = 75;
 const ORB_STAGGER_MS = ORB_REVEAL_MS + ORB_PAUSE_MS;
 const LABEL_DELAY_MS = 0;
 const DESCRIPTION_DELAY_MS = ORB_PAUSE_MS;
+
+const LANDING_CATEGORY_LABELS: Record<ExperienceNodeCategory, string> = {
+  experience: "Experiences",
+  people: "People",
+  place: "Places",
+  activity: "Activities",
+  interest: "Interests",
+  feeling: "Feelings",
+  condition: "Conditions",
+  pattern: "Patterns",
+};
 
 const ORBS = EXPERIENCE_NODE_CATEGORIES.filter(
   (category) => category !== "experience",
 ).map((category) => ({
   key: `landing-${category}`,
-  label: EXPERIENCE_CATEGORY_META[category].label,
+  label: LANDING_CATEGORY_LABELS[category],
   category,
 }));
 

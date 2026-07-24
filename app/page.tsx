@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 import InteractiveCardStack from "@/components/aicanvas/interactive-card-stack";
+import AgentOrbSection from "@/components/landing/agent-orb-section";
+import MemoryIntoExperience from "@/components/landing/memory-into-experience";
 import OrbWorldReveal from "@/components/landing/orb-world-reveal";
 
 import styles from "./page.module.css";
@@ -48,9 +50,12 @@ export default function Home() {
         className={styles.orbSection}
         aria-labelledby="orb-world-title"
       >
-        <h2 id="orb-world-title">One memory becomes a world.</h2>
+        <h2 id="orb-world-title">Your memories become a world.</h2>
         <OrbWorldReveal />
       </section>
+
+      <MemoryIntoExperience />
+      <AgentOrbSection startHref={startHref} />
     </main>
   );
 }

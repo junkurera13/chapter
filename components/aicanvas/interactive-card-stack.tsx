@@ -103,7 +103,7 @@ const SHADOW_REST =
 const RING =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#69753c]";
 const CHEVRON_BUTTON =
-  "absolute top-1/2 z-[70] hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-black/[0.08] bg-white/90 text-[#393735] shadow-[0_3px_10px_rgba(0,0,0,0.09)] backdrop-blur-sm transition-[background-color,box-shadow,transform] duration-150 hover:bg-white hover:shadow-[0_4px_13px_rgba(0,0,0,0.12)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c94674] active:scale-95 sm:flex sm:h-10 sm:w-10";
+  "absolute top-1/2 z-[70] flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-black/[0.08] bg-white/90 text-[#393735] shadow-[0_3px_10px_rgba(0,0,0,0.09)] backdrop-blur-sm transition-[background-color,box-shadow,transform] duration-150 hover:bg-white hover:shadow-[0_4px_13px_rgba(0,0,0,0.12)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c94674] active:scale-95 sm:h-10 sm:w-10";
 
 const TITLE_STYLE: CSSProperties = {
   margin: 0,
@@ -270,12 +270,7 @@ export default function InteractiveCardStack() {
           role="group"
           aria-label="Interactive card stack"
           className="relative flex w-full select-none items-center justify-center overflow-visible"
-          style={{
-            perspective: "1400px",
-            height: isMobile
-              ? "clamp(270px, 72vw, 300px)"
-              : "clamp(380px, 46vw, 470px)",
-          }}
+          style={{ perspective: "1400px", height: "clamp(380px, 46vw, 470px)" }}
         >
           {CARDS.map((card) => {
             const slotIndex = order.indexOf(card.id);
@@ -293,10 +288,10 @@ export default function InteractiveCardStack() {
                 : SPRING;
             const widthClass = isLandscape
               ? isMobile
-                ? "w-[clamp(195px,56vw,240px)]"
+                ? "w-[clamp(225px,66vw,285px)]"
                 : "w-[clamp(255px,32vw,360px)]"
               : isMobile
-                ? "w-[clamp(132px,39vw,168px)]"
+                ? "w-[clamp(150px,48vw,205px)]"
                 : "w-[clamp(190px,23vw,255px)]";
             const breathY = reduceMotion || !isInView
               ? 0
