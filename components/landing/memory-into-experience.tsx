@@ -1,21 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import Image, { type StaticImageData } from "next/image";
 import {
+  AnimatePresence,
   motion,
   type MotionStyle,
   type MotionValue,
   useMotionValue,
+  useMotionValueEvent,
   useReducedMotion,
-  useScroll,
   useSpring,
   useTransform,
 } from "framer-motion";
 import * as THREE from "three";
 
-import coastalRideImage from "@/app/assets/coastal-ride-together.webp";
+import coastalRideSoloImage from "@/app/assets/coastal-ride-solo.jpg";
+import coastalRideTogetherImage from "@/app/assets/coastal-ride-together-hq-2x.png";
 import earlGreyIceCreamImage from "@/app/assets/mojiko-memory/earl-grey-ice-cream.webp";
 import friendsBikesBridgeImage from "@/app/assets/mojiko-memory/friends-bikes-bridge.webp";
 import friendsWaterfrontImage from "@/app/assets/mojiko-memory/friends-waterfront.webp";
@@ -47,6 +55,24 @@ function PlacePinIcon() {
     </svg>
   );
 }
+
+const STORY_END_PROGRESS = 0.68;
+const CONNECTION_START_PROGRESS = 0.8;
+const CONNECTION_THINKING_MS = 1800;
+const RESULT_ROWS = [
+  "So new experiences feel like you,",
+  "without ever feeling like anything",
+  "you’ve done before.",
+] as const;
+const CONNECTION_ROWS = [
+  "Some are yours alone.",
+  "Some bring friends closer.",
+  "Some introduce you to new ones.",
+  "Some might even lead to love.",
+] as const;
+const CONNECTION_EASE = [0.22, 1, 0.36, 1] as const;
+
+type ConnectionPhase = "quiet" | "thinking" | "revealed";
 
 type MemoryNodeDefinition = {
   label: string;
@@ -440,48 +466,212 @@ function MemoryFragment({
   );
 }
 
+function QuestSuggestionCopy() {
+  return (
+    <p className={styles.questLine}>
+      How about a peaceful{" "}
+      <span className={styles.entity}>
+        <StaticMemoryOrb
+          nodeKey="quest-cycling"
+          category="activity"
+          certainty="fact"
+          className={styles.entityOrb}
+        />
+        Cycling
+      </span>{" "}
+      path around{" "}
+      <span className={styles.entity}>
+        <PlacePinIcon />
+        Han River
+      </span>
+      ?
+    </p>
+  );
+}
+
+function ConnectionUpdate({
+  phase,
+  reduceMotion,
+}: {
+  phase: ConnectionPhase;
+  reduceMotion: boolean;
+}) {
+  return (
+    <div className={styles.connectionSlot} aria-live="polite">
+      <AnimatePresence initial={false} mode="popLayout">
+        {phase === "thinking" ? (
+          <motion.div
+            key="thinking"
+            className={styles.connectionUpdate}
+            initial={{ opacity: 0, y: 5, filter: "blur(2px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -4, filter: "blur(2px)" }}
+            transition={{
+              duration: reduceMotion ? 0 : 0.25,
+              ease: "easeInOut",
+            }}
+          >
+            <span
+              className={styles.thinkingIndicator}
+              role="status"
+              aria-label="Sidequest is thinking"
+            >
+              <span className={styles.thinkingDot} aria-hidden="true" />
+              <span className={styles.thinkingDot} aria-hidden="true" />
+              <span className={styles.thinkingDot} aria-hidden="true" />
+            </span>
+          </motion.div>
+        ) : null}
+
+        {phase === "revealed" ? (
+          <motion.div
+            key="connection"
+            className={styles.connectionUpdate}
+            initial={{ opacity: 0, y: 8, filter: "blur(3px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -5, filter: "blur(2px)" }}
+            transition={{
+              duration: reduceMotion ? 0 : 0.48,
+              ease: CONNECTION_EASE,
+            }}
+          >
+            <p className={`${styles.questLine} ${styles.connectionLine}`}>
+              Oh, btw,{" "}
+              <span className={styles.entity}>
+                <StaticMemoryOrb
+                  nodeKey="quest-olivia"
+                  category="people"
+                  certainty="fact"
+                  className={styles.entityOrb}
+                />
+                Olivia
+              </span>
+              &apos;s calendar is free{" "}
+              <span className={styles.timeMark}>this Saturday</span>. Want to go
+              together?
+            </p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function cardLabelForPhase(phase: ConnectionPhase) {
+  if (phase === "thinking") {
+    return "Sidequest: peaceful cycling path around Han River. Sidequest is thinking.";
+  }
+
+  if (phase === "revealed") {
+    return "Sidequest: peaceful cycling path around Han River with Olivia";
+  }
+
+  return "Sidequest: peaceful cycling path around Han River";
+}
+
 export default function MemoryIntoExperience() {
   const sectionRef = useRef<HTMLElement>(null);
   const scrollContainerRef = useRef<HTMLElement>(null);
+  const scrollYProgress = useMotionValue(0);
+  const [connectionPhase, setConnectionPhase] =
+    useState<ConnectionPhase>("quiet");
+  const reduceMotion = useReducedMotion();
   const compactLayout = useSyncExternalStore(
     subscribeToCompactLayout,
     getCompactLayoutSnapshot,
     () => false,
   );
 
-  const setSectionRef = useCallback((node: HTMLElement | null) => {
-    sectionRef.current = node;
-    scrollContainerRef.current = node?.parentElement ?? null;
-  }, []);
+  const setSectionRef = useCallback(
+    (node: HTMLElement | null) => {
+      sectionRef.current = node;
+      scrollContainerRef.current = node?.parentElement ?? null;
 
-  const { scrollYProgress } = useScroll({
-    container: scrollContainerRef,
-    target: sectionRef,
-    offset: ["start start", "end end"],
+      const container = scrollContainerRef.current;
+      if (!node || !container) return;
+
+      let frame = 0;
+      const updateProgress = () => {
+        window.cancelAnimationFrame(frame);
+        frame = window.requestAnimationFrame(() => {
+          const travel = Math.max(1, node.offsetHeight - container.clientHeight);
+          const progress = (container.scrollTop - node.offsetTop) / travel;
+          scrollYProgress.set(Math.min(1, Math.max(0, progress)));
+        });
+      };
+
+      const resizeObserver = new ResizeObserver(updateProgress);
+      resizeObserver.observe(node);
+      resizeObserver.observe(container);
+      container.addEventListener("scroll", updateProgress, { passive: true });
+      updateProgress();
+
+      return () => {
+        window.cancelAnimationFrame(frame);
+        resizeObserver.disconnect();
+        container.removeEventListener("scroll", updateProgress);
+        sectionRef.current = null;
+        scrollContainerRef.current = null;
+      };
+    },
+    [scrollYProgress],
+  );
+
+  const storyProgress = useTransform(
+    scrollYProgress,
+    [0, STORY_END_PROGRESS],
+    [0, 1],
+    { clamp: true },
+  );
+
+  useMotionValueEvent(scrollYProgress, "change", (progress) => {
+    if (reduceMotion) return;
+
+    setConnectionPhase((currentPhase) => {
+      if (progress < CONNECTION_START_PROGRESS) {
+        return currentPhase === "quiet" ? currentPhase : "quiet";
+      }
+
+      return currentPhase === "quiet" ? "thinking" : currentPhase;
+    });
   });
 
+  useEffect(() => {
+    if (reduceMotion || connectionPhase !== "thinking") return;
+
+    const revealTimer = window.setTimeout(() => {
+      setConnectionPhase("revealed");
+    }, CONNECTION_THINKING_MS);
+
+    return () => window.clearTimeout(revealTimer);
+  }, [connectionPhase, reduceMotion]);
+
+  const displayedConnectionPhase = reduceMotion
+    ? "revealed"
+    : connectionPhase;
+
   const distillationOpacity = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.18, 0.3, 0.34, 1],
     [1, 1, 0, 0, 0],
   );
   const distillationY = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.18, 0.34, 1],
     [0, 0, -12, -12],
   );
   const sentenceScale = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.3, 0.42, 0.72, 1],
     [1, 1, 0.92, 1.08, 1.08],
   );
   const sentenceOpacity = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.26, 0.34, 0.62, 0.75, 1],
     [0, 0, 1, 1, 0, 0],
   );
   const leftSentenceX = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.38, 0.58, 0.73, 1],
     [
       "0px",
@@ -492,7 +682,7 @@ export default function MemoryIntoExperience() {
     ],
   );
   const rightSentenceX = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.38, 0.58, 0.73, 1],
     [
       0,
@@ -503,23 +693,23 @@ export default function MemoryIntoExperience() {
     ],
   );
   const leftSentenceMobileY = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.36, 0.44, 0.58, 1],
     ["0px", "0px", "-76px", "-150px", "-150px"],
   );
   const rightSentenceMobileY = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.36, 0.44, 0.58, 1],
     ["0px", "0px", "76px", "150px", "150px"],
   );
 
   const imageOpacity = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.36, 0.4, 1],
     [0, 0, 1, 1],
   );
   const imageClipPath = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.37, 0.48, 0.62, 0.8, 1],
     [
       "inset(47% 48.6% 47% 48.6% round 22px)",
@@ -531,58 +721,88 @@ export default function MemoryIntoExperience() {
     ],
   );
   const imageScale = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.37, 0.56, 0.8, 1],
     [0.92, 0.92, 0.97, 1, 1],
   );
   const echoOpacity = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.42, 0.5, 0.66, 0.72, 1],
     [0, 0, 0.2, 0.13, 0, 0],
   );
   const echoOneScale = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.42, 0.68, 1],
     [0.84, 0.84, 1.035, 1.035],
   );
   const echoTwoScale = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.42, 0.68, 1],
     [0.76, 0.76, 1.07, 1.07],
   );
 
   const veilOpacity = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.72, 0.83, 1],
     [0, 0, 1, 1],
   );
   const resultOpacity = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.79, 0.85, 1],
     [0, 0, 1, 1],
   );
   const resultY = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.79, 0.85, 1],
     [14, 14, 0, 0],
   );
   const resultBlur = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.79, 0.85, 1],
     ["blur(3px)", "blur(3px)", "blur(0px)", "blur(0px)"],
   );
-  const messageOpacity = useTransform(
+  const experienceResultOpacity = useTransform(
     scrollYProgress,
+    [0, 0.72, 0.79, 1],
+    [1, 1, 0, 0],
+  );
+  const experienceResultY = useTransform(
+    scrollYProgress,
+    [0, 0.72, 0.79, 1],
+    [0, 0, -8, -8],
+  );
+  const experienceResultBlur = useTransform(
+    scrollYProgress,
+    [0, 0.72, 0.79, 1],
+    ["blur(0px)", "blur(0px)", "blur(3px)", "blur(3px)"],
+  );
+  const connectionResultOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.76, 0.83, 1],
+    [0, 0, 1, 1],
+  );
+  const connectionResultY = useTransform(
+    scrollYProgress,
+    [0, 0.76, 0.83, 1],
+    [12, 12, 0, 0],
+  );
+  const connectionResultBlur = useTransform(
+    scrollYProgress,
+    [0, 0.76, 0.83, 1],
+    ["blur(3px)", "blur(3px)", "blur(0px)", "blur(0px)"],
+  );
+  const messageOpacity = useTransform(
+    storyProgress,
     [0, 0.87, 0.94, 1],
     [0, 0, 1, 1],
   );
   const messageY = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.87, 0.94, 1],
     [34, 34, 0, 0],
   );
   const messageScale = useTransform(
-    scrollYProgress,
+    storyProgress,
     [0, 0.87, 0.94, 1],
     [0.97, 0.97, 1, 1],
   );
@@ -599,7 +819,7 @@ export default function MemoryIntoExperience() {
             <MemoryFragment
               key={fragment.id}
               definition={fragment}
-              progress={scrollYProgress}
+              progress={storyProgress}
             />
           ))}
         </div>
@@ -614,7 +834,7 @@ export default function MemoryIntoExperience() {
           aria-hidden="true"
         >
           <Image
-            src={coastalRideImage}
+            src={coastalRideSoloImage}
             alt=""
             fill
             sizes="100vw"
@@ -632,7 +852,7 @@ export default function MemoryIntoExperience() {
           aria-hidden="true"
         >
           <Image
-            src={coastalRideImage}
+            src={coastalRideSoloImage}
             alt=""
             fill
             sizes="100vw"
@@ -650,14 +870,44 @@ export default function MemoryIntoExperience() {
         >
           <Image
             className={styles.experienceImage}
-            src={coastalRideImage}
-            alt="Two people riding bicycles down a quiet coastal road toward the sea"
+            src={coastalRideSoloImage}
+            alt={
+              displayedConnectionPhase === "revealed"
+                ? ""
+                : "One person riding a bicycle alone down a quiet coastal road toward the sea"
+            }
             fill
             sizes="100vw"
             placeholder="blur"
             priority={false}
           />
         </motion.div>
+
+        <AnimatePresence initial={false}>
+          {displayedConnectionPhase === "revealed" ? (
+            <motion.div
+              key="together-scene"
+              className={`${styles.experienceFrame} ${styles.togetherFrame}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{
+                duration: reduceMotion ? 0 : 0.65,
+                ease: CONNECTION_EASE,
+              }}
+            >
+              <Image
+                className={styles.experienceImage}
+                src={coastalRideTogetherImage}
+                alt="Two people riding bicycles down a quiet coastal road toward the sea"
+                fill
+                sizes="100vw"
+                placeholder="blur"
+                quality={90}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
         <motion.div
           className={styles.imageVeil}
@@ -722,7 +972,7 @@ export default function MemoryIntoExperience() {
           </motion.div>
         </motion.div>
 
-        <motion.p
+        <motion.div
           className={styles.resultCopy}
           style={{
             opacity: resultOpacity,
@@ -730,25 +980,51 @@ export default function MemoryIntoExperience() {
             filter: resultBlur,
           }}
         >
-          <span className={styles.resultRow}>
-            So new experiences feel like you,
-          </span>
-          <span className={styles.resultRow}>
-            without ever feeling like anything
-          </span>
-          <span className={styles.resultRow}>
-            you&apos;ve done before.
-          </span>
-        </motion.p>
+          <motion.p
+            className={`${styles.resultSlide} ${styles.experienceResult}`}
+            style={{
+              opacity: experienceResultOpacity,
+              y: experienceResultY,
+              filter: experienceResultBlur,
+            }}
+          >
+            {RESULT_ROWS.map((row) => (
+              <span key={row} className={styles.resultRow}>
+                {row}
+              </span>
+            ))}
+          </motion.p>
+        </motion.div>
+
+        <motion.div
+          className={styles.resultCopy}
+          style={{
+            opacity: connectionResultOpacity,
+            y: connectionResultY,
+            filter: connectionResultBlur,
+          }}
+        >
+          <p className={styles.resultSlide}>
+            {CONNECTION_ROWS.map((row) => (
+              <span key={row} className={styles.resultRow}>
+                {row}
+              </span>
+            ))}
+          </p>
+        </motion.div>
 
         <motion.article
+          layout={reduceMotion ? false : "size"}
           className={styles.questCard}
           style={{
             opacity: messageOpacity,
             y: messageY,
             scale: messageScale,
           }}
-          aria-label="Sidequest: peaceful cycling path around Han River with Olivia"
+          transition={{
+            layout: { duration: 0.5, ease: CONNECTION_EASE },
+          }}
+          aria-label={cardLabelForPhase(displayedConnectionPhase)}
         >
           <header className={styles.questHeader}>
             <span className={styles.questMark} aria-hidden="true">
@@ -764,51 +1040,52 @@ export default function MemoryIntoExperience() {
             </span>
           </header>
 
-          <div className={styles.questInner}>
-            <div className={styles.questBody}>
-              <p className={styles.questLine}>
-                How about a peaceful{" "}
-                <span className={styles.entity}>
-                  <StaticMemoryOrb
-                    nodeKey="quest-cycling"
-                    category="activity"
-                    certainty="fact"
-                    className={styles.entityOrb}
-                  />
-                  Cycling
-                </span>{" "}
-                path around{" "}
-                <span className={styles.entity}>
-                  <PlacePinIcon />
-                  Han River
-                </span>
-                ?
-              </p>
-              <p className={styles.questLine}>
-                <span className={styles.entity}>
-                  <StaticMemoryOrb
-                    nodeKey="quest-olivia"
-                    category="people"
-                    certainty="fact"
-                    className={styles.entityOrb}
-                  />
-                  Olivia
-                </span>{" "}
-                started recently and loved it. Want to go together{" "}
-                <span className={styles.timeMark}>this Saturday</span>?
-              </p>
-            </div>
+          <motion.div layout="position" className={styles.questInner}>
+            <motion.div layout="position" className={styles.questBody}>
+              <QuestSuggestionCopy />
+              <ConnectionUpdate
+                phase={displayedConnectionPhase}
+                reduceMotion={Boolean(reduceMotion)}
+              />
+            </motion.div>
 
-            <div className={styles.questImage}>
+            <motion.div layout="position" className={styles.questImage}>
               <Image
-                src={coastalRideImage}
+                src={coastalRideSoloImage}
                 alt=""
                 fill
                 sizes="(max-width: 640px) 88vw, 320px"
                 placeholder="blur"
+                style={{ objectPosition: "center 40%" }}
               />
-            </div>
-          </div>
+              <AnimatePresence initial={false}>
+                {displayedConnectionPhase === "revealed" ? (
+                  <motion.div
+                    key="card-together-image"
+                    className={styles.questImageOverlay}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{
+                      duration: reduceMotion ? 0 : 0.65,
+                      ease: CONNECTION_EASE,
+                    }}
+                    aria-hidden="true"
+                  >
+                    <Image
+                      src={coastalRideTogetherImage}
+                      alt=""
+                      fill
+                      sizes="(max-width: 640px) 88vw, 320px"
+                      placeholder="blur"
+                      quality={90}
+                      style={{ objectPosition: "center 40%" }}
+                    />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </motion.div>
+          </motion.div>
         </motion.article>
       </div>
     </section>
