@@ -14,8 +14,8 @@ import {
 
 import styles from "./orb-row.module.css";
 
-const ORB_REVEAL_MS = 600;
-const ORB_PAUSE_MS = 100;
+const ORB_REVEAL_MS = 500;
+const ORB_PAUSE_MS = 75;
 const ORB_STAGGER_MS = ORB_REVEAL_MS + ORB_PAUSE_MS;
 const LABEL_DELAY_MS = 0;
 const DESCRIPTION_DELAY_MS = ORB_PAUSE_MS;
