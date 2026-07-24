@@ -21,6 +21,7 @@
   line-height: 0.98;
   text-align: center;
   text-wrap: balance;
+  transform: translateY(-0.65rem);
 }
 
 .footer {
