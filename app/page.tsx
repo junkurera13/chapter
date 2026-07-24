@@ -3,7 +3,6 @@ import Link from "next/link";
 
 import InteractiveCardStack from "@/components/aicanvas/interactive-card-stack";
 import MemoryIntoExperience from "@/components/landing/memory-into-experience";
-import MojikoConnection from "@/components/landing/mojiko-connection";
 import OrbWorldReveal from "@/components/landing/orb-world-reveal";
 
 import styles from "./page.module.css";
@@ -55,8 +54,6 @@ export default function Home() {
       </section>
 
       <MemoryIntoExperience />
-
-      <MojikoConnection />
     </main>
   );
 }

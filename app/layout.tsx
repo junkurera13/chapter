@@ -38,7 +38,7 @@ export default function RootLayout({
       lang="en"
       className={`${sidequestSans.variable} ${sidequestSerif.variable} ${sidequestInstrument.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-[#f3efe7] font-[family-name:var(--font-sidequest-sans)] text-[#1c1c19]">
+      <body className="flex min-h-full flex-col bg-white font-[family-name:var(--font-sidequest-sans)] text-[#1c1c19]">
         {children}
       </body>
     </html>

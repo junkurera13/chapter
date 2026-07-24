@@ -8,7 +8,6 @@ import {
   type MotionStyle,
   type MotionValue,
   useMotionValue,
-  useMotionValueEvent,
   useReducedMotion,
   useScroll,
   useSpring,
@@ -32,6 +31,22 @@ import {
 import type { WorldNodeCategory } from "@/app/app/graphData";
 
 import styles from "./memory-into-experience.module.css";
+
+function PlacePinIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className={styles.placePin}
+    >
+      <path
+        fill="#e5484d"
+        d="M10 1.5A6.1 6.1 0 0 0 3.9 7.6c0 4.45 5.37 9.62 5.6 9.84a.72.72 0 0 0 1 0c.23-.22 5.6-5.39 5.6-9.84A6.1 6.1 0 0 0 10 1.5Z"
+      />
+      <circle cx="10" cy="7.45" r="2.15" fill="#fff" />
+    </svg>
+  );
+}
 
 type MemoryNodeDefinition = {
   label: string;
@@ -187,12 +202,14 @@ type StaticMemoryOrbProps = {
   nodeKey: string;
   category: WorldNodeCategory;
   certainty: "fact" | "hypothesis";
+  className?: string;
 };
 
 function StaticMemoryOrb({
   nodeKey,
   category,
   certainty,
+  className,
 }: StaticMemoryOrbProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -232,16 +249,29 @@ function StaticMemoryOrb({
 
     const orbNode = { key: nodeKey, category, certainty };
     const texture = createWorldOrbTexture(orbNode);
-    const geometry = new THREE.SphereGeometry(1, 52, 38);
+    if (texture) {
+      // Keep surface detail when the canvas is CSS-scaled down to chip size.
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      texture.generateMipmaps = true;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.needsUpdate = true;
+    }
+    // Denser mesh so small chips don't show facet edges after supersampling.
+    const geometry = new THREE.SphereGeometry(1, 64, 48);
     const material = createWorldOrbMaterial(orbNode, texture);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.rotation.set(0.08, -0.35, -0.03);
     scene.add(mesh);
 
     const render = () => {
-      const size = Math.max(1, Math.round(canvas.clientWidth));
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(size, size, false);
+      const cssSize = Math.max(1, canvas.clientWidth);
+      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      // Inline chips are ~1em wide; render a much larger buffer and let CSS
+      // downscale so the planet surface stays crisp (not chunky pixels).
+      const bufferSize = Math.max(160, Math.round(cssSize * dpr * 3));
+      renderer.setPixelRatio(1);
+      renderer.setSize(bufferSize, bufferSize, false);
       renderer.render(scene, camera);
     };
 
@@ -261,7 +291,7 @@ function StaticMemoryOrb({
   return (
     <canvas
       ref={canvasRef}
-      className={styles.memoryNodeOrb}
+      className={className ?? styles.memoryNodeOrb}
       aria-hidden="true"
     />
   );
@@ -413,8 +443,6 @@ function MemoryFragment({
 export default function MemoryIntoExperience() {
   const sectionRef = useRef<HTMLElement>(null);
   const scrollContainerRef = useRef<HTMLElement>(null);
-  const messageCopyRef = useRef<HTMLDivElement>(null);
-  const messageShownRef = useRef(false);
   const compactLayout = useSyncExternalStore(
     subscribeToCompactLayout,
     getCompactLayoutSnapshot,
@@ -559,14 +587,6 @@ export default function MemoryIntoExperience() {
     [0.97, 0.97, 1, 1],
   );
 
-  useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    const nextShown = latest >= 0.91;
-    if (messageShownRef.current === nextShown) return;
-    messageShownRef.current = nextShown;
-    messageCopyRef.current?.classList.toggle("is-shown", nextShown);
-    messageCopyRef.current?.classList.toggle("is-hiding", !nextShown);
-  });
-
   return (
     <section
       ref={setSectionRef}
@@ -645,7 +665,17 @@ export default function MemoryIntoExperience() {
           aria-hidden="true"
         />
 
-        <div className={styles.storyCopy}>
+        <motion.div
+          className={styles.storyCopy}
+          initial={{ opacity: 0, y: 12, filter: "blur(3px)" }}
+          whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          viewport={{ root: scrollContainerRef, amount: 0.55 }}
+          transition={{
+            delay: 0.06,
+            duration: 1.3,
+            ease: "easeInOut",
+          }}
+        >
           <motion.div
             className={styles.storyPhase}
             style={{ opacity: distillationOpacity, y: distillationY }}
@@ -690,7 +720,7 @@ export default function MemoryIntoExperience() {
               </motion.span>
             </p>
           </motion.div>
-        </div>
+        </motion.div>
 
         <motion.p
           className={styles.resultCopy}
@@ -700,21 +730,28 @@ export default function MemoryIntoExperience() {
             filter: resultBlur,
           }}
         >
-          So new experiences feel like you, without ever feeling like anything
-          you&apos;ve done.
+          <span className={styles.resultRow}>
+            So new experiences feel like you,
+          </span>
+          <span className={styles.resultRow}>
+            without ever feeling like anything
+          </span>
+          <span className={styles.resultRow}>
+            you&apos;ve done before.
+          </span>
         </motion.p>
 
         <motion.article
-          className={styles.messageCard}
+          className={styles.questCard}
           style={{
             opacity: messageOpacity,
             y: messageY,
             scale: messageScale,
           }}
-          aria-label="A message from Sidequest"
+          aria-label="Sidequest: peaceful cycling path around Han River with Olivia"
         >
-          <header className={styles.messageHeader}>
-            <span className={styles.messageMark} aria-hidden="true">
+          <header className={styles.questHeader}>
+            <span className={styles.questMark} aria-hidden="true">
               <Image
                 src="/sidequest-mark.svg"
                 alt=""
@@ -722,27 +759,55 @@ export default function MemoryIntoExperience() {
                 height={30}
               />
             </span>
-            <span>
+            <span className={styles.questBrand}>
               <strong>Sidequest</strong>
-              <small>This weekend</small>
             </span>
           </header>
 
-          <div
-            ref={messageCopyRef}
-            className="t-stagger is-hiding"
-          >
-            <p
-              className={`${styles.messageTitle} t-stagger-line t-stagger-line--1`}
-            >
-              Take the long way to the sea.
-            </p>
-            <p
-              className={`${styles.messageBody} t-stagger-line t-stagger-line--2`}
-            >
-              Ride the coast before sunset. Stop when something looks good.
-              There&apos;s no schedule after that.
-            </p>
+          <div className={styles.questInner}>
+            <div className={styles.questBody}>
+              <p className={styles.questLine}>
+                How about a peaceful{" "}
+                <span className={styles.entity}>
+                  <StaticMemoryOrb
+                    nodeKey="quest-cycling"
+                    category="activity"
+                    certainty="fact"
+                    className={styles.entityOrb}
+                  />
+                  Cycling
+                </span>{" "}
+                path around{" "}
+                <span className={styles.entity}>
+                  <PlacePinIcon />
+                  Han River
+                </span>
+                ?
+              </p>
+              <p className={styles.questLine}>
+                <span className={styles.entity}>
+                  <StaticMemoryOrb
+                    nodeKey="quest-olivia"
+                    category="people"
+                    certainty="fact"
+                    className={styles.entityOrb}
+                  />
+                  Olivia
+                </span>{" "}
+                started recently and loved it. Want to go together{" "}
+                <span className={styles.timeMark}>this Saturday</span>?
+              </p>
+            </div>
+
+            <div className={styles.questImage}>
+              <Image
+                src={coastalRideImage}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 88vw, 320px"
+                placeholder="blur"
+              />
+            </div>
           </div>
         </motion.article>
       </div>
