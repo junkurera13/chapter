@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import InteractiveCardStack from "@/components/aicanvas/interactive-card-stack";
+import AgentOrbSection from "@/components/landing/agent-orb-section";
 import MemoryIntoExperience from "@/components/landing/memory-into-experience";
 import OrbWorldReveal from "@/components/landing/orb-world-reveal";
 
@@ -54,6 +55,7 @@ export default function Home() {
       </section>
 
       <MemoryIntoExperience />
+      <AgentOrbSection startHref={startHref} />
     </main>
   );
 }
