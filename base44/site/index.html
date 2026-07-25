@@ -4,47 +4,58 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
-    <title>Opening Sidequest…</title>
-  </head>
-  <body>
-    <p>Opening Sidequest…</p>
+    <title></title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #fff;
+      }
+    </style>
     <script>
       (() => {
         const APP_ID = "6a606ec9966ada5a7874da07";
         const appOrigin = "https://sidequest-b44.vercel.app";
         const bridgeOrigin = window.location.origin;
         const path = window.location.pathname;
+        const params = new URLSearchParams(window.location.search);
 
-        // Start Google OAuth from the Base44-hosted domain so OAuth state.domain
-        // matches from_url. Starting from Vercel leaves domain=app.base44.com and
-        // Base44 rejects the return with "Domain is not valid".
+        // Base44 may land on /oauth-return OR /api/apps/auth/final-callback
+        // (or any path) with access_token after Google. Always hop the token
+        // onto the real Next.js app immediately — do not render UI here.
+        const accessToken = params.get("access_token");
+        if (accessToken) {
+          const destination = new URL("/app", appOrigin);
+          destination.searchParams.set("access_token", accessToken);
+          const isNewUser = params.get("is_new_user");
+          if (isNewUser != null) {
+            destination.searchParams.set("is_new_user", isNewUser);
+          }
+          window.location.replace(destination.toString());
+          return;
+        }
+
+        // Start Google OAuth from this host so OAuth state.domain matches
+        // from_url (avoids "Domain is not valid" for external Vercel apps).
         if (path === "/oauth-start") {
           const login = new URL("https://app.base44.com/api/apps/auth/login");
           login.searchParams.set("app_id", APP_ID);
-          login.searchParams.set("from_url", `${bridgeOrigin}/oauth-return`);
+          login.searchParams.set(
+            "from_url",
+            `${bridgeOrigin}/oauth-return`,
+          );
           login.searchParams.set("popup_origin", bridgeOrigin);
           window.location.replace(login.toString());
           return;
         }
 
-        // After Google, Base44 returns here with access_token in the query.
-        // Forward that token onto the real Next.js app.
-        if (path === "/oauth-return") {
-          const destination = new URL(
-            "/api/apps/auth/final-callback",
-            appOrigin,
-          );
-          destination.search = window.location.search;
-          destination.hash = window.location.hash;
-          window.location.replace(destination.toString());
-          return;
-        }
-
-        const destination = new URL(path || "/", appOrigin);
+        // Anything else: send people to the product.
+        const destination = new URL(path === "/" ? "/" : path, appOrigin);
         destination.search = window.location.search;
         destination.hash = window.location.hash;
         window.location.replace(destination.toString());
       })();
     </script>
-  </body>
+  </head>
+  <body></body>
 </html>
