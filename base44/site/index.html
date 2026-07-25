@@ -10,15 +10,37 @@
     <p>Opening Sidequest…</p>
     <script>
       (() => {
+        const APP_ID = "6a606ec9966ada5a7874da07";
         const appOrigin = "https://sidequest-b44.vercel.app";
-        const destination =
-          window.location.pathname === "/oauth-return"
-            ? new URL("/api/apps/auth/final-callback", appOrigin)
-            : new URL(
-                window.location.pathname || "/",
-                appOrigin,
-              );
+        const bridgeOrigin = window.location.origin;
+        const path = window.location.pathname;
 
+        // Start Google OAuth from the Base44-hosted domain so OAuth state.domain
+        // matches from_url. Starting from Vercel leaves domain=app.base44.com and
+        // Base44 rejects the return with "Domain is not valid".
+        if (path === "/oauth-start") {
+          const login = new URL("https://app.base44.com/api/apps/auth/login");
+          login.searchParams.set("app_id", APP_ID);
+          login.searchParams.set("from_url", `${bridgeOrigin}/oauth-return`);
+          login.searchParams.set("popup_origin", bridgeOrigin);
+          window.location.replace(login.toString());
+          return;
+        }
+
+        // After Google, Base44 returns here with access_token in the query.
+        // Forward that token onto the real Next.js app.
+        if (path === "/oauth-return") {
+          const destination = new URL(
+            "/api/apps/auth/final-callback",
+            appOrigin,
+          );
+          destination.search = window.location.search;
+          destination.hash = window.location.hash;
+          window.location.replace(destination.toString());
+          return;
+        }
+
+        const destination = new URL(path || "/", appOrigin);
         destination.search = window.location.search;
         destination.hash = window.location.hash;
         window.location.replace(destination.toString());
