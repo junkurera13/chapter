@@ -654,14 +654,18 @@ Deno.serve(async (req) => {
 
       const user = await ensureSidequestUser(users, viewer);
       const phone = stringValue(user.phone);
+      const authUserId = stringValue(user.auth_user_id);
 
       const memories = base44.asServiceRole.entities.ExperienceMemory;
       const graphNodes = base44.asServiceRole.entities.ExperienceGraphNode;
       const graphEdges = base44.asServiceRole.entities.ExperienceGraphEdge;
       const invites = base44.asServiceRole.entities.ConnectionInvite;
-      const [memoryRows, phoneNodeRows, ownedNodeRows, edgeRows, pendingInvites] = await Promise.all([
+      const [phoneMemoryRows, authMemoryRows, phoneNodeRows, ownedNodeRows, phoneEdgeRows, authEdgeRows, pendingInvites] = await Promise.all([
         phone
           ? memories.filter({ phone, status: "complete" }, "created_at", 100)
+          : Promise.resolve([]),
+        authUserId
+          ? memories.filter({ auth_user_id: authUserId, status: "complete" }, "created_at", 100)
           : Promise.resolve([]),
         phone
           ? graphNodes.filter({ phone }, "created_at", 100)
@@ -670,12 +674,23 @@ Deno.serve(async (req) => {
         phone
           ? graphEdges.filter({ phone }, "created_at", 100)
           : Promise.resolve([]),
+        authUserId
+          ? graphEdges.filter({ auth_user_id: authUserId }, "created_at", 100)
+          : Promise.resolve([]),
         invites.filter(
           { inviter_user_id: user.id, status: "pending" },
           "-created_at",
           100,
         ),
       ]);
+      const memoryRows = [...phoneMemoryRows, ...authMemoryRows].filter(
+        (memory, index, rows) =>
+          rows.findIndex((candidate) => candidate.id === memory.id) === index,
+      );
+      const edgeRows = [...phoneEdgeRows, ...authEdgeRows].filter(
+        (edge, index, rows) =>
+          rows.findIndex((candidate) => candidate.id === edge.id) === index,
+      );
 
       const nodeRows = [...phoneNodeRows, ...ownedNodeRows].filter(
         (node, index, rows) =>
@@ -710,6 +725,55 @@ Deno.serve(async (req) => {
             graphNodeRecord(node, inviteStatusByNode.get(node.id))
           ),
           edges: completedEdges.map(graphEdgeRecord),
+        },
+      });
+    }
+
+    if (action === "getMyConversation") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const messages = base44.asServiceRole.entities.ConversationMessage;
+      const sinceCursor =
+        typeof data.sinceCursor === "number" && Number.isFinite(data.sinceCursor)
+          ? data.sinceCursor
+          : 0;
+      const limit = Math.min(
+        Math.max(typeof data.limit === "number" ? Math.floor(data.limit) : 100, 1),
+        200,
+      );
+      const phone = stringValue(user.phone);
+      const authUserId = stringValue(user.auth_user_id);
+
+      const [phoneRows, authRows] = await Promise.all([
+        phone
+          ? messages.filter({ phone }, "created_at", limit)
+          : Promise.resolve([]),
+        authUserId
+          ? messages.filter({ auth_user_id: authUserId }, "created_at", limit)
+          : Promise.resolve([]),
+      ]);
+      const rows = [...phoneRows, ...authRows].filter(
+        (message, index, list) =>
+          list.findIndex((candidate) => candidate.id === message.id) === index,
+      );
+      const sorted = rows
+        .filter((row: Row) => Number(row.created_at) > sinceCursor)
+        .sort((first: Row, second: Row) => first.created_at - second.created_at);
+
+      return Response.json({
+        value: {
+          messages: sorted.map((row: Row) => ({
+            id: row.id,
+            role: row.role,
+            text: stringValue(row.text),
+            channel: row.channel,
+            deliveryStatus: row.delivery_status,
+            createdAt: Number(row.created_at),
+          })),
         },
       });
     }

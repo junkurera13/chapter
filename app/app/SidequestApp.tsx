@@ -8,6 +8,7 @@ import type { AuthenticatedViewer } from "../../lib/base44Auth";
 import { loadMyExperienceGraph } from "../../lib/base44Graph";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
 import { buildWorldGraph } from "./graphData";
+import ChatView from "./ChatView";
 import TogetherView from "./TogetherView";
 import YouView from "./YouView";
 import styles from "./page.module.css";
@@ -16,12 +17,6 @@ type GraphState =
   | { status: "loading" }
   | { status: "ready"; graph: ExperienceGraphRecord }
   | { status: "error" };
-
-function messageHref(phone: string, body?: string) {
-  return body
-    ? `sms:${phone}?&body=${encodeURIComponent(body)}`
-    : `sms:${phone}`;
-}
 
 export default function SidequestApp({
   viewer,
@@ -101,44 +96,12 @@ export default function SidequestApp({
         </div>
       );
     } else if (!worldGraph) {
-      const onboardingStep = graphState.graph.onboardingStep;
-      const needsInvite = onboardingStep === "needs_memory_invite";
-      const awaitingMemory = onboardingStep === "awaiting_memory";
       youPanel = (
-        <div className={styles.graphState}>
-          <h1>
-            {needsInvite
-              ? "Say Hi"
-              : awaitingMemory
-                ? "An experience you’ll never forget"
-                : "Nothing has taken shape yet."}
-          </h1>
-          <p>
-            {needsInvite
-              ? "Text Sidequest to begin. It’ll ask for an experience you’ll never forget."
-              : awaitingMemory
-                ? "Dump everything you remember—who was there, what you did, where it happened, and why it felt special. Messy and long is perfect."
-                : "Once Sidequest has an experience from you, it will appear here."}
-          </p>
-          {viewer.messagingConnected && viewer.assignedPhone ? (
-            <a
-              href={messageHref(
-                viewer.assignedPhone,
-                needsInvite ? "Hey" : undefined,
-              )}
-            >
-              {needsInvite
-                ? "Start in Messages"
-                : awaitingMemory
-                  ? "Dump an experience"
-                  : "Open Messages"}
-            </a>
-          ) : (
-            <button type="button" onClick={onConnectPhone}>
-              Connect iMessage
-            </button>
-          )}
-        </div>
+        <ChatView
+          viewer={viewer}
+          onConnectPhone={onConnectPhone}
+          onConversationAdvanced={loadGraph}
+        />
       );
     } else {
       youPanel = <YouView nodes={worldGraph.nodes} edges={worldGraph.edges} />;

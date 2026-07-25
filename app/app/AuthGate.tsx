@@ -28,7 +28,7 @@ export default function AuthGate({
 }) {
   const router = useRouter();
   const [state, setState] = useState<GateState>({ status: "checking" });
-  const [phoneConnectionOpen, setPhoneConnectionOpen] = useState(true);
+  const [phoneConnectionOpen, setPhoneConnectionOpen] = useState(false);
 
   async function resolveSession() {
     if (!hasBase44Session()) {

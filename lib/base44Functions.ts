@@ -72,3 +72,18 @@ export function connectMyPhone(
     accessToken,
   );
 }
+
+export function fetchMyConversation(
+  args: { sinceCursor?: number; limit?: number },
+  accessToken: string,
+) {
+  return invokeSidequestData<{
+    messages: import("./backendTypes").ConversationMessageRecord[];
+  }>({ action: "getMyConversation", ...args }, accessToken);
+}
+
+export function fetchMySession(accessToken: string) {
+  return invokeSidequestData<{
+    viewer: import("./base44Auth").AuthenticatedViewer;
+  }>({ action: "getMySession" }, accessToken);
+}

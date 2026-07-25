@@ -2,7 +2,8 @@
   "name": "ExperienceGraphEdge",
   "type": "object",
   "properties": {
-    "phone": { "type": "string" },
+    "phone": { "type": "string", "description": "Caller phone (iMessage channel). Optional for web-only users." },
+    "auth_user_id": { "type": "string", "description": "Base44 auth user id; backfilled when the SidequestUser is linked." },
     "memory_id": { "type": "string" },
     "from_node_id": { "type": "string" },
     "to_node_id": { "type": "string" },
@@ -20,7 +21,7 @@
     "evidence": { "type": "string" },
     "created_at": { "type": "number" }
   },
-  "required": ["phone", "memory_id", "from_node_id", "to_node_id", "relationship", "description", "certainty", "confidence", "evidence", "created_at"],
+  "required": ["memory_id", "from_node_id", "to_node_id", "relationship", "description", "certainty", "confidence", "evidence", "created_at"],
   "rls": {
     "create": { "user_condition": { "role": "admin" } },
     "read": { "user_condition": { "role": "admin" } },

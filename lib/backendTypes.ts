@@ -89,3 +89,25 @@ export type AcceptedConnectionInvite = {
   connectionId: string;
   friendName?: string;
 };
+
+export type ConversationChannel = "imessage" | "web";
+export type ConversationDeliveryStatus = "pending" | "sent";
+
+export type ConversationMessageRecord = {
+  id: string;
+  role: "user" | "agent";
+  text: string;
+  channel: ConversationChannel;
+  deliveryStatus: ConversationDeliveryStatus;
+  createdAt: number;
+};
+
+export type MyConversationRecord = {
+  messages: ConversationMessageRecord[];
+};
+
+export type ChatReplyResult = {
+  reply: string | null;
+  replyId?: string;
+  duplicate?: boolean;
+};

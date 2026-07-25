@@ -2,13 +2,16 @@ import "server-only";
 
 import { BASE44_APP_ID } from "./base44Client";
 
-type MessageResult = {
+export type MessageResult = {
   reply: string | null;
   replyId?: string;
   duplicate?: boolean;
 };
 
-async function invokeMessageFunction<T>(data: Record<string, unknown>) {
+async function invokeMessageFunction<T>(
+  data: Record<string, unknown>,
+  accessToken?: string,
+) {
   const internalSecret = process.env.SIDEQUEST_INTERNAL_SECRET;
   if (!internalSecret) {
     throw new Error("SIDEQUEST_INTERNAL_SECRET is not configured");
@@ -22,6 +25,7 @@ async function invokeMessageFunction<T>(data: Record<string, unknown>) {
         Accept: "application/json",
         "Content-Type": "application/json",
         "X-App-Id": BASE44_APP_ID,
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: JSON.stringify({ ...data, internalSecret }),
       cache: "no-store",
@@ -35,12 +39,16 @@ async function invokeMessageFunction<T>(data: Record<string, unknown>) {
 }
 
 export function processSidequestMessage(args: {
-  phone: string;
+  phone?: string;
+  authUserId?: string;
   text: string;
   messageId: string;
-  threadId: string;
+  threadId?: string;
+  channel?: "imessage" | "web";
+  accessToken?: string;
 }) {
-  return invokeMessageFunction<MessageResult>(args);
+  const { accessToken, ...body } = args;
+  return invokeMessageFunction<MessageResult>(body, accessToken);
 }
 
 export function markSidequestMessageDelivered(args: {

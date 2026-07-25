@@ -8,19 +8,9 @@ import OrbWorldReveal from "@/components/landing/orb-world-reveal";
 
 import styles from "./page.module.css";
 
-const PREFILLED_MESSAGE = "Hey";
-
-function getStartHref() {
-  const phone = process.env.NEXT_PUBLIC_SIDEQUEST_PHONE?.trim();
-
-  return phone
-    ? `sms:${phone}?&body=${encodeURIComponent(PREFILLED_MESSAGE)}`
-    : "/signup";
-}
+const START_HREF = "/login";
 
 export default function Home() {
-  const startHref = getStartHref();
-
   return (
     <main className={styles.page}>
       <section className={styles.hero}>
@@ -33,11 +23,11 @@ export default function Home() {
         </div>
 
         <div className={styles.actions}>
-          <a href={startHref} className={styles.action}>
+          <a href={START_HREF} className={styles.action}>
             <span className={styles.actionMark} aria-hidden="true">
               <Image src="/sidequest-mark.svg" alt="" width={32} height={32} />
             </span>
-            Text Sidequest
+            Get Started
           </a>
           <Link href="/login" className={styles.loginAction}>
             Log in
@@ -55,7 +45,7 @@ export default function Home() {
       </section>
 
       <MemoryIntoExperience />
-      <AgentOrbSection startHref={startHref} />
+      <AgentOrbSection startHref={START_HREF} />
     </main>
   );
 }

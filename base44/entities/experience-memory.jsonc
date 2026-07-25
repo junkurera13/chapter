@@ -2,7 +2,8 @@
   "name": "ExperienceMemory",
   "type": "object",
   "properties": {
-    "phone": { "type": "string" },
+    "phone": { "type": "string", "description": "Caller phone (iMessage channel). Optional for web-only users." },
+    "auth_user_id": { "type": "string", "description": "Base44 auth user id; always set on web, backfilled on iMessage when the SidequestUser is linked." },
     "source": { "type": "string", "enum": ["onboarding", "reflection"] },
     "raw_text": { "type": "string" },
     "status": { "type": "string", "enum": ["pending", "complete", "failed"] },
@@ -11,7 +12,7 @@
     "created_at": { "type": "number" },
     "processed_at": { "type": "number" }
   },
-  "required": ["phone", "source", "raw_text", "status", "created_at"],
+  "required": ["source", "raw_text", "status", "created_at"],
   "rls": {
     "create": { "user_condition": { "role": "admin" } },
     "read": { "user_condition": { "role": "admin" } },

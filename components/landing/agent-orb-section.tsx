@@ -94,7 +94,7 @@ export default function AgentOrbSection({
             <span className={styles.actionMark} aria-hidden="true">
               <Image src="/sidequest-mark.svg" alt="" width={28} height={28} />
             </span>
-            Text Sidequest
+            Get Started
           </a>
           <Link href="/login" className={styles.loginAction}>
             Log in

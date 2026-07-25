@@ -145,13 +145,15 @@ async function analyzeMemory(
   base44: Row,
   user: Row,
   phone: string,
+  authUserId: string,
   text: string,
 ) {
   const memories = base44.asServiceRole.entities.ExperienceMemory;
   const nodes = base44.asServiceRole.entities.ExperienceGraphNode;
   const edges = base44.asServiceRole.entities.ExperienceGraphEdge;
   const memory = await memories.create({
-    phone,
+    phone: phone || undefined,
+    auth_user_id: authUserId || undefined,
     source: "onboarding",
     raw_text: text,
     status: "pending",
@@ -182,7 +184,7 @@ async function analyzeMemory(
       const key = stringValue(rawNode.key);
       if (!key || createdByKey.has(key)) continue;
       const created = await nodes.create({
-        phone,
+        phone: phone || undefined,
         memory_id: memory.id,
         owner_user_id: user.id,
         source_type: "memory",
@@ -206,7 +208,8 @@ async function analyzeMemory(
       const to = createdByKey.get(stringValue(rawEdge.to_key));
       if (!from || !to || from.id === to.id) continue;
       await edges.create({
-        phone,
+        phone: phone || undefined,
+        auth_user_id: authUserId || undefined,
         memory_id: memory.id,
         from_node_id: from.id,
         to_node_id: to.id,
@@ -240,7 +243,13 @@ async function analyzeMemory(
   }
 }
 
-async function composeReply(base44: Row, user: Row, phone: string, text: string) {
+async function composeReply(
+  base44: Row,
+  user: Row,
+  phone: string,
+  authUserId: string,
+  text: string,
+) {
   const users = base44.asServiceRole.entities.SidequestUser;
   const step = user.onboarding_step || "needs_memory_invite";
 
@@ -255,7 +264,7 @@ async function composeReply(base44: Row, user: Row, phone: string, text: string)
       return "Okay.";
     }
 
-    const summary = await analyzeMemory(base44, user, phone, text);
+    const summary = await analyzeMemory(base44, user, phone, authUserId, text);
     const previousNotes = stringValue(user.notes);
     await users.update(user.id, {
       notes: previousNotes ? `${previousNotes}\n${summary}` : summary,
@@ -291,15 +300,63 @@ Deno.serve(async (req) => {
       return Response.json({ value: { delivered: true } });
     }
 
-    const phone = stringValue(input.phone);
+    const requestedChannel = stringValue(input.channel) || "imessage";
+    const channel = requestedChannel === "web" ? "web" : "imessage";
+    const requestedAuthUserId = stringValue(input.authUserId);
     const text = stringValue(input.text);
     const messageId = stringValue(input.messageId);
     const threadId = stringValue(input.threadId);
-    if (!phone || !text || !messageId) {
+
+    if (!text || !messageId) {
       return Response.json(
-        { error: "phone, text, and messageId required" },
+        { error: "text and messageId required" },
         { status: 400 },
       );
+    }
+
+    const users = base44.asServiceRole.entities.SidequestUser;
+    let phone = stringValue(input.phone);
+    let authUserId = "";
+
+    if (requestedAuthUserId) {
+      const viewer = await base44.auth.me().catch(() => null);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+      if (viewer.id !== requestedAuthUserId) {
+        return Response.json({ error: "viewer mismatch" }, { status: 403 });
+      }
+
+      const rows = await users.filter(
+        { auth_user_id: viewer.id },
+        undefined,
+        1,
+      );
+      const linked = rows[0];
+      if (!linked) {
+        return Response.json(
+          { error: "sidequest profile missing; open the app first" },
+          { status: 404 },
+        );
+      }
+      authUserId = viewer.id;
+      phone = stringValue(linked.phone) || phone;
+    } else {
+      if (!phone) {
+        return Response.json(
+          { error: "phone or authUserId required" },
+          { status: 400 },
+        );
+      }
+      const rows = await users.filter({ phone }, undefined, 1);
+      const linked =
+        rows[0] ||
+        (await users.create({
+          phone,
+          first_seen_at: Date.now(),
+          onboarding_step: "needs_memory_invite",
+        }));
+      authUserId = stringValue(linked.auth_user_id);
     }
 
     const existingIncoming = await messages.filter(
@@ -322,32 +379,36 @@ Deno.serve(async (req) => {
       }
     } else {
       await messages.create({
-        phone,
+        phone: phone || undefined,
+        auth_user_id: authUserId || undefined,
         external_id: messageId,
         thread_id: threadId || undefined,
-        channel: "imessage",
+        channel,
         role: "user",
         text,
         created_at: Date.now(),
       });
     }
 
-    const users = base44.asServiceRole.entities.SidequestUser;
-    const userRows = await users.filter({ phone }, undefined, 1);
-    const user =
-      userRows[0] ||
-      (await users.create({
-        phone,
-        first_seen_at: Date.now(),
-        onboarding_step: "needs_memory_invite",
-      }));
+    const userRows = await users.filter(
+      requestedAuthUserId
+        ? { auth_user_id: authUserId }
+        : { phone },
+      undefined,
+      1,
+    );
+    const user = userRows[0];
+    if (!user) {
+      return Response.json({ error: "sidequest profile not found" }, { status: 404 });
+    }
 
-    const reply = await composeReply(base44, user, phone, text);
+    const reply = await composeReply(base44, user, phone, authUserId, text);
     const replyRow = await messages.create({
-      phone,
+      phone: phone || undefined,
+      auth_user_id: authUserId || undefined,
       reply_to_external_id: messageId,
       thread_id: threadId || undefined,
-      channel: "imessage",
+      channel,
       delivery_status: "pending",
       role: "agent",
       text: reply,

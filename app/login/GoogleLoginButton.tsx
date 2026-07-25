@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { getBase44GoogleLoginUrl } from "@/lib/base44BrowserClient";
+import styles from "./GoogleLoginButton.module.css";
 
 export function GoogleLoginButton() {
   const [leaving, setLeaving] = useState(false);
@@ -16,7 +17,7 @@ export function GoogleLoginButton() {
   return (
     <button
       type="button"
-      className="group flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-black px-6 text-base font-semibold text-white transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black active:translate-y-0 disabled:cursor-wait disabled:opacity-70"
+      className={styles.google}
       onClick={signIn}
       disabled={leaving}
     >

@@ -2,7 +2,8 @@
   "name": "ConversationMessage",
   "type": "object",
   "properties": {
-    "phone": { "type": "string" },
+    "phone": { "type": "string", "description": "Caller phone (iMessage channel). Optional for web-only users." },
+    "auth_user_id": { "type": "string", "description": "Base44 auth user id; always set on web rows, backfilled on iMessage rows when the SidequestUser is linked." },
     "external_id": { "type": "string", "description": "Provider message ID used for idempotency" },
     "reply_to_external_id": { "type": "string" },
     "thread_id": { "type": "string" },
@@ -13,7 +14,7 @@
     "text": { "type": "string" },
     "created_at": { "type": "number" }
   },
-  "required": ["phone", "role", "text", "created_at"],
+  "required": ["role", "text", "created_at"],
   "rls": {
     "create": { "user_condition": { "role": "admin" } },
     "read": { "user_condition": { "role": "admin" } },
