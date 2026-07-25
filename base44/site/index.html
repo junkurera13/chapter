@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Opening Sidequest…</title>
+  </head>
+  <body>
+    <p>Opening Sidequest…</p>
+    <script>
+      (() => {
+        const appOrigin = "https://sidequest-b44.vercel.app";
+        const destination =
+          window.location.pathname === "/oauth-return"
+            ? new URL("/api/apps/auth/final-callback", appOrigin)
+            : new URL(
+                window.location.pathname || "/",
+                appOrigin,
+              );
+
+        destination.search = window.location.search;
+        destination.hash = window.location.hash;
+        window.location.replace(destination.toString());
+      })();
+    </script>
+  </body>
+</html>
