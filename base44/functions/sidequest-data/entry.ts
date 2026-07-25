@@ -4,6 +4,39 @@ import { createClientFromRequest } from "npm:@base44/sdk";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
+const RATE_LIMIT_RETRY_DELAYS_MS = [500, 1_000, 2_000] as const;
+
+function isRateLimitError(error: unknown) {
+  const status =
+    error && typeof error === "object" && "status" in error
+      ? Number((error as { status?: unknown }).status)
+      : undefined;
+  const message =
+    error instanceof Error
+      ? error.message
+      : error && typeof error === "object" && "message" in error
+        ? String((error as { message?: unknown }).message)
+        : "";
+
+  return status === 429 || /rate limit|too many requests/i.test(message);
+}
+
+function wait(milliseconds: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function readWithRateLimitRetry<T>(operation: () => Promise<T>) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      const delay = RATE_LIMIT_RETRY_DELAYS_MS[attempt];
+      if (!isRateLimitError(error) || delay === undefined) throw error;
+      await wait(delay);
+    }
+  }
+}
+
 const NODE_CATEGORIES = [
   "experience",
   "people",
@@ -138,7 +171,7 @@ function hasValue(value: unknown) {
 
 async function authenticatedViewer(base44: Row) {
   try {
-    return await base44.auth.me();
+    return await readWithRateLimitRetry(() => base44.auth.me());
   } catch (error) {
     const status =
       error && typeof error === "object" && "status" in error
@@ -167,7 +200,9 @@ function displayName(user: Row | undefined, fallback = "your friend") {
 }
 
 async function ensureSidequestUser(users: Row, viewer: Row) {
-  const rows = await users.filter({ auth_user_id: viewer.id }, undefined, 1);
+  const rows = await readWithRateLimitRetry(() =>
+    users.filter({ auth_user_id: viewer.id }, undefined, 1)
+  );
   const existing = rows[0];
   const identityPatch: Row = {};
 
@@ -503,21 +538,26 @@ Deno.serve(async (req) => {
       const connections = base44.asServiceRole.entities.SidequestConnection;
       const invites = base44.asServiceRole.entities.ConnectionInvite;
       const graphNodes = base44.asServiceRole.entities.ExperienceGraphNode;
-      const [asFirstUser, asSecondUser, pendingRows] = await Promise.all([
-        connections.filter({ user_a_id: user.id, status: "accepted" }, "-created_at", 100),
-        connections.filter({ user_b_id: user.id, status: "accepted" }, "-created_at", 100),
+      const connectionRows = await readWithRateLimitRetry(() =>
+        connections.filter(
+          {
+            status: "accepted",
+            $or: [
+              { user_a_id: user.id },
+              { user_b_id: user.id },
+            ],
+          },
+          "-created_at",
+          100,
+        )
+      );
+      const pendingRows = await readWithRateLimitRetry(() =>
         invites.filter(
           { inviter_user_id: user.id, status: "pending" },
           "-created_at",
           100,
-        ),
-      ]);
-      const connectionRows = [...asFirstUser, ...asSecondUser]
-        .filter(
-          (connection, index, rows) =>
-            rows.findIndex((candidate) => candidate.id === connection.id) === index,
         )
-        .sort((first, second) => second.created_at - first.created_at);
+      );
 
       const accepted = [];
       for (const connection of connectionRows) {
@@ -531,10 +571,12 @@ Deno.serve(async (req) => {
         let otherUser: Row | undefined;
         let node: Row | undefined;
         try {
-          [otherUser, node] = await Promise.all([
-            users.get(otherUserId),
-            nodeId ? graphNodes.get(nodeId) : Promise.resolve(undefined),
-          ]);
+          otherUser = await readWithRateLimitRetry(() =>
+            users.get(otherUserId)
+          );
+          node = nodeId
+            ? await readWithRateLimitRetry(() => graphNodes.get(nodeId))
+            : undefined;
         } catch {
           // A partially repaired connection remains private and is omitted.
         }
@@ -660,41 +702,28 @@ Deno.serve(async (req) => {
       const graphNodes = base44.asServiceRole.entities.ExperienceGraphNode;
       const graphEdges = base44.asServiceRole.entities.ExperienceGraphEdge;
       const invites = base44.asServiceRole.entities.ConnectionInvite;
-      const [phoneMemoryRows, authMemoryRows, phoneNodeRows, ownedNodeRows, phoneEdgeRows, authEdgeRows, pendingInvites] = await Promise.all([
-        phone
-          ? memories.filter({ phone, status: "complete" }, "created_at", 100)
-          : Promise.resolve([]),
-        authUserId
-          ? memories.filter({ auth_user_id: authUserId, status: "complete" }, "created_at", 100)
-          : Promise.resolve([]),
-        phone
-          ? graphNodes.filter({ phone }, "created_at", 100)
-          : Promise.resolve([]),
-        graphNodes.filter({ owner_user_id: user.id }, "created_at", 100),
-        phone
-          ? graphEdges.filter({ phone }, "created_at", 100)
-          : Promise.resolve([]),
-        authUserId
-          ? graphEdges.filter({ auth_user_id: authUserId }, "created_at", 100)
-          : Promise.resolve([]),
-        invites.filter(
-          { inviter_user_id: user.id, status: "pending" },
-          "-created_at",
+      const memoryRows = await readWithRateLimitRetry(() =>
+        memories.filter(
+          phone
+            ? {
+                status: "complete",
+                $or: [{ phone }, { auth_user_id: authUserId }],
+              }
+            : { auth_user_id: authUserId, status: "complete" },
+          "created_at",
           100,
-        ),
-      ]);
-      const memoryRows = [...phoneMemoryRows, ...authMemoryRows].filter(
-        (memory, index, rows) =>
-          rows.findIndex((candidate) => candidate.id === memory.id) === index,
+        )
       );
-      const edgeRows = [...phoneEdgeRows, ...authEdgeRows].filter(
-        (edge, index, rows) =>
-          rows.findIndex((candidate) => candidate.id === edge.id) === index,
-      );
-
-      const nodeRows = [...phoneNodeRows, ...ownedNodeRows].filter(
-        (node, index, rows) =>
-          rows.findIndex((candidate) => candidate.id === node.id) === index,
+      const nodeRows = await readWithRateLimitRetry(() =>
+        graphNodes.filter(
+          phone
+            ? {
+                $or: [{ phone }, { owner_user_id: user.id }],
+              }
+            : { owner_user_id: user.id },
+          "created_at",
+          100,
+        )
       );
       const completeMemoryIds = new Set(memoryRows.map((row: Row) => row.id));
       const completedNodes = nodeRows.filter(
@@ -703,6 +732,19 @@ Deno.serve(async (req) => {
           (row.source_type === "connection" && row.owner_user_id === user.id),
       );
       const completedNodeIds = new Set(completedNodes.map((row: Row) => row.id));
+      const edgeRows = completeMemoryIds.size > 0
+        ? await readWithRateLimitRetry(() =>
+          graphEdges.filter(
+            phone
+              ? {
+                  $or: [{ phone }, { auth_user_id: authUserId }],
+                }
+              : { auth_user_id: authUserId },
+            "created_at",
+            100,
+          )
+        )
+        : [];
       const completedEdges = edgeRows.filter(
         (row: Row) =>
           completeMemoryIds.has(row.memory_id) &&
@@ -711,6 +753,18 @@ Deno.serve(async (req) => {
       );
       const now = Date.now();
       const inviteStatusByNode = new Map<string, "pending">();
+      const hasPeopleNodes = completedNodes.some(
+        (node: Row) => categoryForNode(node) === "people",
+      );
+      const pendingInvites = hasPeopleNodes
+        ? await readWithRateLimitRetry(() =>
+          invites.filter(
+            { inviter_user_id: user.id, status: "pending" },
+            "-created_at",
+            100,
+          )
+        )
+        : [];
       for (const invite of pendingInvites) {
         if (invite.expires_at > now && !inviteStatusByNode.has(invite.inviter_node_id)) {
           inviteStatusByNode.set(invite.inviter_node_id, "pending");
@@ -748,20 +802,19 @@ Deno.serve(async (req) => {
       const phone = stringValue(user.phone);
       const authUserId = stringValue(user.auth_user_id);
 
-      const [phoneRows, authRows] = await Promise.all([
-        phone
-          ? messages.filter({ phone }, "created_at", limit)
-          : Promise.resolve([]),
-        authUserId
-          ? messages.filter({ auth_user_id: authUserId }, "created_at", limit)
-          : Promise.resolve([]),
-      ]);
-      const rows = [...phoneRows, ...authRows].filter(
-        (message, index, list) =>
-          list.findIndex((candidate) => candidate.id === message.id) === index,
+      const rows = await readWithRateLimitRetry(() =>
+        messages.filter(
+          {
+            ...(phone
+              ? { $or: [{ phone }, { auth_user_id: authUserId }] }
+              : { auth_user_id: authUserId }),
+            created_at: { $gt: sinceCursor },
+          },
+          "created_at",
+          limit,
+        )
       );
       const sorted = rows
-        .filter((row: Row) => Number(row.created_at) > sinceCursor)
         .sort((first: Row, second: Row) => first.created_at - second.created_at);
 
       return Response.json({
@@ -782,6 +835,12 @@ Deno.serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Base44 data request failed.";
     console.error("sidequest-data failed", error);
+    if (isRateLimitError(error)) {
+      return Response.json(
+        { error: "Sidequest is busy. Try again in a moment." },
+        { status: 429, headers: { "Retry-After": "2" } },
+      );
+    }
     return Response.json({ error: message }, { status: 500 });
   }
 });

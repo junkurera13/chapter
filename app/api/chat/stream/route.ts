@@ -1,10 +1,11 @@
-import { Base44FunctionError, fetchMyConversation, fetchMySession } from "@/lib/base44Functions";
+import { fetchMyConversation } from "@/lib/base44Functions";
 import type { ConversationMessageRecord } from "@/lib/backendTypes";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const POLL_INTERVAL_MS = 1500;
+const INITIAL_POLL_DELAY_MS = 1_000;
+const POLL_INTERVAL_MS = 5_000;
 const MAX_CONNECTION_MS = 4 * 60 * 1000;
 const SSE_HEADERS = {
   "Content-Type": "text/event-stream; charset=UTF-8",
@@ -35,19 +36,6 @@ export async function GET(request: Request) {
     sinceParam && Number.isFinite(Number(sinceParam))
       ? Number(sinceParam)
       : 0;
-
-  try {
-    await fetchMySession(accessToken);
-  } catch (cause) {
-    if (cause instanceof Base44FunctionError && cause.status === 401) {
-      return unauthorized("Sign in before chatting.");
-    }
-    console.error("Sidequest chat stream session failed:", cause);
-    return new Response(JSON.stringify({ error: "Couldn't open your conversation." }), {
-      status: 502,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
 
   const encoder = new TextEncoder();
   let closed = false;
@@ -90,10 +78,10 @@ export async function GET(request: Request) {
         }
       }
 
-      await poll();
-
+      const initialPoll = setTimeout(poll, INITIAL_POLL_DELAY_MS);
       const interval = setInterval(poll, POLL_INTERVAL_MS);
       const stop = setTimeout(() => {
+        clearTimeout(initialPoll);
         clearInterval(interval);
         send("restart", { cursor });
         try {
@@ -107,6 +95,7 @@ export async function GET(request: Request) {
 
       function onAbort() {
         if (closed) return;
+        clearTimeout(initialPoll);
         clearInterval(interval);
         clearTimeout(stop);
         try {

@@ -14,6 +14,7 @@ import YouView from "./YouView";
 import styles from "./page.module.css";
 
 type GraphState =
+  | { status: "idle" }
   | { status: "loading" }
   | { status: "ready"; graph: ExperienceGraphRecord }
   | { status: "error" };
@@ -28,7 +29,9 @@ export default function SidequestApp({
   initialTab?: SidequestTabIndex;
 }) {
   const [activeIndex, setActiveIndex] = useState<SidequestTabIndex>(initialTab);
-  const [graphState, setGraphState] = useState<GraphState>({ status: "loading" });
+  const [graphState, setGraphState] = useState<GraphState>(
+    initialTab === 1 ? { status: "loading" } : { status: "idle" },
+  );
   const worldGraph = useMemo(
     () =>
       graphState.status === "ready" && graphState.graph.nodes.length > 0
@@ -37,21 +40,24 @@ export default function SidequestApp({
     [graphState],
   );
 
-  const loadGraph = useCallback(async () => {
+  const queueGraphLoad = useCallback(() => {
     setGraphState({ status: "loading" });
-    try {
-      const graph = await loadMyExperienceGraph();
-      setGraphState({ status: "ready", graph });
-    } catch (error) {
-      console.error("Could not load the Sidequest experience graph", error);
-      setGraphState({ status: "error" });
+  }, []);
+  const changeTab = useCallback((nextIndex: SidequestTabIndex) => {
+    if (nextIndex === 1) {
+      setGraphState((current) =>
+        current.status === "idle" ? { status: "loading" } : current,
+      );
     }
+    setActiveIndex(nextIndex);
   }, []);
 
   useEffect(() => {
+    if (activeIndex !== 1 || graphState.status !== "loading") return;
+
     let active = true;
 
-    async function refreshGraph() {
+    async function openGraph() {
       try {
         const graph = await loadMyExperienceGraph();
         if (active) setGraphState({ status: "ready", graph });
@@ -61,22 +67,16 @@ export default function SidequestApp({
       }
     }
 
-    function refreshWhenVisible() {
-      if (document.visibilityState === "visible") void refreshGraph();
-    }
-
-    void refreshGraph();
-    document.addEventListener("visibilitychange", refreshWhenVisible);
+    void openGraph();
 
     return () => {
       active = false;
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, []);
+  }, [activeIndex, graphState.status]);
 
   let youPanel = null;
   if (activeIndex === 1) {
-    if (graphState.status === "loading") {
+    if (graphState.status === "idle" || graphState.status === "loading") {
       youPanel = (
         <div className={styles.graphLoading} aria-label="Opening your world">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -88,7 +88,7 @@ export default function SidequestApp({
         <div className={styles.graphState} role="alert">
           <p className={styles.graphEyebrow}>The door stuck</p>
           <h1>Your world couldn&apos;t open.</h1>
-          <button type="button" onClick={() => void loadGraph()}>
+          <button type="button" onClick={queueGraphLoad}>
             Try again
           </button>
         </div>
@@ -113,10 +113,10 @@ export default function SidequestApp({
       <ChatView
         viewer={viewer}
         onConnectPhone={onConnectPhone}
-        onConversationAdvanced={loadGraph}
+        onConversationAdvanced={() => setGraphState({ status: "idle" })}
       />
     ) : activeIndex === 2 ? (
-      <TogetherView onOpenYou={() => setActiveIndex(1)} />
+      <TogetherView onOpenYou={() => changeTab(1)} />
     ) : (
       youPanel
     );
@@ -134,7 +134,7 @@ export default function SidequestApp({
 
       <BottomNavigation
         activeIndex={activeIndex}
-        onChange={setActiveIndex}
+        onChange={changeTab}
         viewer={viewer}
         onConnectPhone={onConnectPhone}
       />
