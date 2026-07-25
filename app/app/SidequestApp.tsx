@@ -7,6 +7,7 @@ import BottomNavigation, {
 import type { AuthenticatedViewer } from "../../lib/base44Auth";
 import { loadMyExperienceGraph } from "../../lib/base44Graph";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
+import SidequestLoadingMark from "../../components/sidequest-loading-mark";
 import { buildWorldGraph } from "./graphData";
 import ChatView from "./ChatView";
 import TogetherView from "./TogetherView";
@@ -78,9 +79,8 @@ export default function SidequestApp({
   if (activeIndex === 1) {
     if (graphState.status === "idle" || graphState.status === "loading") {
       youPanel = (
-        <div className={styles.graphLoading} aria-label="Opening your world">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/sidequest-mark.svg" alt="" width={96} height={96} />
+        <div className={styles.graphLoading} aria-busy="true">
+          <SidequestLoadingMark label="Opening your world" />
         </div>
       );
     } else if (graphState.status === "error") {

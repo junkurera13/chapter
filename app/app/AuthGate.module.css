@@ -11,12 +11,6 @@
   text-align: center;
 }
 
-.mark {
-  width: 112px;
-  height: 112px;
-  animation: breathe 1.8s ease-in-out infinite;
-}
-
 .eyebrow {
   color: rgba(31, 29, 25, 0.48);
   font-size: 11px;
@@ -59,23 +53,4 @@
   color: #fff;
   cursor: pointer;
   font-weight: 650;
-}
-
-@keyframes breathe {
-  0%,
-  100% {
-    opacity: 0.58;
-    transform: scale(0.96);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mark {
-    animation: none;
-  }
 }

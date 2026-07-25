@@ -10,6 +10,7 @@ import {
   loadMyBase44Session,
   type AuthenticatedViewer,
 } from "@/lib/base44Auth";
+import SidequestLoadingMark from "@/components/sidequest-loading-mark";
 
 import SidequestApp from "./SidequestApp";
 import PhoneConnection from "./PhoneConnection";
@@ -117,14 +118,7 @@ export default function AuthGate({
 
   return (
     <main className={styles.statePage} aria-live="polite" aria-busy="true">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        className={styles.mark}
-        src="/sidequest-mark.svg"
-        alt=""
-        width={112}
-        height={112}
-      />
+      <SidequestLoadingMark label="Opening Sidequest" />
     </main>
   );
 }

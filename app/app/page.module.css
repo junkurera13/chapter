@@ -19,13 +19,6 @@
   text-align: center;
 }
 
-.graphLoading img {
-  width: 76px;
-  height: 76px;
-  opacity: 0.18;
-  animation: graphBreath 1.8s ease-in-out infinite;
-}
-
 .graphState {
   color: #25211d;
 }
@@ -80,23 +73,4 @@
 .graphState a:focus-visible {
   outline: 2px solid #9e8265;
   outline-offset: 3px;
-}
-
-@keyframes graphBreath {
-  0%,
-  100% {
-    opacity: 0.12;
-    transform: scale(0.96);
-  }
-
-  50% {
-    opacity: 0.24;
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .graphLoading img {
-    animation: none;
-  }
 }

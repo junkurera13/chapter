@@ -202,21 +202,6 @@
   place-items: center;
 }
 
-.loading span {
-  width: 34px;
-  height: 34px;
-  border: 2px solid rgba(183, 122, 224, 0.18);
-  border-top-color: #b77ae0;
-  border-radius: 50%;
-  animation: together-spin 700ms linear infinite;
-}
-
-@keyframes together-spin {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
 @media (max-width: 620px) {
   .together,
   .state,
@@ -228,11 +213,5 @@
   .header h1,
   .state h1 {
     font-size: 40px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .loading span {
-    animation: none;
   }
 }

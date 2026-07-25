@@ -1,0 +1,31 @@
+.root {
+  display: grid;
+  place-items: center;
+}
+
+.mark {
+  width: var(--sidequest-loading-size);
+  height: var(--sidequest-loading-size);
+  opacity: 0.2;
+  animation: breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: scale(0.96);
+  }
+
+  50% {
+    opacity: 0.28;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark {
+    animation: none;
+    opacity: 0.2;
+  }
+}

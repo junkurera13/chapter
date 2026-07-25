@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import SidequestLoadingMark from "../../components/sidequest-loading-mark";
 import { loadMyConnections } from "../../lib/base44Connections";
 import type { MyConnectionsRecord } from "../../lib/backendTypes";
 import styles from "./TogetherView.module.css";
@@ -46,8 +47,8 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
 
   if (state.status === "loading") {
     return (
-      <div className={styles.loading} aria-label="Opening Together">
-        <span aria-hidden="true" />
+      <div className={styles.loading} aria-busy="true">
+        <SidequestLoadingMark label="Opening Together" />
       </div>
     );
   }

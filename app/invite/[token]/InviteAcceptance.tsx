@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+import SidequestLoadingMark from "@/components/sidequest-loading-mark";
 import {
   clearBase44Session,
   hasBase44Session,
@@ -93,8 +94,8 @@ export default function InviteAcceptance({ token }: { token: string }) {
 
   if (state.status === "loading") {
     return (
-      <main className={styles.page} aria-label="Opening invitation">
-        <div className={styles.loadingOrb} aria-hidden="true" />
+      <main className={styles.page} aria-busy="true">
+        <SidequestLoadingMark label="Opening invitation" />
       </main>
     );
   }
