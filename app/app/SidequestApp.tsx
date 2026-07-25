@@ -27,8 +27,6 @@ export default function SidequestApp({
   onConnectPhone: () => void;
   initialTab?: SidequestTabIndex;
 }) {
-  // The finished product will open on Now. While the personal world is being
-  // designed, open directly into You so the visual can be judged honestly.
   const [activeIndex, setActiveIndex] = useState<SidequestTabIndex>(initialTab);
   const [graphState, setGraphState] = useState<GraphState>({ status: "loading" });
   const worldGraph = useMemo(
@@ -97,11 +95,13 @@ export default function SidequestApp({
       );
     } else if (!worldGraph) {
       youPanel = (
-        <ChatView
-          viewer={viewer}
-          onConnectPhone={onConnectPhone}
-          onConversationAdvanced={loadGraph}
-        />
+        <div className={styles.graphState}>
+          <h1>Your world is waiting.</h1>
+          <p>Talk to Sidequest in Now and it will begin taking shape here.</p>
+          <button type="button" onClick={() => setActiveIndex(0)}>
+            Go to Now
+          </button>
+        </div>
       );
     } else {
       youPanel = <YouView nodes={worldGraph.nodes} edges={worldGraph.edges} />;
@@ -109,7 +109,13 @@ export default function SidequestApp({
   }
 
   const activePanel =
-    activeIndex === 2 ? (
+    activeIndex === 0 ? (
+      <ChatView
+        viewer={viewer}
+        onConnectPhone={onConnectPhone}
+        onConversationAdvanced={loadGraph}
+      />
+    ) : activeIndex === 2 ? (
       <TogetherView onOpenYou={() => setActiveIndex(1)} />
     ) : (
       youPanel

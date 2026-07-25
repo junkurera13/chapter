@@ -8,8 +8,10 @@ import {
 } from "libphonenumber-js";
 import { useMemo, useState } from "react";
 
-import type { AuthenticatedViewer } from "@/lib/base44Auth";
-import { getBase44BrowserClient } from "@/lib/base44BrowserClient";
+import {
+  signOutOfSidequest,
+  type AuthenticatedViewer,
+} from "@/lib/base44Auth";
 
 import styles from "./PhoneConnection.module.css";
 
@@ -81,12 +83,6 @@ export default function PhoneConnection({
     setPhone(new AsYouType(countryCode).input(raw));
   }
 
-  function signOut() {
-    getBase44BrowserClient().auth.logout(
-      new URL("/", window.location.origin).toString(),
-    );
-  }
-
   async function connect(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -139,7 +135,11 @@ export default function PhoneConnection({
 
   return (
     <main className={styles.page}>
-      <button className={styles.account} type="button" onClick={signOut}>
+      <button
+        className={styles.account}
+        type="button"
+        onClick={signOutOfSidequest}
+      >
         <span>{viewer.email}</span>
         <span>Sign out</span>
       </button>

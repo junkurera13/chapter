@@ -6,5 +6,6 @@ export default async function SidequestAppPage({
   searchParams: Promise<{ view?: string | string[] }>;
 }) {
   const { view } = await searchParams;
-  return <AuthGate initialTab={view === "together" ? 2 : 1} />;
+  const initialTab = view === "together" ? 2 : view === "you" ? 1 : 0;
+  return <AuthGate initialTab={initialTab} />;
 }

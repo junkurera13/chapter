@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
-import type { AuthenticatedViewer } from "../../lib/base44Auth";
-import { getBase44BrowserClient } from "../../lib/base44BrowserClient";
+import {
+  signOutOfSidequest,
+  type AuthenticatedViewer,
+} from "../../lib/base44Auth";
 import styles from "./BottomNavigation.module.css";
 
 export const SIDEQUEST_TABS = ["Now", "You", "Together"] as const;
@@ -51,12 +53,6 @@ export default function BottomNavigation({
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [accountOpen]);
-
-  function signOut() {
-    getBase44BrowserClient().auth.logout(
-      new URL("/", window.location.origin).toString(),
-    );
-  }
 
   function selectTab(index: SidequestTabIndex, moveFocus = false) {
     onChange(index);
@@ -148,7 +144,11 @@ export default function BottomNavigation({
                 Connect iMessage
               </button>
             )}
-            <button type="button" className={styles.signOut} onClick={signOut}>
+            <button
+              type="button"
+              className={styles.signOut}
+              onClick={signOutOfSidequest}
+            >
               Sign out
             </button>
           </div>
