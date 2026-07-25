@@ -14,17 +14,28 @@
     </style>
     <script>
       (() => {
-        const APP_ID = "6a606ec9966ada5a7874da07";
         const appOrigin = "https://sidequest-b44.vercel.app";
-        const bridgeOrigin = window.location.origin;
-        const path = window.location.pathname;
         const params = new URLSearchParams(window.location.search);
-
-        // Base44 may land on /oauth-return OR /api/apps/auth/final-callback
-        // (or any path) with access_token after Google. Always hop the token
-        // onto the real Next.js app immediately — do not render UI here.
         const accessToken = params.get("access_token");
+
+        // If a popup lands here with a token, hand it to the Vercel opener.
         if (accessToken) {
+          if (window.opener && !window.opener.closed) {
+            try {
+              window.opener.postMessage(
+                {
+                  access_token: accessToken,
+                  source: "sidequest-bridge",
+                  is_new_user: params.get("is_new_user"),
+                },
+                appOrigin,
+              );
+              window.close();
+              return;
+            } catch (e) {
+              // fall through to redirect
+            }
+          }
           const destination = new URL("/app", appOrigin);
           destination.searchParams.set("access_token", accessToken);
           const isNewUser = params.get("is_new_user");
@@ -35,22 +46,11 @@
           return;
         }
 
-        // Start Google OAuth from this host so OAuth state.domain matches
-        // from_url (avoids "Domain is not valid" for external Vercel apps).
-        if (path === "/oauth-start") {
-          const login = new URL("https://app.base44.com/api/apps/auth/login");
-          login.searchParams.set("app_id", APP_ID);
-          login.searchParams.set(
-            "from_url",
-            `${bridgeOrigin}/oauth-return`,
-          );
-          login.searchParams.set("popup_origin", bridgeOrigin);
-          window.location.replace(login.toString());
-          return;
-        }
-
-        // Anything else: send people to the product.
-        const destination = new URL(path === "/" ? "/" : path, appOrigin);
+        // Default: send people to the real product.
+        const destination = new URL(
+          window.location.pathname === "/" ? "/" : window.location.pathname,
+          appOrigin,
+        );
         destination.search = window.location.search;
         destination.hash = window.location.hash;
         window.location.replace(destination.toString());

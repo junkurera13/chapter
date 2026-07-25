@@ -2,17 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   getBase44GoogleLoginUrl,
-  getBase44ProductionGoogleLoginUrl,
+  getBase44PopupGoogleLoginUrl,
 } from "./base44BrowserClient";
 
 describe("getBase44GoogleLoginUrl", () => {
-  it("routes production Google sign-in through the Base44-hosted oauth-start hop", () => {
-    expect(
-      getBase44GoogleLoginUrl("https://sidequest-b44.vercel.app/app"),
-    ).toBe("https://sidequest-b44.base44.app/oauth-start");
-  });
-
-  it("keeps local OAuth callbacks on the local development server", () => {
+  it("builds a full-page login URL with the requested return", () => {
     const returnUrl = "http://localhost:3000/app";
     const loginUrl = new URL(getBase44GoogleLoginUrl(returnUrl));
 
@@ -24,15 +18,21 @@ describe("getBase44GoogleLoginUrl", () => {
   });
 });
 
-describe("getBase44ProductionGoogleLoginUrl", () => {
-  it("aligns OAuth domain and from_url on the Base44 app host", () => {
-    const loginUrl = new URL(getBase44ProductionGoogleLoginUrl());
+describe("getBase44PopupGoogleLoginUrl", () => {
+  it("sets popup_origin and callback for production popup OAuth", () => {
+    const loginUrl = new URL(
+      getBase44PopupGoogleLoginUrl({
+        callbackUrl: "https://sidequest-b44.vercel.app/auth/callback",
+        popupOrigin: "https://sidequest-b44.vercel.app",
+      }),
+    );
 
+    expect(loginUrl.origin).toBe("https://app.base44.com");
     expect(loginUrl.searchParams.get("from_url")).toBe(
-      "https://sidequest-b44.base44.app/oauth-return",
+      "https://sidequest-b44.vercel.app/auth/callback",
     );
     expect(loginUrl.searchParams.get("popup_origin")).toBe(
-      "https://sidequest-b44.base44.app",
+      "https://sidequest-b44.vercel.app",
     );
     expect(loginUrl.searchParams.get("app_id")).toBeTruthy();
   });
