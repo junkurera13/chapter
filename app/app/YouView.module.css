@@ -58,7 +58,7 @@
 .legend h2 {
   margin: 0;
   color: #2b2824;
-  font-family: var(--font-sidequest-serif), Georgia, serif;
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
   font-size: 18px;
   font-weight: 500;
   letter-spacing: -0.035em;
@@ -272,9 +272,9 @@
   max-width: 270px;
   margin: 8px 0 0;
   color: #25211d;
-  font-family: var(--font-sidequest-serif), Georgia, serif;
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
   font-size: 30px;
-  font-weight: 450;
+  font-weight: 500;
   letter-spacing: -0.035em;
   line-height: 1.04;
 }
