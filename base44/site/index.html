@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
+    <meta name="referrer" content="origin" />
     <title></title>
     <style>
       html,
@@ -15,11 +16,41 @@
     <script>
       (() => {
         const appOrigin = "https://sidequest-b44.vercel.app";
+        const appId = "6a606ec9966ada5a7874da07";
         const params = new URLSearchParams(window.location.search);
         const accessToken = params.get("access_token");
 
-        // If a popup lands here with a token, hand it to the Vercel opener.
+        function safeReturnUrl() {
+          try {
+            const requested = new URL(params.get("return_url") || "/app", appOrigin);
+            return requested.origin === appOrigin
+              ? requested
+              : new URL("/app", appOrigin);
+          } catch {
+            return new URL("/app", appOrigin);
+          }
+        }
+
+        // Base44 derives the OAuth callback domain from the request referrer.
+        // Start auth on this Base44-owned page so that domain is valid.
+        if (window.location.pathname === "/oauth-start") {
+          const returnUrl = new URL("/oauth-return", window.location.origin);
+          returnUrl.searchParams.set("return_url", safeReturnUrl().toString());
+
+          const loginUrl = new URL(
+            "/api/apps/auth/login",
+            "https://app.base44.com",
+          );
+          loginUrl.searchParams.set("app_id", appId);
+          loginUrl.searchParams.set("from_url", returnUrl.toString());
+          window.location.replace(loginUrl.toString());
+          return;
+        }
+
+        // Base44 returns the token here; continue to the requested Vercel page.
         if (accessToken) {
+          const destination = safeReturnUrl();
+
           if (window.opener && !window.opener.closed) {
             try {
               window.opener.postMessage(
@@ -36,7 +67,7 @@
               // fall through to redirect
             }
           }
-          const destination = new URL("/app", appOrigin);
+
           destination.searchParams.set("access_token", accessToken);
           const isNewUser = params.get("is_new_user");
           if (isNewUser != null) {

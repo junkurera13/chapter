@@ -3,7 +3,6 @@ import { createClient, type Base44Client } from "@base44/sdk";
 import { BASE44_APP_ID } from "./base44Client";
 
 const BASE44_ORIGIN = "https://base44.app";
-const BASE44_LOGIN_ORIGIN = "https://app.base44.com";
 const BASE44_APP_ORIGIN = "https://sidequest-b44.base44.app";
 
 let browserClient: Base44Client | null = null;
@@ -30,150 +29,42 @@ export function getBase44GoogleLoginUrl(returnUrl: string) {
   return `${BASE44_ORIGIN}/api/apps/auth/login?${params.toString()}`;
 }
 
-/**
- * Production Google login must use a real popup.
- *
- * Setting `popup_origin` makes Base44 finish OAuth on a "Login complete" page
- * that postMessages the token to `window.opener`. Full-page navigation with
- * `popup_origin` leaves you stuck on that white page (no opener).
- *
- * `popup_origin` must be this app's origin so the message can reach the parent.
- */
-export function getBase44PopupGoogleLoginUrl(options: {
-  callbackUrl: string;
-  popupOrigin: string;
-}) {
-  const params = new URLSearchParams({
-    app_id: BASE44_APP_ID,
-    from_url: options.callbackUrl,
-    popup_origin: options.popupOrigin,
-  });
-  return `${BASE44_LOGIN_ORIGIN}/api/apps/auth/login?${params.toString()}`;
+export function getBase44AuthBridgeUrl(returnUrl: string) {
+  const bridgeUrl = new URL("/oauth-start", BASE44_APP_ORIGIN);
+  bridgeUrl.searchParams.set("return_url", new URL(returnUrl).toString());
+  return bridgeUrl.toString();
 }
 
 export type GoogleLoginResult =
   | { ok: true }
-  | { ok: false; reason: "popup_blocked" | "closed" };
+  | { ok: false; reason: "navigation_failed" };
 
 /**
- * Start Google sign-in. Production uses a popup + postMessage; localhost uses
- * a full-page redirect (allowed by Base44).
+ * Start Google sign-in. Production first visits the Base44-hosted bridge so
+ * Base44 records its own app domain as the OAuth referrer.
  */
 export function startBase44GoogleLogin(options?: {
+  returnUrl?: string;
   onStatus?: (status: "opening" | "waiting") => void;
 }): Promise<GoogleLoginResult> {
   if (typeof window === "undefined") {
-    return Promise.resolve({ ok: false, reason: "closed" });
+    return Promise.resolve({ ok: false, reason: "navigation_failed" });
   }
 
   const origin = window.location.origin;
-  const appUrl = new URL("/app", origin).toString();
-  const callbackUrl = new URL("/auth/callback", origin).toString();
+  const returnUrl = new URL(options?.returnUrl || "/app", origin).toString();
 
-  if (isLocalHostname(window.location.hostname)) {
+  try {
     options?.onStatus?.("opening");
-    window.location.assign(getBase44GoogleLoginUrl(appUrl));
+    window.location.assign(
+      isLocalHostname(window.location.hostname)
+        ? getBase44GoogleLoginUrl(returnUrl)
+        : getBase44AuthBridgeUrl(returnUrl),
+    );
     return Promise.resolve({ ok: true });
+  } catch {
+    return Promise.resolve({ ok: false, reason: "navigation_failed" });
   }
-
-  options?.onStatus?.("opening");
-  const loginUrl = getBase44PopupGoogleLoginUrl({
-    callbackUrl,
-    popupOrigin: origin,
-  });
-
-  const width = 480;
-  const height = 640;
-  const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
-  const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
-  const popup = window.open(
-    loginUrl,
-    "sidequest_base44_google_auth",
-    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`,
-  );
-
-  if (!popup) {
-    return Promise.resolve({ ok: false, reason: "popup_blocked" });
-  }
-
-  options?.onStatus?.("waiting");
-
-  return new Promise((resolve) => {
-    let settled = false;
-
-    const finish = (result: GoogleLoginResult) => {
-      if (settled) return;
-      settled = true;
-      window.removeEventListener("message", onMessage);
-      window.clearInterval(pollTimer);
-      try {
-        if (!popup.closed) popup.close();
-      } catch {
-        // ignore
-      }
-      resolve(result);
-    };
-
-    const acceptToken = (token: string) => {
-      if (!token) return;
-      try {
-        window.localStorage.setItem("base44_access_token", token);
-        window.localStorage.setItem("token", token);
-      } catch {
-        // ignore storage failures; URL handoff in callback may still work
-      }
-      finish({ ok: true });
-      window.location.assign(appUrl);
-    };
-
-    const onMessage = (event: MessageEvent) => {
-      const allowedOrigins = new Set([
-        origin,
-        BASE44_LOGIN_ORIGIN,
-        BASE44_ORIGIN,
-        BASE44_APP_ORIGIN,
-      ]);
-      if (!allowedOrigins.has(event.origin)) return;
-
-      const data = event.data;
-      if (!data || typeof data !== "object") return;
-      const token =
-        "access_token" in data && typeof data.access_token === "string"
-          ? data.access_token
-          : null;
-      if (!token) return;
-
-      acceptToken(token);
-    };
-
-    // If Base44 redirects the popup onto our /auth/callback with the token,
-    // the callback page postMessages us. Also detect same-origin token URLs.
-    const pollTimer = window.setInterval(() => {
-      if (popup.closed) {
-        // Parent may already have the token from postMessage.
-        if (!settled && window.localStorage.getItem("base44_access_token")) {
-          finish({ ok: true });
-          window.location.assign(appUrl);
-          return;
-        }
-        finish({ ok: false, reason: "closed" });
-        return;
-      }
-
-      try {
-        const popupUrl = popup.location.href;
-        if (!popupUrl || popupUrl === "about:blank") return;
-        const parsed = new URL(popupUrl);
-        if (parsed.origin !== origin) return;
-        const token = parsed.searchParams.get("access_token");
-        if (token) acceptToken(token);
-      } catch {
-        // Cross-origin until Base44 returns to our host — expected.
-      }
-    }, 400);
-
-    window.addEventListener("message", onMessage);
-  });
 }
 
 export function getBase44BrowserClient() {

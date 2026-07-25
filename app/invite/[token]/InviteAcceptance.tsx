@@ -9,7 +9,7 @@ import {
   isBase44AuthError,
 } from "@/lib/base44Auth";
 import { rememberBase44AuthReturnPath } from "@/lib/base44AuthReturn";
-import { getBase44GoogleLoginUrl } from "@/lib/base44BrowserClient";
+import { getBase44AuthBridgeUrl } from "@/lib/base44BrowserClient";
 import {
   acceptConnectionInvite,
   loadConnectionInvite,
@@ -62,7 +62,9 @@ export default function InviteAcceptance({ token }: { token: string }) {
     const returnPath = window.location.pathname;
     rememberBase44AuthReturnPath(returnPath);
     window.location.assign(
-      getBase44GoogleLoginUrl(new URL(returnPath, window.location.origin).toString()),
+      getBase44AuthBridgeUrl(
+        new URL(returnPath, window.location.origin).toString(),
+      ),
     );
   }
 

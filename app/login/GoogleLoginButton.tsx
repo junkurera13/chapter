@@ -21,17 +21,12 @@ export function GoogleLoginButton() {
     });
 
     if (result.ok) {
-      // Full-page local redirect already navigated, or production popup
-      // handler navigates to /app after saving the token.
+      // The full-page OAuth flow has already started.
       return;
     }
 
     setLeaving(false);
-    if (result.reason === "popup_blocked") {
-      setError("Allow popups for this site, then try Google again.");
-      return;
-    }
-    setError("Google sign-in was closed before it finished. Try again.");
+    setError("Google sign-in couldn’t start. Try again.");
   }
 
   return (
