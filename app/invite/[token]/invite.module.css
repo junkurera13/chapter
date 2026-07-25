@@ -54,17 +54,8 @@
   background: linear-gradient(145deg, #ead7f5, #b77ae0 64%, #7f4dac);
 }
 
-.eyebrow {
-  margin: 0;
-  color: rgba(74, 52, 82, 0.5);
-  font-size: 10px;
-  font-weight: 680;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
 .card h1 {
-  margin: 13px 0 0;
+  margin: 0;
   color: #25211d;
   font-family: var(--font-sidequest-serif), Georgia, serif;
   font-size: clamp(37px, 7vw, 54px);

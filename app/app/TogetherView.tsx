@@ -56,7 +56,6 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
   if (state.status === "error") {
     return (
       <section className={styles.state}>
-        <p className={styles.eyebrow}>Together</p>
         <h1>This connection slipped.</h1>
         <button
           type="button"
@@ -79,7 +78,6 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
           <span />
           <span />
         </div>
-        <p className={styles.eyebrow}>Together</p>
         <h1>Invite someone you know.</h1>
         <p className={styles.stateCopy}>
           Open a person in You and send them a private link. When they accept,
@@ -95,7 +93,6 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
   return (
     <section className={styles.together}>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>Together</p>
         <h1>People you’re connected with.</h1>
         <p>Shared experiences will live here later.</p>
       </header>

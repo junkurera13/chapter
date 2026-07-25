@@ -86,7 +86,6 @@ export default function SidequestApp({
     } else if (graphState.status === "error") {
       youPanel = (
         <div className={styles.graphState} role="alert">
-          <p className={styles.graphEyebrow}>The door stuck</p>
           <h1>Your world couldn&apos;t open.</h1>
           <button type="button" onClick={queueGraphLoad}>
             Try again

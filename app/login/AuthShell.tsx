@@ -3,12 +3,10 @@ import Link from "next/link";
 import styles from "./AuthShell.module.css";
 
 export default function AuthShell({
-  eyebrow,
   title,
   subtitle,
   children,
 }: {
-  eyebrow?: string;
   title: string;
   subtitle?: string;
   children: React.ReactNode;
@@ -29,7 +27,6 @@ export default function AuthShell({
       </header>
 
       <section className={styles.content} aria-labelledby="auth-title">
-        {eyebrow ? <p className={styles.eyebrow}>{eyebrow}</p> : null}
         <h1 id="auth-title" className={styles.title}>
           {title}
         </h1>

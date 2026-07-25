@@ -239,7 +239,6 @@ export default function ChatView({
   return (
     <div className={styles.chat}>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>Conversation with Sidequest</p>
         <h1 className={styles.title}>Say Hi.</h1>
         <p className={styles.supporting}>
           Tell me about an experience you’ll never forget. Messy and long is perfect.

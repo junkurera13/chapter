@@ -105,7 +105,6 @@ export default function AuthGate({
     return (
       <main className={styles.statePage}>
         <div className={styles.stateCard}>
-          <p className={styles.eyebrow}>The door stuck</p>
           <h1>Your world is still here.</h1>
           <p>Sidequest couldn&apos;t reach it just now. Try opening it again.</p>
           <button type="button" onClick={() => void retry()}>

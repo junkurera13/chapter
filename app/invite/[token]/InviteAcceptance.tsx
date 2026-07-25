@@ -104,7 +104,6 @@ export default function InviteAcceptance({ token }: { token: string }) {
     return (
       <main className={styles.page}>
         <section className={styles.card}>
-          <p className={styles.eyebrow}>Sidequest invitation</p>
           <h1>That link has gone quiet.</h1>
           <p className={styles.copy}>{state.message}</p>
           <Link className={styles.secondaryAction} href="/">
@@ -123,7 +122,6 @@ export default function InviteAcceptance({ token }: { token: string }) {
             <span />
             <span />
           </div>
-          <p className={styles.eyebrow}>Connected</p>
           <h1>You and {state.friendName} are together now.</h1>
           <p className={styles.copy}>
             You each have a person node for the other. Nothing from either
@@ -142,7 +140,6 @@ export default function InviteAcceptance({ token }: { token: string }) {
     return (
       <main className={styles.page}>
         <section className={styles.card}>
-          <p className={styles.eyebrow}>Sidequest invitation</p>
           <h1>This invitation is no longer open.</h1>
           <p className={styles.copy}>Ask your friend to send a fresh link.</p>
         </section>
@@ -161,7 +158,6 @@ export default function InviteAcceptance({ token }: { token: string }) {
           <span />
           <span />
         </div>
-        <p className={styles.eyebrow}>A private Sidequest invitation</p>
         <h1>{inviterName} found {invitedName} in their Sidequest.</h1>
         <p className={styles.copy}>
           Connect and you’ll each appear in the other’s Sidequest. Your memories
