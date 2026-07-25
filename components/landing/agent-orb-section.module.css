@@ -96,7 +96,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
+  appearance: none;
   color: #1c1c19;
+  cursor: pointer;
   font-size: 0.91rem;
   line-height: 1;
   text-decoration: none;

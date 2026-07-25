@@ -98,7 +98,7 @@ export default function PhoneConnection({
 
     const accessToken = getAccessToken();
     if (!accessToken) {
-      window.location.assign("/login");
+      window.location.assign("/?auth=1");
       return;
     }
 
@@ -119,7 +119,7 @@ export default function PhoneConnection({
       };
 
       if (response.status === 401) {
-        window.location.assign("/login");
+        window.location.assign("/?auth=1");
         return;
       }
       if (!response.ok || !payload.assignedPhone || !payload.viewer) {

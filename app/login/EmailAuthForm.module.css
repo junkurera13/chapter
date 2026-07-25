@@ -14,7 +14,7 @@
   position: absolute;
   top: 50%;
   left: 18px;
-  color: rgba(28, 28, 25, 0.4);
+  color: rgba(28, 28, 25, 0.58);
   font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
   font-size: 15px;
   pointer-events: none;
@@ -29,7 +29,7 @@
 .input {
   width: 100%;
   padding: 26px 18px 12px;
-  border: 1px solid rgba(28, 28, 25, 0.12);
+  border: 1px solid rgba(28, 28, 25, 0.28);
   border-radius: 999px;
   background: #fff;
   color: var(--ink, #1c1c19);

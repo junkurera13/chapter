@@ -32,7 +32,7 @@ export default function AuthGate({
 
   async function resolveSession() {
     if (!hasBase44Session()) {
-      router.replace("/login");
+      router.replace("/?auth=1");
       return null;
     }
 
@@ -41,7 +41,7 @@ export default function AuthGate({
     } catch (error) {
       if (isBase44AuthError(error)) {
         clearBase44Session();
-        router.replace("/login");
+        router.replace("/?auth=1");
         return null;
       }
 

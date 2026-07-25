@@ -1,11 +1,8 @@
 import Image from "next/image";
-import Link from "next/link";
+
+import { AuthOpenButton } from "@/app/LandingAuth";
 
 import styles from "./agent-orb-section.module.css";
-
-type AgentOrbSectionProps = {
-  startHref: string;
-};
 
 function XIcon() {
   return (
@@ -69,9 +66,7 @@ function EmailIcon() {
   );
 }
 
-export default function AgentOrbSection({
-  startHref,
-}: AgentOrbSectionProps) {
+export default function AgentOrbSection() {
   return (
     <section
       className={styles.section}
@@ -90,15 +85,15 @@ export default function AgentOrbSection({
         </div>
 
         <div className={styles.footerActions}>
-          <a href={startHref} className={styles.textAction}>
+          <AuthOpenButton className={styles.textAction}>
             <span className={styles.actionMark} aria-hidden="true">
               <Image src="/sidequest-mark.svg" alt="" width={28} height={28} />
             </span>
             Get Started
-          </a>
-          <Link href="/login" className={styles.loginAction}>
+          </AuthOpenButton>
+          <AuthOpenButton className={styles.loginAction}>
             Log in
-          </Link>
+          </AuthOpenButton>
         </div>
 
         <div className={styles.socialActions} aria-label="Sidequest social links">

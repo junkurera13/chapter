@@ -208,7 +208,7 @@ export default function ChatView({
       });
       const payload = (await response.json()) as SendMessageResult;
       if (response.status === 401) {
-        window.location.assign("/login");
+        window.location.assign("/?auth=1");
         return;
       }
       if (!response.ok) {
