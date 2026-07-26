@@ -28,7 +28,10 @@
   background: transparent;
   cursor: pointer;
   line-height: 0;
-  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  scale: 1;
+  transform-origin: center;
+  transition: scale 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: scale;
 }
 
 .orbVideo {
@@ -38,6 +41,8 @@
   clip-path: circle(40% at center);
   object-fit: contain;
   pointer-events: none;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .orbAction:focus-visible {
@@ -46,7 +51,7 @@
 }
 
 .orbAction:active {
-  transform: scale(0.97);
+  scale: 0.97;
   transition-duration: 120ms;
 }
 
@@ -240,11 +245,11 @@
 
 @media (hover: hover) and (pointer: fine) {
   .orbAction:hover {
-    transform: scale(1.045);
+    scale: 1.045;
   }
 
   .orbAction:hover:active {
-    transform: scale(0.97);
+    scale: 0.97;
   }
 
   .textAction:hover {
@@ -318,12 +323,9 @@
     transition: none;
   }
 
-  .orbAction:active {
-    transform: none;
-  }
-
+  .orbAction:active,
   .orbAction:hover {
-    transform: none;
+    scale: 1;
   }
 
   .textAction,

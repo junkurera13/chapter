@@ -53,7 +53,10 @@ export default function AgentOrbSection() {
           className={styles.orbAction}
           aria-label="Get started with Chapter"
         >
-          <AgentOrbVideo />
+          <AgentOrbVideo
+            src="/you-agent-orb.mp4"
+            poster="/you-agent-orb-poster.jpg"
+          />
         </AuthOpenButton>
         <h2 id="agent-orb-invitation" className={styles.invitation}>
           See where your world takes you.

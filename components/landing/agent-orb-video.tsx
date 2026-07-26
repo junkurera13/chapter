@@ -6,7 +6,13 @@ import styles from "./agent-orb-section.module.css";
 
 const ORB_PLAYBACK_RATE = 0.9;
 
-export default function AgentOrbVideo() {
+export default function AgentOrbVideo({
+  src = "/agent-orb.mp4",
+  poster = "/agent-orb-poster.jpg",
+}: {
+  src?: string;
+  poster?: string;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -67,11 +73,11 @@ export default function AgentOrbVideo() {
       loop
       playsInline
       preload="metadata"
-      poster="/agent-orb-poster.jpg"
+      poster={poster}
       aria-hidden="true"
       tabIndex={-1}
     >
-      <source src="/agent-orb.mp4" type="video/mp4" />
+      <source src={src} type="video/mp4" />
     </video>
   );
 }

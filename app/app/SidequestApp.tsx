@@ -8,6 +8,7 @@ import type { AuthenticatedViewer } from "../../lib/base44Auth";
 import { loadMyExperienceGraph } from "../../lib/base44Graph";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
 import SidequestLoadingMark from "../../components/sidequest-loading-mark";
+import AgentOrbVideo from "../../components/landing/agent-orb-video";
 import { buildWorldGraph } from "./graphData";
 import ChatView from "./ChatView";
 import TogetherView from "./TogetherView";
@@ -23,16 +24,19 @@ const GRAPH_RETRY_MS = 5000;
 
 export default function SidequestApp({
   viewer,
+  initialGraph,
   onConnectPhone,
   initialTab = 0,
 }: {
   viewer: AuthenticatedViewer;
+  initialGraph: ExperienceGraphRecord;
   onConnectPhone: () => void;
   initialTab?: SidequestTabIndex;
 }) {
   const [activeIndex, setActiveIndex] = useState<SidequestTabIndex>(initialTab);
   const [graphState, setGraphState] = useState<GraphState>({
-    status: "loading",
+    status: "ready",
+    graph: initialGraph,
   });
   const worldLocked =
     graphState.status !== "ready" || graphState.graph.memoryCount === 0;
@@ -106,11 +110,18 @@ export default function SidequestApp({
     );
   } else if (graphState.graph.memoryCount === 0) {
     youPanel = (
-      <ChatView
-        viewer={viewer}
-        onConnectPhone={onConnectPhone}
-        onConversationAdvanced={queueGraphLoad}
-      />
+      <div className={styles.youOnboarding}>
+        <div
+          className={styles.youOnboardingOrb}
+          role="img"
+          aria-label="Chapter"
+        >
+          <AgentOrbVideo
+            src="/you-agent-orb.mp4"
+            poster="/you-agent-orb-poster.jpg"
+          />
+        </div>
+      </div>
     );
   } else if (!worldGraph) {
     youPanel = (

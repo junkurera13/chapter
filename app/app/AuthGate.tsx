@@ -10,6 +10,8 @@ import {
   loadMyBase44Session,
   type AuthenticatedViewer,
 } from "@/lib/base44Auth";
+import { loadMyExperienceGraph } from "@/lib/base44Graph";
+import type { ExperienceGraphRecord } from "@/lib/backendTypes";
 import SidequestLoadingMark from "@/components/sidequest-loading-mark";
 
 import SidequestApp from "./SidequestApp";
@@ -19,7 +21,11 @@ import styles from "./AuthGate.module.css";
 
 type GateState =
   | { status: "checking" }
-  | { status: "ready"; viewer: AuthenticatedViewer }
+  | {
+      status: "ready";
+      viewer: AuthenticatedViewer;
+      graph: ExperienceGraphRecord;
+    }
   | { status: "error" };
 
 export default function AuthGate({
@@ -31,14 +37,18 @@ export default function AuthGate({
   const [state, setState] = useState<GateState>({ status: "checking" });
   const [phoneConnectionOpen, setPhoneConnectionOpen] = useState(false);
 
-  async function resolveSession() {
+  async function resolveApp() {
     if (!hasBase44Session()) {
       router.replace("/?auth=1");
       return null;
     }
 
     try {
-      return await loadMyBase44Session();
+      const [viewer, graph] = await Promise.all([
+        loadMyBase44Session(),
+        loadMyExperienceGraph(),
+      ]);
+      return { viewer, graph };
     } catch (error) {
       if (isBase44AuthError(error)) {
         clearBase44Session();
@@ -56,8 +66,8 @@ export default function AuthGate({
 
     async function checkSession() {
       try {
-        const viewer = await resolveSession();
-        if (active && viewer) setState({ status: "ready", viewer });
+        const app = await resolveApp();
+        if (active && app) setState({ status: "ready", ...app });
       } catch {
         if (active) setState({ status: "error" });
       }
@@ -67,7 +77,7 @@ export default function AuthGate({
     return () => {
       active = false;
     };
-    // `resolveSession` intentionally reads the current browser token once on
+    // `resolveApp` intentionally reads the current browser token once on
     // mount. Router is the only reactive dependency in that boundary.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
@@ -75,8 +85,8 @@ export default function AuthGate({
   async function retry() {
     setState({ status: "checking" });
     try {
-      const viewer = await resolveSession();
-      if (viewer) setState({ status: "ready", viewer });
+      const app = await resolveApp();
+      if (app) setState({ status: "ready", ...app });
     } catch {
       setState({ status: "error" });
     }
@@ -87,7 +97,9 @@ export default function AuthGate({
       return (
         <PhoneConnection
           viewer={state.viewer}
-          onConnected={(viewer) => setState({ status: "ready", viewer })}
+          onConnected={(viewer) =>
+            setState({ status: "ready", viewer, graph: state.graph })
+          }
           onSkip={() => setPhoneConnectionOpen(false)}
         />
       );
@@ -95,6 +107,7 @@ export default function AuthGate({
     return (
       <SidequestApp
         viewer={state.viewer}
+        initialGraph={state.graph}
         onConnectPhone={() => setPhoneConnectionOpen(true)}
         initialTab={initialTab}
       />
