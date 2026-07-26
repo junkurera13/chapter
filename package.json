@@ -12,6 +12,7 @@
   "dependencies": {
     "@base44/sdk": "^0.8.3",
     "@chat-adapter/state-memory": "^4.34.0",
+    "@openrouter/ai-sdk-provider": "^3.0.0",
     "@photon-ai/chat-adapter-imessage": "^3.0.1",
     "@types/three": "^0.184.1",
     "ai": "^7.0.37",

@@ -27,13 +27,14 @@ Base44 owns authenticated accounts, private image storage, phone-account
 linking, source memories, conversation records, graph validation, connection
 invitations, accepted connections, and persistence. Seven Base44 entities
 model that world. Chapter’s durable conversation and multimodal extraction run
-as an Eve agent on Vercel, using `openai/gpt-5.4-mini` through Vercel AI
-Gateway. `sidequest-memory` preserves sources before model work and validates
-the structured graph before persistence; `sidequest-message` provides
-idempotent web and iMessage processing and stores the opaque Eve continuation
-cursor; `sidequest-data` provides authenticated ownership, graph retrieval,
-hashed invite handling, and reciprocal nodes. Direct entity access is
-restricted by access rules.
+as an Eve agent on Vercel, calling two 2026 models directly through OpenRouter:
+`moonshotai/kimi-k2.6` for image-aware memory extraction and
+`deepseek/deepseek-v4-flash` for text conversations. `sidequest-memory`
+preserves sources before model work and validates the structured graph before
+persistence; `sidequest-message` provides idempotent web and iMessage
+processing and stores the opaque Eve continuation cursor; `sidequest-data`
+provides authenticated ownership, graph retrieval, hashed invite handling,
+and reciprocal nodes. Direct entity access is restricted by access rules.
 
 Photon is deliberately narrow: it connects Apple Messages to the signed
 Next.js webhook, while Base44 remains the source of truth. The product currently
@@ -47,7 +48,7 @@ intentionally not represented by a placeholder.
 - [x] Authentication & user management
 - [x] Database / entities
 - [x] Backend functions (Deno)
-- [x] AI / LLM structured extraction (Eve + Vercel AI Gateway)
+- [x] AI / LLM structured extraction (Eve + OpenRouter)
 - [ ] Real-time subscriptions
 - [x] File & media storage
 

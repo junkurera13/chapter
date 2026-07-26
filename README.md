@@ -8,8 +8,10 @@ growing picture in the authenticated **You** view.
 This is the Base44 Backend Build-Off edition. Base44 owns authentication,
 private file storage, account-to-phone linking, conversations, autobiographical
 memory sources, graph validation, and persistence. Chapter itself is an Eve
-agent using `openai/gpt-5.4-mini` through Vercel AI Gateway. Photon is used only
-as the bridge to iMessage. Named people become distinct nodes, and a private
+agent using 2026 models directly through OpenRouter:
+`moonshotai/kimi-k2.6` for multimodal memory extraction and
+`deepseek/deepseek-v4-flash` for text conversations. Photon is used only as the
+bridge to iMessage. Named people become distinct nodes, and a private
 connection invite can link two authenticated accounts without exposing either
 person’s memories.
 
@@ -30,7 +32,7 @@ Open `/app` to see the authenticated product and private **You** world.
 Google sign-in -> Base44 account + private uploads
                          |
                          v
-web / iMessage <-> Next.js <-> Eve <-> Vercel AI Gateway
+web / iMessage <-> Next.js <-> Eve <-> OpenRouter
                          |
                          v
               Base44 conversation + memory graph
@@ -44,7 +46,9 @@ People node -> hashed private invite -> verified friend -> reciprocal nodes
 - `sidequest-data` handles authenticated session ownership, phone-account
   linking, private graph retrieval, connection invites, and reciprocal nodes.
 - Eve owns the durable Chapter conversation and structured multimodal memory
-  extraction. The same Eve session continues across the web and iMessage.
+  extraction. It routes image-bearing extraction sessions to Kimi K2.6 and
+  text conversation sessions to DeepSeek V4 Flash through OpenRouter. The same
+  Eve conversation session continues across the web and iMessage.
 - `sidequest-memory` preserves text and private-image sources before extraction,
   signs short-lived image URLs, then validates and persists Eve’s result.
 - `sidequest-message` deduplicates inbound messages, stores Eve’s opaque session
@@ -56,8 +60,8 @@ People node -> hashed private invite -> verified friend -> reciprocal nodes
 
 ## Local development
 
-Requires Node.js 24, a Base44 account, Vercel authentication for AI Gateway,
-and a shared `SIDEQUEST_INTERNAL_SECRET`.
+Requires Node.js 24, a Base44 account, an OpenRouter API key, and a shared
+`SIDEQUEST_INTERNAL_SECRET`.
 
 ```bash
 npm install
@@ -72,8 +76,8 @@ NEXT_PUBLIC_BASE44_APP_ID=your_app_id npm run dev
 ```
 
 The Photon bridge also needs its project credentials and webhook secret. Eve
-automatically uses the Vercel AI Gateway on Vercel; local development uses the
-linked Vercel project credentials. Never commit those values.
+reads `OPENROUTER_API_KEY` at runtime and calls OpenRouter directly. Never
+commit that value.
 
 ## Verification
 

@@ -74,6 +74,30 @@ function sessionState(cursor?: EveSessionCursor): SessionState | undefined {
   };
 }
 
+function extractionFromMessage(message?: string) {
+  const trimmed = message?.trim();
+  if (!trimmed) return undefined;
+
+  const candidates = [trimmed];
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)?.[1];
+  if (fenced) candidates.push(fenced.trim());
+  const objectStart = trimmed.indexOf("{");
+  const objectEnd = trimmed.lastIndexOf("}");
+  if (objectStart >= 0 && objectEnd > objectStart) {
+    candidates.push(trimmed.slice(objectStart, objectEnd + 1));
+  }
+
+  for (const candidate of new Set(candidates)) {
+    try {
+      const parsed = memoryExtractionSchema.safeParse(JSON.parse(candidate));
+      if (parsed.success) return parsed.data;
+    } catch {
+      // Try the next bounded representation.
+    }
+  }
+  return undefined;
+}
+
 export async function runSidequestTurn(args: {
   authUserId?: string;
   phone?: string;
@@ -157,13 +181,15 @@ export async function extractAndPersistMemory(args: {
         outputSchema: memoryExtractionSchema,
         clientContext:
           attempt === 0
-            ? "This is a dedicated structured memory-extraction turn. Return only the requested structured result and do not call tools."
-            : "Retry this dedicated extraction from the supplied sources. You must satisfy the structured output schema. Do not call tools or answer conversationally.",
+            ? "This is a dedicated structured memory-extraction turn. Call final_output exactly once with the requested result. Do not call application tools or answer conversationally."
+            : "Retry this dedicated extraction from the supplied sources. You must satisfy the structured output schema by calling final_output exactly once. Do not call application tools or answer conversationally.",
       });
       const result = await response.result();
       terminalStatus = result.status;
       if (result.data) {
         extraction = memoryExtractionSchema.parse(result.data);
+      } else {
+        extraction = extractionFromMessage(result.message);
       }
     }
     if (!extraction) {

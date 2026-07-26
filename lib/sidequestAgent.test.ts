@@ -40,6 +40,45 @@ beforeEach(() => {
 });
 
 describe("extractAndPersistMemory", () => {
+  it("accepts schema-valid JSON text when the model omits final_output", async () => {
+    prepareMemory.mockResolvedValue({
+      alreadyComplete: false,
+      memoryId: "memory_text_fallback",
+      prompt: "Extract this memory.",
+      attachments: [],
+    });
+    send.mockResolvedValueOnce({
+      result: vi.fn().mockResolvedValue({
+        status: "waiting",
+        data: undefined,
+        message: `\`\`\`json\n${JSON.stringify(extraction)}\n\`\`\``,
+      }),
+    });
+    completeMemory.mockResolvedValue({
+      memoryId: "memory_text_fallback",
+      ...extraction,
+      created: true,
+    });
+
+    await expect(
+      extractAndPersistMemory({
+        authUserId: "user_text_fallback",
+        clientRequestId: "request_text_fallback",
+        source: "reflection",
+        text: "A rainy afternoon in Busan.",
+        images: [],
+        accessToken: "access-token",
+      }),
+    ).resolves.toMatchObject({ created: true });
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(completeMemory).toHaveBeenCalledWith(
+      expect.objectContaining({ extraction }),
+      "access-token",
+    );
+    expect(failMemory).not.toHaveBeenCalled();
+  });
+
   it("retries a fresh Eve session when the first structured result is missing", async () => {
     prepareMemory.mockResolvedValue({
       alreadyComplete: false,
