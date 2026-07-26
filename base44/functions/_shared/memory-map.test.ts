@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildMemoryExtractionPrompt,
   collapseMemoryGraphRows,
+  memoryExtractionSchema,
   prepareMemoryExtraction,
   type MemorySourceDescriptor,
 } from "../../shared/memory-map";
@@ -43,6 +44,14 @@ function rawExtraction(
 }
 
 describe("memory map extraction guardrails", () => {
+  it("keeps provider-rejected collection constraints out of the LLM schema", () => {
+    const serialized = JSON.stringify(memoryExtractionSchema);
+
+    expect(serialized).not.toContain('"additionalProperties"');
+    expect(serialized).not.toContain('"minItems"');
+    expect(serialized).not.toContain('"maxItems"');
+  });
+
   it("keeps visible facts but rejects feelings, interests, and patterns inferred from pixels alone", () => {
     const imageSource: MemorySourceDescriptor = {
       ref: "image:0",

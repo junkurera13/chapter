@@ -161,19 +161,19 @@ const MAX_NODES = 24;
 const MAX_EDGES = 48;
 
 export const memoryExtractionSchema = {
+  // Base44's current LLM provider rejects this nested schema with
+  // INVALID_ARGUMENT when additionalProperties/minItems/maxItems are present.
+  // prepareMemoryExtraction enforces the array limits and discards unknown or
+  // invalid values after generation, so keep the provider-facing schema lean.
   type: "object",
-  additionalProperties: false,
   required: ["title", "summary", "nodes", "edges"],
   properties: {
     title: { type: "string" },
     summary: { type: "string" },
     nodes: {
       type: "array",
-      minItems: 1,
-      maxItems: MAX_NODES,
       items: {
         type: "object",
-        additionalProperties: false,
         required: [
           "local_key",
           "existing_key",
@@ -215,10 +215,8 @@ export const memoryExtractionSchema = {
     },
     edges: {
       type: "array",
-      maxItems: MAX_EDGES,
       items: {
         type: "object",
-        additionalProperties: false,
         required: [
           "from_key",
           "to_key",
