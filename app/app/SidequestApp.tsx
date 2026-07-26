@@ -15,24 +15,28 @@ import YouView from "./YouView";
 import styles from "./page.module.css";
 
 type GraphState =
-  | { status: "idle" }
   | { status: "loading" }
   | { status: "ready"; graph: ExperienceGraphRecord }
   | { status: "error" };
 
+const GRAPH_RETRY_MS = 5000;
+
 export default function SidequestApp({
   viewer,
   onConnectPhone,
-  initialTab = 1,
+  initialTab = 0,
 }: {
   viewer: AuthenticatedViewer;
   onConnectPhone: () => void;
   initialTab?: SidequestTabIndex;
 }) {
   const [activeIndex, setActiveIndex] = useState<SidequestTabIndex>(initialTab);
-  const [graphState, setGraphState] = useState<GraphState>(
-    initialTab === 1 ? { status: "loading" } : { status: "idle" },
-  );
+  const [graphState, setGraphState] = useState<GraphState>({
+    status: "loading",
+  });
+  const worldLocked =
+    graphState.status !== "ready" || graphState.graph.memoryCount === 0;
+  const displayedIndex = worldLocked ? 0 : activeIndex;
   const worldGraph = useMemo(
     () =>
       graphState.status === "ready" && graphState.graph.nodes.length > 0
@@ -44,24 +48,26 @@ export default function SidequestApp({
   const queueGraphLoad = useCallback(() => {
     setGraphState({ status: "loading" });
   }, []);
-  const changeTab = useCallback((nextIndex: SidequestTabIndex) => {
-    if (nextIndex === 1) {
-      setGraphState((current) =>
-        current.status === "idle" ? { status: "loading" } : current,
-      );
-    }
-    setActiveIndex(nextIndex);
-  }, []);
+  const changeTab = useCallback(
+    (nextIndex: SidequestTabIndex) => {
+      if (worldLocked && nextIndex !== 0) return;
+      setActiveIndex(nextIndex);
+    },
+    [worldLocked],
+  );
 
   useEffect(() => {
-    if (activeIndex !== 1 || graphState.status !== "loading") return;
+    if (graphState.status !== "loading") return;
 
     let active = true;
 
     async function openGraph() {
       try {
         const graph = await loadMyExperienceGraph();
-        if (active) setGraphState({ status: "ready", graph });
+        if (active) {
+          setGraphState({ status: "ready", graph });
+          if (graph.memoryCount === 0) setActiveIndex(0);
+        }
       } catch (error) {
         console.error("Could not load the Sidequest experience graph", error);
         if (active) setGraphState({ status: "error" });
@@ -73,49 +79,58 @@ export default function SidequestApp({
     return () => {
       active = false;
     };
-  }, [activeIndex, graphState.status]);
+  }, [graphState.status]);
 
-  let youPanel = null;
-  if (activeIndex === 1) {
-    if (graphState.status === "idle" || graphState.status === "loading") {
-      youPanel = (
-        <div className={styles.graphLoading} aria-busy="true">
-          <SidequestLoadingMark label="Opening your world" />
-        </div>
-      );
-    } else if (graphState.status === "error") {
-      youPanel = (
-        <div className={styles.graphState} role="alert">
-          <h1>Your world couldn&apos;t open.</h1>
-          <button type="button" onClick={queueGraphLoad}>
-            Try again
-          </button>
-        </div>
-      );
-    } else if (!worldGraph) {
-      youPanel = (
-        <div className={styles.graphState}>
-          <h1>Your world is waiting.</h1>
-          <p>Talk to Chapter in Now and it will begin taking shape here.</p>
-          <button type="button" onClick={() => setActiveIndex(0)}>
-            Go to Now
-          </button>
-        </div>
-      );
-    } else {
-      youPanel = <YouView nodes={worldGraph.nodes} edges={worldGraph.edges} />;
-    }
-  }
+  useEffect(() => {
+    if (graphState.status !== "error") return;
 
-  const activePanel =
-    activeIndex === 0 ? (
+    const retry = window.setTimeout(queueGraphLoad, GRAPH_RETRY_MS);
+    return () => window.clearTimeout(retry);
+  }, [graphState.status, queueGraphLoad]);
+
+  let youPanel;
+  if (graphState.status === "loading") {
+    youPanel = (
+      <div className={styles.graphLoading} aria-busy="true">
+        <SidequestLoadingMark label="Opening your world" />
+      </div>
+    );
+  } else if (graphState.status === "error") {
+    youPanel = (
+      <div className={styles.graphState} role="alert">
+        <h1>Your world couldn&apos;t open.</h1>
+        <button type="button" onClick={queueGraphLoad}>
+          Try again
+        </button>
+      </div>
+    );
+  } else if (graphState.graph.memoryCount === 0) {
+    youPanel = (
       <ChatView
         viewer={viewer}
         onConnectPhone={onConnectPhone}
-        onConversationAdvanced={() => setGraphState({ status: "idle" })}
+        onConversationAdvanced={queueGraphLoad}
       />
-    ) : activeIndex === 2 ? (
-      <TogetherView onOpenYou={() => changeTab(1)} />
+    );
+  } else if (!worldGraph) {
+    youPanel = (
+      <div className={styles.graphLoading} aria-busy="true">
+        <SidequestLoadingMark label="Shaping your world" />
+      </div>
+    );
+  } else {
+    youPanel = <YouView nodes={worldGraph.nodes} edges={worldGraph.edges} />;
+  }
+
+  const activePanel =
+    displayedIndex === 1 ? (
+      <ChatView
+        viewer={viewer}
+        onConnectPhone={onConnectPhone}
+        onConversationAdvanced={queueGraphLoad}
+      />
+    ) : displayedIndex === 2 ? (
+      <TogetherView onOpenYou={() => changeTab(0)} />
     ) : (
       youPanel
     );
@@ -124,16 +139,17 @@ export default function SidequestApp({
     <main className={styles.canvas} aria-label="Chapter app">
       <section
         className={styles.panel}
-        id={`sidequest-panel-${activeIndex}`}
+        id={`sidequest-panel-${displayedIndex}`}
         role="tabpanel"
-        aria-labelledby={`sidequest-tab-${activeIndex}`}
+        aria-labelledby={`sidequest-tab-${displayedIndex}`}
       >
         {activePanel}
       </section>
 
       <BottomNavigation
-        activeIndex={activeIndex}
+        activeIndex={displayedIndex}
         onChange={changeTab}
+        worldLocked={worldLocked}
         viewer={viewer}
         onConnectPhone={onConnectPhone}
       />

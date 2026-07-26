@@ -8,12 +8,13 @@ import {
 } from "../../lib/base44Auth";
 import styles from "./BottomNavigation.module.css";
 
-export const SIDEQUEST_TABS = ["Now", "You", "Together"] as const;
+export const SIDEQUEST_TABS = ["You", "Now", "Together"] as const;
 export type SidequestTabIndex = 0 | 1 | 2;
 
 type BottomNavigationProps = {
   activeIndex: SidequestTabIndex;
   onChange: (index: SidequestTabIndex) => void;
+  worldLocked: boolean;
   viewer: AuthenticatedViewer;
   onConnectPhone: () => void;
 };
@@ -21,6 +22,7 @@ type BottomNavigationProps = {
 export default function BottomNavigation({
   activeIndex,
   onChange,
+  worldLocked,
   viewer,
   onConnectPhone,
 }: BottomNavigationProps) {
@@ -55,6 +57,7 @@ export default function BottomNavigation({
   }, [accountOpen]);
 
   function selectTab(index: SidequestTabIndex, moveFocus = false) {
+    if (worldLocked && index !== 0) return;
     onChange(index);
 
     if (moveFocus) {
@@ -63,6 +66,8 @@ export default function BottomNavigation({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (worldLocked) return;
+
     let nextIndex: number | undefined;
 
     if (event.key === "ArrowRight") {
@@ -93,25 +98,34 @@ export default function BottomNavigation({
         >
           <span className={styles.candy} aria-hidden="true" />
 
-          {SIDEQUEST_TABS.map((tab, index) => (
-            <button
-              className={styles.tab}
-              type="button"
-              role="tab"
-              id={`sidequest-tab-${index}`}
-              aria-controls={`sidequest-panel-${index}`}
-              aria-selected={activeIndex === index}
-              tabIndex={activeIndex === index ? 0 : -1}
-              key={tab}
-              ref={(element) => {
-                tabRefs.current[index] = element;
-              }}
-              onClick={() => selectTab(index as SidequestTabIndex)}
-              onKeyDown={handleKeyDown}
-            >
-              <span>{tab}</span>
-            </button>
-          ))}
+          {SIDEQUEST_TABS.map((tab, index) => {
+            const disabled = worldLocked && index !== 0;
+
+            return (
+              <button
+                className={styles.tab}
+                type="button"
+                role="tab"
+                id={`sidequest-tab-${index}`}
+                aria-controls={`sidequest-panel-${index}`}
+                aria-selected={activeIndex === index}
+                aria-label={
+                  disabled ? `${tab}, unlocks after your first memory` : tab
+                }
+                tabIndex={activeIndex === index ? 0 : -1}
+                disabled={disabled}
+                title={disabled ? "Share a memory in You to unlock" : undefined}
+                key={tab}
+                ref={(element) => {
+                  tabRefs.current[index] = element;
+                }}
+                onClick={() => selectTab(index as SidequestTabIndex)}
+                onKeyDown={handleKeyDown}
+              >
+                <span>{tab}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 
