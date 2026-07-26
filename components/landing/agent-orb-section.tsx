@@ -3,6 +3,7 @@ import Image from "next/image";
 import { AuthOpenButton } from "@/app/LandingAuth";
 
 import styles from "./agent-orb-section.module.css";
+import AgentOrbVideo from "./agent-orb-video";
 
 function XIcon() {
   return (
@@ -41,40 +42,18 @@ function InstagramIcon() {
   );
 }
 
-function EmailIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect
-        x="2.75"
-        y="5"
-        width="18.5"
-        height="14"
-        rx="2.4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="m4.25 6.75 7.75 6 7.75-6"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
 export default function AgentOrbSection() {
   return (
     <section
       className={styles.section}
       aria-labelledby="agent-orb-invitation"
     >
-      <h2 id="agent-orb-invitation" className={styles.invitation}>
-        Be among the first to try Sidequest
-      </h2>
+      <div className={styles.content}>
+        <AgentOrbVideo />
+        <h2 id="agent-orb-invitation" className={styles.invitation}>
+          Be among the first to try Sidequest
+        </h2>
+      </div>
 
       <footer className={styles.footer}>
         <div className={styles.brand}>
@@ -114,15 +93,6 @@ export default function AgentOrbSection() {
             title="Instagram link coming soon"
           >
             <InstagramIcon />
-          </button>
-          <button
-            className={styles.socialAction}
-            type="button"
-            disabled
-            aria-label="Email link coming soon"
-            title="Email link coming soon"
-          >
-            <EmailIcon />
           </button>
         </div>
       </footer>

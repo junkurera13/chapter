@@ -9,19 +9,36 @@
   scroll-snap-stop: always;
 }
 
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateY(clamp(-5.5rem, -9vh, -4rem));
+}
+
+.orbVideo {
+  display: block;
+  width: clamp(10rem, min(21.5vw, 25vh), 15.5rem);
+  height: auto;
+  aspect-ratio: 1;
+  margin-bottom: clamp(0.75rem, 1.8vh, 1.35rem);
+  clip-path: circle(40% at center);
+  object-fit: contain;
+  pointer-events: none;
+}
+
 .invitation {
   max-width: 16ch;
   margin: 0;
   padding: 0 1.25rem;
   color: #1c1c19;
   font-family: var(--font-sidequest-sans), system-ui, sans-serif;
-  font-size: clamp(2rem, 4.1vw, 3.65rem);
+  font-size: clamp(2.25rem, 4.6vw, 4.1rem);
   font-weight: 500;
   letter-spacing: -0.055em;
   line-height: 0.98;
   text-align: center;
   text-wrap: balance;
-  transform: translateY(-0.65rem);
 }
 
 .footer {
@@ -227,6 +244,15 @@
 }
 
 @media (max-width: 42rem) {
+  .content {
+    transform: translateY(-4.5rem);
+  }
+
+  .orbVideo {
+    width: clamp(10.25rem, 50vw, 12.75rem);
+    margin-bottom: 0.8rem;
+  }
+
   .footer {
     bottom: 0.75rem;
     width: calc(100% - 1.5rem);
@@ -274,6 +300,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .orbVideo {
+    animation: none;
+  }
+
   .textAction,
   .loginAction {
     transition: none;
