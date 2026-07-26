@@ -20,7 +20,6 @@ import ceramicsImage from "../assets/ceramics-class.jpg";
 import mojikoImage from "../assets/mojiko-waterfront.jpg";
 import sushiImage from "../assets/sushi-shibuya.webp";
 import AgentOrbVideo from "../../components/landing/agent-orb-video";
-import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import {
   createExperienceMemory,
   describeMemorySubmissionFailure,
@@ -31,6 +30,7 @@ import {
 } from "../../lib/base44Memory";
 
 import styles from "./YouOnboarding.module.css";
+import MemoryProcessingScreen from "./MemoryProcessingScreen";
 
 const MAX_PHOTOS = 8;
 
@@ -728,27 +728,13 @@ export default function YouOnboarding({
                       onChange={addPhotos}
                     />
 
-                    <AnimatePresence initial={false}>
-                      {submitting ? (
-                        <motion.div
-                          className={styles.processingOverlay}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{
-                            duration: reduceMotion ? 0.12 : 0.24,
-                            ease: [0.22, 1, 0.36, 1],
-                          }}
-                        >
-                          <ChapterLoadingMark
-                            label="Understanding this memory"
-                            size={68}
-                          />
-                          <p>Understanding this memory…</p>
-                        </motion.div>
-                      ) : null}
-                    </AnimatePresence>
                   </form>
+
+                  <AnimatePresence initial={false}>
+                    {submitting ? (
+                      <MemoryProcessingScreen />
+                    ) : null}
+                  </AnimatePresence>
 
                   <AnimatePresence mode="popLayout" initial={false}>
                     {submissionFailure ? (

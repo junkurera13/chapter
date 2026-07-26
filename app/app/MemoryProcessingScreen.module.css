@@ -1,0 +1,64 @@
+.screen {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  min-height: 100svh;
+  overflow: hidden;
+  place-items: center;
+  background: #fff;
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  transform: translateY(clamp(-2rem, -4vh, -1rem));
+  flex-direction: column;
+}
+
+.orb {
+  width: clamp(12.5rem, min(28vw, 28vh), 18rem);
+  aspect-ratio: 1;
+}
+
+.phrase {
+  display: grid;
+  min-height: 1.5rem;
+  margin-top: clamp(0.8rem, 1.8vh, 1.2rem);
+  place-items: center;
+}
+
+.phrase p {
+  grid-area: 1 / 1;
+  margin: 0;
+  color: rgba(28, 28, 25, 0.64);
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(0.96rem, 1.3vw, 1.08rem);
+  font-weight: 470;
+  letter-spacing: -0.03em;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  margin: -1px;
+  white-space: nowrap;
+}
+
+@media (max-width: 42rem) {
+  .orb {
+    width: clamp(11.5rem, 52vw, 14.5rem);
+  }
+
+  .phrase p {
+    white-space: normal;
+  }
+}
