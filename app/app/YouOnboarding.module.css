@@ -1,0 +1,372 @@
+.onboarding {
+  height: 100svh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  background: #fff;
+}
+
+.edgeBack {
+  position: fixed;
+  z-index: 10;
+  top: 0;
+  bottom: 0;
+  width: clamp(1.5rem, 4vw, 3.5rem);
+  padding: 0;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.edgeBackLeft {
+  left: 0;
+}
+
+.edgeBackRight {
+  right: 0;
+}
+
+.stage {
+  width: min(100%, 76rem);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 7vh, 4.75rem) clamp(1rem, 4vw, 3rem) 9rem;
+}
+
+.onboarding[data-started="false"] .stage {
+  display: grid;
+  padding-bottom: 7.5rem;
+  place-items: center;
+}
+
+.prompt {
+  display: flex;
+  align-items: center;
+}
+
+.onboarding[data-started="false"] .prompt {
+  flex-direction: column;
+  transform: translateY(-1.25rem);
+}
+
+.onboarding[data-started="true"] .prompt {
+  width: fit-content;
+  max-width: 100%;
+  justify-content: center;
+  gap: clamp(0.7rem, 1.8vw, 1rem);
+  margin-inline: auto;
+}
+
+.orb {
+  display: block;
+  flex: 0 0 auto;
+  width: 4.5rem;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+  scale: 1;
+  transform-origin: center;
+  transition:
+    scale 220ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 100ms ease;
+  will-change: transform, scale;
+}
+
+.onboarding[data-started="false"] .orb {
+  order: 1;
+  width: clamp(10rem, min(21.5vw, 25vh), 15.5rem);
+}
+
+.orb:focus-visible {
+  outline: 2px solid #c94674;
+  outline-offset: 4px;
+}
+
+.orb:active {
+  opacity: 0.86;
+}
+
+.promptCopy {
+  position: relative;
+  min-width: 0;
+}
+
+.promptCopy p {
+  margin: 0;
+  color: #1c1c19;
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.onboarding[data-started="false"] .promptCopy {
+  max-width: 32rem;
+  margin-bottom: clamp(0.75rem, 1.8vh, 1.25rem);
+  text-align: center;
+}
+
+.workspace {
+  margin-top: clamp(2.25rem, 5vh, 3.75rem);
+}
+
+.addRow {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.addButton {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 1rem;
+  background: #141312;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.2),
+    0 3px 6px rgba(0, 0, 0, 0.12);
+  color: #f5f1e8;
+  cursor: pointer;
+  transition:
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 180ms ease,
+    opacity 180ms ease;
+}
+
+.addButton svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.addButton:active:not(:disabled) {
+  transform: scale(0.95);
+  transition-duration: 90ms;
+}
+
+.addButton:focus-visible,
+.removeButton:focus-visible {
+  outline: 2px solid #c94674;
+  outline-offset: 3px;
+}
+
+.addButton:disabled {
+  cursor: default;
+  opacity: 0.32;
+  box-shadow: none;
+}
+
+.photoCount {
+  color: rgba(28, 28, 25, 0.48);
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.notice {
+  margin: 0.65rem 0 0;
+  color: rgba(28, 28, 25, 0.52);
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.photoGrid {
+  display: grid;
+  margin-top: clamp(1.5rem, 3.5vh, 2.5rem);
+  grid-template-columns: repeat(auto-fit, minmax(12.5rem, 14.5rem));
+  justify-content: start;
+  gap: clamp(1.25rem, 2.5vw, 2rem);
+}
+
+.photoCard {
+  position: relative;
+  display: flex;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  flex-direction: column;
+  padding: 0.625rem;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 1.125rem;
+  background: #fff;
+  box-shadow:
+    0 1.5rem 3rem rgba(0, 0, 0, 0.15),
+    0 0.375rem 0.875rem rgba(0, 0, 0, 0.09);
+}
+
+.note {
+  width: 100%;
+  min-height: 5.25rem;
+  padding: 0.75rem 0.75rem 0.9rem;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #1c1c19;
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.32;
+}
+
+.note::placeholder {
+  color: #77716f;
+  opacity: 1;
+}
+
+.note:focus-visible {
+  border-radius: 0.55rem;
+  outline: 2px solid rgba(201, 70, 116, 0.7);
+  outline-offset: -2px;
+}
+
+.photo {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 0.625rem;
+  background: #f1efeb;
+}
+
+.photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.removeButton {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  display: grid;
+  width: 1.9rem;
+  height: 1.9rem;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 50%;
+  background: rgba(20, 19, 18, 0.68);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.92);
+  backdrop-filter: blur(0.75rem);
+  transition:
+    opacity 160ms ease,
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    background 160ms ease;
+}
+
+.removeButton svg {
+  width: 1rem;
+  height: 1rem;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.photoCard:focus-within .removeButton,
+.photoCard:hover .removeButton {
+  opacity: 1;
+  transform: scale(1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .orb:hover {
+    scale: 1.045;
+  }
+
+  .addButton:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow:
+      0 10px 22px rgba(0, 0, 0, 0.22),
+      0 4px 8px rgba(0, 0, 0, 0.14);
+  }
+
+  .removeButton:hover {
+    background: rgba(20, 19, 18, 0.84);
+  }
+}
+
+@media (max-width: 42rem) {
+  .stage {
+    padding-top: clamp(2rem, 5vh, 3rem);
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .onboarding[data-started="false"] .orb {
+    width: clamp(10.25rem, 50vw, 12.75rem);
+  }
+
+  .onboarding[data-started="true"] .prompt {
+    gap: 0.5rem;
+  }
+
+  .onboarding[data-started="true"] .orb {
+    width: 3.8rem;
+  }
+
+  .promptCopy p {
+    font-size: clamp(1.55rem, 7vw, 2rem);
+  }
+
+  .photoGrid {
+    grid-template-columns: minmax(0, 14.5rem);
+    justify-content: center;
+  }
+
+  .removeButton {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb,
+  .addButton,
+  .removeButton {
+    transition: none;
+  }
+
+  .orb:hover {
+    scale: 1;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .removeButton {
+    border-color: transparent;
+    background: #141312;
+    backdrop-filter: none;
+  }
+}

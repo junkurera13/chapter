@@ -8,10 +8,10 @@ import type { AuthenticatedViewer } from "../../lib/base44Auth";
 import { loadMyExperienceGraph } from "../../lib/base44Graph";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
 import SidequestLoadingMark from "../../components/sidequest-loading-mark";
-import AgentOrbVideo from "../../components/landing/agent-orb-video";
 import { buildWorldGraph } from "./graphData";
 import ChatView from "./ChatView";
 import TogetherView from "./TogetherView";
+import YouOnboarding from "./YouOnboarding";
 import YouView from "./YouView";
 import styles from "./page.module.css";
 
@@ -109,20 +109,7 @@ export default function SidequestApp({
       </div>
     );
   } else if (graphState.graph.memoryCount === 0) {
-    youPanel = (
-      <div className={styles.youOnboarding}>
-        <div
-          className={styles.youOnboardingOrb}
-          role="img"
-          aria-label="Chapter"
-        >
-          <AgentOrbVideo
-            src="/you-agent-orb.mp4"
-            poster="/you-agent-orb-poster.jpg"
-          />
-        </div>
-      </div>
-    );
+    youPanel = <YouOnboarding />;
   } else if (!worldGraph) {
     youPanel = (
       <div className={styles.graphLoading} aria-busy="true">
