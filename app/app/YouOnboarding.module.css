@@ -28,7 +28,7 @@
 }
 
 .stage {
-  width: min(100%, 76rem);
+  width: min(100%, 84rem);
   min-height: 100%;
   margin: 0 auto;
   padding: clamp(2.5rem, 7vh, 4.75rem) clamp(1rem, 4vw, 3rem) 9rem;
@@ -115,48 +115,134 @@
 }
 
 .workspace {
-  margin-top: clamp(6rem, 13vh, 9rem);
-}
-
-.uploadPrompt {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(1.15rem, 2.5vh, 1.6rem);
+  justify-content: center;
+  margin-top: clamp(3rem, 7vh, 4.75rem);
 }
 
-.memoryWindow {
+.composerShell {
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+.memoryComposer {
   position: relative;
-  width: min(calc(100vw - 2rem), 38rem);
-  height: clamp(19.5rem, 31vw, 22.5rem);
+  width: 100%;
+}
+
+.composerSplit {
+  display: grid;
+  min-height: 27rem;
+  align-items: start;
+  gap: clamp(1rem, 2vw, 2rem);
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+}
+
+.textWindow {
+  position: relative;
+  height: 27rem;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid rgba(28, 28, 25, 0.12);
-  border-radius: 1.6rem;
+  border-radius: 1.75rem;
   background: #fff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
     inset 0 0 0 1px rgba(28, 28, 25, 0.018),
-    0 0.35rem 1.25rem rgba(28, 28, 25, 0.035);
+    0 0.45rem 1.8rem rgba(28, 28, 25, 0.055);
 }
 
-.photoCanvas {
-  width: min(calc(100vw - 2rem), 68rem);
-  min-height: clamp(29rem, 54vw, 41rem);
-  padding: clamp(2.25rem, 4.5vw, 3.75rem);
-  border: 1px solid rgba(28, 28, 25, 0.11);
-  border-radius: 1.75rem;
-  background: #fff;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    inset 0 0 0 1px rgba(28, 28, 25, 0.015),
-    0 0.45rem 1.5rem rgba(28, 28, 25, 0.035);
+.memoryInput {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 27rem;
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  padding-bottom: 5.5rem;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #1c1c19;
+  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-size: clamp(1.15rem, 1.7vw, 1.4rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.5;
+}
+
+.memoryInput::placeholder {
+  color: rgba(28, 28, 25, 0.4);
+  opacity: 1;
+}
+
+.composerPhotos {
+  position: relative;
+  box-sizing: border-box;
+  height: auto;
+  min-width: 0;
+  min-height: 27rem;
+  padding: 0 0 clamp(1.5rem, 2.5vw, 2rem);
+}
+
+@media (min-width: 42.001rem) {
+  .onboarding[data-started="true"] {
+    overflow-y: hidden;
+  }
+
+  .onboarding[data-started="true"] .stage {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+    flex-direction: column;
+  }
+
+  .onboarding[data-started="true"] .prompt {
+    flex: 0 0 auto;
+  }
+
+  .onboarding[data-started="true"] .workspace {
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .onboarding[data-started="true"] .composerShell,
+  .onboarding[data-started="true"] .memoryComposer,
+  .onboarding[data-started="true"] .composerSplit {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .onboarding[data-started="true"] .composerPhotos:not(.photoStarter) {
+    height: 100%;
+    min-height: 0;
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: none;
+  }
+
+  .onboarding[data-started="true"]
+    .composerPhotos:not(.photoStarter)::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.photoStarter {
+  min-height: 27rem;
+  padding: 0;
+  overflow: hidden;
 }
 
 .sampleCard {
   position: absolute;
-  top: 38.5%;
+  top: 41%;
   left: 50%;
-  width: clamp(7.75rem, 13vw, 9rem);
+  width: clamp(8rem, 13vw, 9.25rem);
   aspect-ratio: 4 / 5;
   overflow: hidden;
   border: 0.35rem solid #fff;
@@ -184,22 +270,28 @@
 
 .sampleCardFront {
   z-index: 3;
-  width: clamp(8.25rem, 14vw, 9.5rem);
+  width: clamp(8.5rem, 14vw, 9.75rem);
   transform: translate(-50%, -50%) translateY(-0.2rem) rotate(0.75deg);
 }
 
-.addRow {
-  position: absolute;
-  z-index: 4;
-  right: 0;
-  bottom: 2.25rem;
-  left: 0;
+.starterActions,
+.photoActions {
   display: flex;
-  min-height: 3.3rem;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+}
+
+.starterActions {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: 4.5rem;
+  left: 0;
+}
+
+.photoActions {
+  padding: clamp(1.5rem, 2.5vw, 2rem) 0 0.25rem;
 }
 
 .addButton {
@@ -267,7 +359,8 @@
 
 .addButton:focus-visible,
 .cardAction:focus-visible,
-.doneButton:focus-visible {
+.doneButton:focus-visible,
+.sendButton:focus-visible {
   outline: 2px solid #c94674;
   outline-offset: 3px;
 }
@@ -278,11 +371,63 @@
   box-shadow: none;
 }
 
-.photoCount {
-  color: rgba(28, 28, 25, 0.48);
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
-  font-size: 0.82rem;
-  letter-spacing: 0.01em;
+.sendButton {
+  position: absolute;
+  z-index: 5;
+  right: 1.15rem;
+  bottom: 1.15rem;
+  display: grid;
+  width: 2.55rem;
+  height: 2.55rem;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #d95b86;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 30% 10%,
+      rgba(255, 255, 255, 0.58),
+      transparent 26%
+    ),
+    linear-gradient(180deg, #ffd6e3 0%, #fba6c1 48%, #ee7fa4 100%);
+  color: #371521;
+  cursor: pointer;
+  line-height: 1;
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -2px 3px rgba(125, 35, 70, 0.2),
+    0 3px 0 #cf527d,
+    0 6px 12px rgba(201, 70, 116, 0.16);
+  transform-origin: center;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.sendButton::before {
+  position: absolute;
+  inset: -0.3rem;
+  border-radius: 50%;
+  content: "";
+}
+
+.sendButton svg {
+  position: relative;
+  z-index: 1;
+  width: 0.9rem;
+  height: 0.9rem;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sendButton:active {
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.62),
+    inset 0 -2px 3px rgba(125, 35, 70, 0.24),
+    0 1px 0 #cf527d,
+    0 3px 7px rgba(201, 70, 116, 0.15);
 }
 
 .fileInput {
@@ -307,16 +452,16 @@
 .photoGrid {
   display: grid;
   width: 100%;
-  grid-template-columns: repeat(auto-fit, minmax(10.75rem, 12.75rem));
+  grid-template-columns: repeat(auto-fit, minmax(min(16.5rem, 100%), 17.625rem));
   justify-content: center;
   align-items: start;
-  gap: clamp(2.25rem, 4.5vw, 4rem);
+  gap: clamp(1.5rem, 2.4vw, 1.75rem);
 }
 
 .photoCard {
   position: relative;
-  width: min(100%, 12.75rem);
-  aspect-ratio: 4 / 5;
+  width: 100%;
+  aspect-ratio: 6 / 7;
   padding: 0.5rem;
   overflow: hidden;
   border: 1px solid rgba(28, 28, 25, 0.085);
@@ -326,14 +471,6 @@
     0 1.15rem 2.4rem rgba(28, 28, 25, 0.14),
     0 0.3rem 0.75rem rgba(28, 28, 25, 0.085);
   transform-origin: center;
-}
-
-.photoCard:nth-child(3n + 2) {
-  margin-top: 1.35rem;
-}
-
-.photoCard:nth-child(4n) {
-  margin-top: 0.55rem;
 }
 
 .photo {
@@ -361,17 +498,15 @@
   height: 2.15rem;
   place-items: center;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 0;
   border-radius: 50%;
   background: rgba(20, 19, 18, 0.66);
   color: #fff;
   cursor: pointer;
   opacity: 0;
-  transform: scale(0.9);
   backdrop-filter: blur(0.8rem);
   transition:
     opacity 160ms ease,
-    transform 220ms cubic-bezier(0.23, 1, 0.32, 1),
     background 160ms ease;
 }
 
@@ -395,13 +530,11 @@
 .photoCard:focus-within .cardAction,
 .photoCard:hover .cardAction {
   opacity: 1;
-  transform: scale(1);
 }
 
 .photoCard[data-editing="true"] .editButton {
   pointer-events: none;
   opacity: 0;
-  transform: scale(0.9);
 }
 
 .noteEditor {
@@ -496,30 +629,20 @@
   -webkit-line-clamp: 3;
 }
 
-.canvasActions {
-  display: flex;
-  min-height: 3.3rem;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-top: clamp(3rem, 6vw, 5rem);
-}
-
 @media (hover: hover) and (pointer: fine) {
   .onboarding[data-started="false"] .orb:hover {
     scale: 1.045;
   }
 
-  .memoryWindow:has(.sampleCard:hover, .addButton:hover) .sampleCardLeft {
+  .photoStarter:has(.sampleCard:hover, .addButton:hover) .sampleCardLeft {
     transform: translate(-50%, -50%) translate(-6.6rem, 0.25rem) rotate(-11.5deg);
   }
 
-  .memoryWindow:has(.sampleCard:hover, .addButton:hover) .sampleCardRight {
+  .photoStarter:has(.sampleCard:hover, .addButton:hover) .sampleCardRight {
     transform: translate(-50%, -50%) translate(6.6rem, 0.2rem) rotate(11.5deg);
   }
 
-  .memoryWindow:has(.sampleCard:hover, .addButton:hover) .sampleCardFront {
+  .photoStarter:has(.sampleCard:hover, .addButton:hover) .sampleCardFront {
     transform: translate(-50%, -50%) translateY(-0.5rem) rotate(0);
   }
 
@@ -556,6 +679,10 @@
   .doneButton:hover {
     opacity: 0.82;
   }
+
+  .sendButton:hover {
+    border-color: #d95b86;
+  }
 }
 
 @media (max-width: 42rem) {
@@ -577,18 +704,53 @@
     width: 3.8rem;
   }
 
-  .memoryWindow {
-    height: 19.5rem;
+  .promptCopy p {
+    font-size: clamp(1.55rem, 7vw, 2rem);
+  }
+
+  .workspace {
+    margin-top: 2.5rem;
+  }
+
+  .composerShell {
+    width: 100%;
+  }
+
+  .composerSplit {
+    min-height: 0;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .textWindow {
+    position: relative;
+    top: auto;
+    height: auto;
     border-radius: 1.35rem;
   }
 
-  .photoCanvas {
-    min-height: 28rem;
-    padding: 2.5rem 1.25rem;
-    border-radius: 1.35rem;
+  .memoryInput {
+    height: auto;
+    min-height: 10rem;
+    padding: 1.15rem 1rem;
+    padding-bottom: 4.75rem;
+    font-size: 1.05rem;
+  }
+
+  .composerPhotos {
+    height: auto;
+    min-height: 0;
+    padding: 1.25rem 0;
+    overflow: visible;
+  }
+
+  .photoStarter {
+    min-height: 20.5rem;
+    padding: 0;
   }
 
   .sampleCard {
+    top: 40%;
     width: 7.5rem;
   }
 
@@ -604,23 +766,25 @@
     width: 8rem;
   }
 
-  .promptCopy p {
-    font-size: clamp(1.55rem, 7vw, 2rem);
-  }
-
   .photoGrid {
-    grid-template-columns: minmax(0, 12.75rem);
+    grid-template-columns: minmax(0, 18rem);
     justify-content: center;
-    gap: 2.75rem;
+    gap: 2rem;
   }
 
-  .photoCard:nth-child(n) {
-    margin-top: 0;
+  .photoActions {
+    padding-top: 1.5rem;
+  }
+
+  .sendButton {
+    right: 1rem;
+    bottom: 1rem;
+    width: 2.55rem;
+    height: 2.55rem;
   }
 
   .cardAction {
     opacity: 1;
-    transform: scale(1);
   }
 }
 
@@ -629,8 +793,9 @@
   .addButton,
   .cardAction,
   .doneButton,
+  .removeButton,
   .sampleCard,
-  .removeButton {
+  .sendButton {
     transition: none;
   }
 
@@ -641,7 +806,6 @@
 
 @media (prefers-reduced-transparency: reduce) {
   .cardAction {
-    border-color: transparent;
     background: #141312;
     backdrop-filter: none;
   }

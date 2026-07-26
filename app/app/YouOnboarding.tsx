@@ -9,6 +9,7 @@ import {
 import Image from "next/image";
 import {
   type ChangeEvent,
+  type FormEvent,
   type MouseEvent as ReactMouseEvent,
   useEffect,
   useRef,
@@ -22,9 +23,7 @@ import AgentOrbVideo from "../../components/landing/agent-orb-video";
 
 import styles from "./YouOnboarding.module.css";
 
-const MIN_PHOTOS = 2;
-const MAX_PHOTOS = 10;
-const PHOTO_ROTATIONS = [-2.4, 1.7, -1.1, 2.2, -1.8, 0.8, 2.5, -2, 1.4, -0.6];
+const MAX_PHOTOS = 8;
 
 type MemoryPhoto = {
   id: number;
@@ -39,6 +38,7 @@ function focusWithoutScrolling(element: HTMLTextAreaElement | null) {
 
 export default function YouOnboarding() {
   const [started, setStarted] = useState(false);
+  const [memoryText, setMemoryText] = useState("");
   const [photos, setPhotos] = useState<MemoryPhoto[]>([]);
   const [editingPhotoId, setEditingPhotoId] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
@@ -89,11 +89,8 @@ export default function YouOnboarding() {
 
     setPhotos((current) => [...current, ...nextPhotos]);
 
-    const nextCount = photos.length + nextPhotos.length;
     if (selectedFiles.length > remaining) {
-      setNotice("You can add up to 10 photos.");
-    } else if (nextCount < MIN_PHOTOS) {
-      setNotice("Add at least one more photo.");
+      setNotice("You can add up to 8 photos.");
     } else {
       setNotice("");
     }
@@ -109,11 +106,7 @@ export default function YouOnboarding() {
     const nextPhotos = photos.filter((photo) => photo.id !== photoId);
     setPhotos(nextPhotos);
     if (editingPhotoId === photoId) setEditingPhotoId(null);
-    setNotice(
-      nextPhotos.length > 0 && nextPhotos.length < MIN_PHOTOS
-        ? "Add at least one more photo."
-        : "",
-    );
+    setNotice("");
   }
 
   function updateNote(photoId: number, note: string) {
@@ -125,17 +118,21 @@ export default function YouOnboarding() {
   }
 
   function handleSurfaceClick(event: ReactMouseEvent<HTMLDivElement>) {
-    if (!started || photos.length > 0) return;
+    if (!started || photos.length > 0 || memoryText.trim().length > 0) return;
 
     const target = event.target;
     if (
       target instanceof Element &&
-      target.closest(`.${styles.memoryWindow}`)
+      target.closest(`.${styles.memoryComposer}`)
     ) {
       return;
     }
 
     setStarted(false);
+  }
+
+  function handleComposerSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
   }
 
   const addButton = (
@@ -149,9 +146,11 @@ export default function YouOnboarding() {
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
         <path d="M12 5v14M5 12h14" />
       </svg>
-      <span>Add</span>
+      <span>{photos.length === 0 ? "Add photos" : "Add more"}</span>
     </button>
   );
+
+  const canSend = memoryText.trim().length > 0 || photos.length > 0;
 
   return (
     <LayoutGroup>
@@ -209,13 +208,7 @@ export default function YouOnboarding() {
             >
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.p
-                  key={
-                    !started
-                      ? "invitation"
-                      : photos.length > 0
-                        ? "context"
-                        : "photos"
-                  }
+                  key={started ? "composer" : "invitation"}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -226,9 +219,7 @@ export default function YouOnboarding() {
                 >
                   {!started
                     ? "What’s a moment that still feels like yesterday?"
-                    : photos.length > 0
-                      ? "Tell me what the photos don’t show."
-                      : "Add 2–10 photos from that moment."}
+                    : "Tell me everything you remember."}
                 </motion.p>
               </AnimatePresence>
             </motion.div>
@@ -265,75 +256,91 @@ export default function YouOnboarding() {
                       }
                 }
               >
-                <div className={styles.uploadPrompt}>
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    {photos.length === 0 ? (
-                      <motion.div
-                        className={styles.memoryWindow}
-                        key="starter"
-                        layout
-                        exit={{
-                          opacity: 0,
-                          scale: reduceMotion ? 1 : 0.985,
-                        }}
-                        transition={layoutTransition}
-                      >
-                        <div
-                          className={`${styles.sampleCard} ${styles.sampleCardLeft}`}
-                        >
-                          <Image
-                            src={mojikoImage}
-                            alt=""
-                            fill
-                            sizes="18rem"
-                            placeholder="blur"
-                          />
-                        </div>
-                        <div
-                          className={`${styles.sampleCard} ${styles.sampleCardRight}`}
-                        >
-                          <Image
-                            src={ceramicsImage}
-                            alt=""
-                            fill
-                            sizes="18rem"
-                            placeholder="blur"
-                          />
-                        </div>
-                        <div
-                          className={`${styles.sampleCard} ${styles.sampleCardFront}`}
-                        >
-                          <Image
-                            src={sushiImage}
-                            alt=""
-                            fill
-                            sizes="9rem"
-                            placeholder="blur"
-                          />
-                        </div>
+                <div className={styles.composerShell}>
+                  <form
+                    className={styles.memoryComposer}
+                    onSubmit={handleComposerSubmit}
+                  >
+                    <div className={styles.composerSplit}>
+                      <div className={styles.textWindow}>
+                        <textarea
+                          className={styles.memoryInput}
+                          value={memoryText}
+                          maxLength={6000}
+                          aria-label="Tell Chapter about this memory"
+                          placeholder="Start anywhere. The place, the people, what happened, how it felt… You can also add up to 8 photos, with a little context for each."
+                          onChange={(event) => setMemoryText(event.target.value)}
+                        />
 
-                        <div className={styles.addRow}>{addButton}</div>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        className={styles.photoCanvas}
-                        key="canvas"
-                        layout
-                        initial={{
-                          opacity: 0,
-                          scale: reduceMotion ? 1 : 0.985,
-                        }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={layoutTransition}
-                      >
-                        <motion.div className={styles.photoGrid} layout>
-                          <AnimatePresence initial={false}>
-                            {photos.map((photo, index) => {
-                              const rotation =
-                                PHOTO_ROTATIONS[index % PHOTO_ROTATIONS.length];
-                              const isEditing = editingPhotoId === photo.id;
+                        <AnimatePresence initial={false}>
+                          {canSend ? (
+                            <motion.button
+                              className={styles.sendButton}
+                              type="submit"
+                              aria-label="Send memory to Chapter"
+                              initial={
+                                reduceMotion
+                                  ? { opacity: 0 }
+                                  : { opacity: 0, y: 4, scale: 0.92 }
+                              }
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              whileHover={
+                                reduceMotion ? undefined : { y: -1 }
+                              }
+                              whileTap={
+                                reduceMotion ? undefined : { y: 2, scale: 0.985 }
+                              }
+                              exit={
+                                reduceMotion
+                                  ? { opacity: 0 }
+                                  : { opacity: 0, y: 4, scale: 0.96 }
+                              }
+                              transition={{
+                                duration: reduceMotion ? 0.12 : 0.22,
+                                ease: [0.22, 1, 0.36, 1],
+                              }}
+                            >
+                              <svg
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                              >
+                                <path d="M12 19V5M6 11l6-6 6 6" />
+                              </svg>
+                            </motion.button>
+                          ) : null}
+                        </AnimatePresence>
+                      </div>
 
-                              return (
+                      <AnimatePresence mode="popLayout" initial={false}>
+                      {photos.length > 0 ? (
+                        <motion.section
+                          className={styles.composerPhotos}
+                          key="uploaded-photos"
+                          aria-label="Photos from this memory"
+                          layout
+                          initial={
+                            reduceMotion
+                              ? { opacity: 0 }
+                              : { opacity: 0, y: 12 }
+                          }
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={
+                            reduceMotion
+                              ? { opacity: 0 }
+                              : { opacity: 0, y: 8 }
+                          }
+                          transition={{
+                            duration: reduceMotion ? 0.12 : 0.24,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                        >
+                          <motion.div className={styles.photoGrid} layout>
+                            <AnimatePresence initial={false}>
+                              {photos.map((photo, index) => {
+                                const isEditing = editingPhotoId === photo.id;
+
+                                return (
                                 <motion.article
                                   className={styles.photoCard}
                                   key={photo.id}
@@ -345,53 +352,46 @@ export default function YouOnboarding() {
                                       ? { opacity: 0 }
                                       : {
                                           opacity: 0,
-                                          y: 24,
-                                          scale: 0.96,
-                                          rotate: rotation * 0.5,
+                                          y: 18,
+                                          scale: 0.97,
                                         }
                                   }
                                   animate={{
                                     opacity: 1,
                                     y: 0,
                                     scale: 1,
-                                    rotate: rotation,
                                   }}
                                   exit={
                                     reduceMotion
                                       ? { opacity: 0 }
                                       : {
                                           opacity: 0,
-                                          y: 10,
-                                          scale: 0.97,
-                                          rotate: rotation * 0.5,
+                                          y: 8,
+                                          scale: 0.98,
                                         }
                                   }
                                   whileHover={
                                     reduceMotion || isEditing
                                       ? undefined
-                                      : { y: -5, scale: 1.015 }
+                                      : { y: -4, scale: 1.01 }
                                   }
                                   transition={{
                                     layout: layoutTransition,
                                     opacity: {
-                                      duration: reduceMotion ? 0.12 : 0.24,
+                                      duration: reduceMotion ? 0.12 : 0.22,
                                       delay: reduceMotion
                                         ? 0
-                                        : Math.min(index * 0.045, 0.22),
+                                        : Math.min(index * 0.04, 0.2),
                                     },
                                     y: {
                                       type: "spring",
                                       bounce: 0,
-                                      duration: reduceMotion ? 0 : 0.36,
+                                      duration: reduceMotion ? 0 : 0.3,
                                     },
                                     scale: {
                                       type: "spring",
                                       bounce: 0,
-                                      duration: reduceMotion ? 0 : 0.36,
-                                    },
-                                    rotate: {
-                                      duration: reduceMotion ? 0 : 0.38,
-                                      ease: [0.22, 1, 0.36, 1],
+                                      duration: reduceMotion ? 0 : 0.3,
                                     },
                                   }}
                                 >
@@ -468,7 +468,7 @@ export default function YouOnboarding() {
                                           transition={{
                                             type: "spring",
                                             bounce: 0,
-                                            duration: reduceMotion ? 0 : 0.32,
+                                            duration: reduceMotion ? 0 : 0.28,
                                           }}
                                         >
                                           <textarea
@@ -519,24 +519,85 @@ export default function YouOnboarding() {
                           </AnimatePresence>
                         </motion.div>
 
-                        <div className={styles.canvasActions}>
+                        <div className={styles.photoActions}>
                           {addButton}
-                          <span className={styles.photoCount}>
-                            {photos.length} of {MAX_PHOTOS}
-                          </span>
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                      </motion.section>
+                      ) : (
+                        <motion.section
+                          className={`${styles.composerPhotos} ${styles.photoStarter}`}
+                          key="photo-starter"
+                          aria-label="Add photos from this memory"
+                          layout
+                          initial={
+                            reduceMotion
+                              ? { opacity: 0 }
+                              : { opacity: 0, y: 10 }
+                          }
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={
+                            reduceMotion
+                              ? { opacity: 0 }
+                              : { opacity: 0, y: 6 }
+                          }
+                          transition={{
+                            duration: reduceMotion ? 0.12 : 0.24,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                        >
+                          <div
+                            className={`${styles.sampleCard} ${styles.sampleCardLeft}`}
+                          >
+                            <Image
+                              src={mojikoImage}
+                              alt=""
+                              fill
+                              sizes="18rem"
+                              placeholder="blur"
+                            />
+                          </div>
+                          <div
+                            className={`${styles.sampleCard} ${styles.sampleCardRight}`}
+                          >
+                            <Image
+                              src={ceramicsImage}
+                              alt=""
+                              fill
+                              sizes="18rem"
+                              placeholder="blur"
+                            />
+                          </div>
+                          <div
+                            className={`${styles.sampleCard} ${styles.sampleCardFront}`}
+                          >
+                            <Image
+                              src={sushiImage}
+                              alt=""
+                              fill
+                              sizes="9rem"
+                              placeholder="blur"
+                            />
+                          </div>
 
-                  <input
-                    ref={inputRef}
-                    className={styles.fileInput}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={addPhotos}
-                  />
+                          <div className={styles.starterActions}>
+                            {addButton}
+                          </div>
+                        </motion.section>
+                      )}
+                      </AnimatePresence>
+                    </div>
+
+                    <input
+                      ref={inputRef}
+                      className={styles.fileInput}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={addPhotos}
+                    />
+                  </form>
+
                 </div>
 
                 <AnimatePresence initial={false}>
