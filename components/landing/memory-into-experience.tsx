@@ -1028,7 +1028,7 @@ export default function MemoryIntoExperience() {
           <header className={styles.questHeader}>
             <span className={styles.questMark} aria-hidden="true">
               <Image
-                src="/sidequest-mark.svg"
+                src="/chapter-mark.svg"
                 alt=""
                 width={30}
                 height={30}

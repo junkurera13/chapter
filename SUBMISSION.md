@@ -8,7 +8,7 @@
 - One-line pitch: **An iMessage agent that learns what makes an experience unforgettable and builds a private world around you.**
 - Surface type: **Web app**
 - Live URL: https://usechapter.vercel.app
-- Public GitHub repo: https://github.com/junkurera13/sidequest-base44-buildoff
+- Public GitHub repo: https://github.com/junkurera13/chapter
 - Access instructions: **Open `/app`, sign in with Google, connect an iMessage-capable phone number, text Chapter, and share one unforgettable experience. Return to You to see the private graph. Open any named person to create a private invite; after they accept with their own Google account, both people receive reciprocal nodes and appear in Together.**
 - Demo video URL: **[optional, not recorded yet]**
 - Agentic IDE used: **Codex**

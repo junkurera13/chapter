@@ -1,4 +1,4 @@
-export const BASE44_AUTH_RETURN_COOKIE = "sidequest_auth_return";
+export const BASE44_AUTH_RETURN_COOKIE = "chapter_auth_return";
 
 const PRODUCTION_APP_ORIGIN = "https://usechapter.vercel.app";
 const LOCAL_AUTH_ORIGINS = new Set([

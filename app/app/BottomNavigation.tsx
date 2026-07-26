@@ -3,17 +3,17 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import {
-  signOutOfSidequest,
+  signOutOfChapter,
   type AuthenticatedViewer,
 } from "../../lib/base44Auth";
 import styles from "./BottomNavigation.module.css";
 
-export const SIDEQUEST_TABS = ["You", "Now", "Together"] as const;
-export type SidequestTabIndex = 0 | 1 | 2;
+export const CHAPTER_TABS = ["You", "Now", "Together"] as const;
+export type ChapterTabIndex = 0 | 1 | 2;
 
 type BottomNavigationProps = {
-  activeIndex: SidequestTabIndex;
-  onChange: (index: SidequestTabIndex) => void;
+  activeIndex: ChapterTabIndex;
+  onChange: (index: ChapterTabIndex) => void;
   worldLocked: boolean;
   viewer: AuthenticatedViewer;
   onConnectPhone: () => void;
@@ -56,7 +56,7 @@ export default function BottomNavigation({
     };
   }, [accountOpen]);
 
-  function selectTab(index: SidequestTabIndex, moveFocus = false) {
+  function selectTab(index: ChapterTabIndex, moveFocus = false) {
     if (worldLocked && index !== 0) return;
     onChange(index);
 
@@ -71,20 +71,20 @@ export default function BottomNavigation({
     let nextIndex: number | undefined;
 
     if (event.key === "ArrowRight") {
-      nextIndex = (activeIndex + 1) % SIDEQUEST_TABS.length;
+      nextIndex = (activeIndex + 1) % CHAPTER_TABS.length;
     } else if (event.key === "ArrowLeft") {
       nextIndex =
-        (activeIndex - 1 + SIDEQUEST_TABS.length) % SIDEQUEST_TABS.length;
+        (activeIndex - 1 + CHAPTER_TABS.length) % CHAPTER_TABS.length;
     } else if (event.key === "Home") {
       nextIndex = 0;
     } else if (event.key === "End") {
-      nextIndex = SIDEQUEST_TABS.length - 1;
+      nextIndex = CHAPTER_TABS.length - 1;
     }
 
     if (nextIndex === undefined) return;
 
     event.preventDefault();
-    selectTab(nextIndex as SidequestTabIndex, true);
+    selectTab(nextIndex as ChapterTabIndex, true);
   }
 
   return (
@@ -98,7 +98,7 @@ export default function BottomNavigation({
         >
           <span className={styles.candy} aria-hidden="true" />
 
-          {SIDEQUEST_TABS.map((tab, index) => {
+          {CHAPTER_TABS.map((tab, index) => {
             const disabled = worldLocked && index !== 0;
 
             return (
@@ -106,8 +106,8 @@ export default function BottomNavigation({
                 className={styles.tab}
                 type="button"
                 role="tab"
-                id={`sidequest-tab-${index}`}
-                aria-controls={`sidequest-panel-${index}`}
+                id={`chapter-tab-${index}`}
+                aria-controls={`chapter-panel-${index}`}
                 aria-selected={activeIndex === index}
                 aria-label={
                   disabled ? `${tab}, unlocks after your first memory` : tab
@@ -119,7 +119,7 @@ export default function BottomNavigation({
                 ref={(element) => {
                   tabRefs.current[index] = element;
                 }}
-                onClick={() => selectTab(index as SidequestTabIndex)}
+                onClick={() => selectTab(index as ChapterTabIndex)}
                 onKeyDown={handleKeyDown}
               >
                 <span>{tab}</span>
@@ -132,7 +132,7 @@ export default function BottomNavigation({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         className={styles.logo}
-        src="/sidequest-mark.svg"
+        src="/chapter-mark.svg"
         alt=""
         width={108}
         height={108}
@@ -141,7 +141,7 @@ export default function BottomNavigation({
 
       <div className={styles.account} ref={accountRef}>
         {accountOpen ? (
-          <div className={styles.accountMenu} id="sidequest-account-menu">
+          <div className={styles.accountMenu} id="chapter-account-menu">
             <p className={styles.accountName}>{viewer.name || "Your account"}</p>
             <p className={styles.accountEmail}>{viewer.email}</p>
             {viewer.messagingConnected ? (
@@ -161,7 +161,7 @@ export default function BottomNavigation({
             <button
               type="button"
               className={styles.signOut}
-              onClick={signOutOfSidequest}
+              onClick={signOutOfChapter}
             >
               Sign out
             </button>
@@ -173,7 +173,7 @@ export default function BottomNavigation({
           className={styles.profile}
           aria-label="Your account"
           aria-expanded={accountOpen}
-          aria-controls="sidequest-account-menu"
+          aria-controls="chapter-account-menu"
           onClick={() => setAccountOpen((open) => !open)}
         >
           {initial}

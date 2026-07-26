@@ -58,7 +58,7 @@
 .legend h2 {
   margin: 0;
   color: #2b2824;
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
   font-size: 18px;
   font-weight: 500;
   letter-spacing: -0.035em;
@@ -118,7 +118,7 @@
   box-shadow: 0 2px 10px rgba(50, 41, 31, 0.05);
   color: rgba(35, 32, 28, 0.72);
   cursor: pointer;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 12px;
   font-weight: 540;
   letter-spacing: -0.01em;
@@ -150,7 +150,7 @@
     0 5px 18px rgba(56, 53, 75, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.92);
   color: rgba(34, 32, 44, 0.84);
-  font-family: var(--font-sidequest-serif), Georgia, serif;
+  font-family: var(--font-chapter-serif), Georgia, serif;
   font-size: 15px;
   font-weight: 500;
   letter-spacing: -0.025em;
@@ -272,7 +272,7 @@
   max-width: 270px;
   margin: 8px 0 0;
   color: #25211d;
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
   font-size: 30px;
   font-weight: 500;
   letter-spacing: -0.035em;
@@ -300,7 +300,7 @@
   background: #25211d;
   color: #fff;
   cursor: pointer;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 13px;
   font-weight: 620;
   letter-spacing: -0.01em;
@@ -370,7 +370,7 @@
 .evidence p {
   margin: 8px 0 0;
   color: rgba(39, 35, 30, 0.66);
-  font-family: var(--font-sidequest-serif), Georgia, serif;
+  font-family: var(--font-chapter-serif), Georgia, serif;
   font-size: 15px;
   font-style: italic;
   line-height: 1.42;
@@ -424,7 +424,7 @@
   background: rgba(255, 255, 255, 0.38);
   color: rgba(42, 38, 33, 0.62);
   cursor: pointer;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   text-align: left;
   -webkit-tap-highlight-color: transparent;
   transition:

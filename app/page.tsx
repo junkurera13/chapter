@@ -39,7 +39,7 @@ export default async function Home({
               <AuthOpenButton className={styles.action}>
                 <span className={styles.actionMark} aria-hidden="true">
                   <Image
-                    src="/sidequest-mark.svg"
+                    src="/chapter-mark.svg"
                     alt=""
                     width={32}
                     height={32}

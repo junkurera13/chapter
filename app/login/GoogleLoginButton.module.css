@@ -9,7 +9,7 @@
   margin: 0;
   padding: 0 4px;
   color: #b4462a;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.45;
   text-align: center;
@@ -28,7 +28,7 @@
   background: #1c1c19;
   color: #fff;
   cursor: pointer;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 0.96rem;
   font-weight: 600;
   letter-spacing: -0.01em;

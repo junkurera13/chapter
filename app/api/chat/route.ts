@@ -51,7 +51,7 @@ export async function POST(request: Request) {
         { status: cause.status === 401 ? 401 : 502 },
       );
     }
-    console.error("Sidequest chat session lookup failed:", cause);
+    console.error("Chapter chat session lookup failed:", cause);
     return Response.json(
       { error: "Couldn't open your Chapter profile. Try again." },
       { status: 502 },
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       origin: new URL(request.url).origin,
     });
   } catch (cause) {
-    console.error("Sidequest chat send failed:", cause);
+    console.error("Chapter chat send failed:", cause);
     return Response.json(
       { error: "Your message didn't reach Chapter." },
       { status: 502 },

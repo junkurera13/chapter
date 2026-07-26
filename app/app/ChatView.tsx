@@ -115,7 +115,7 @@ export default function ChatView({
           },
         );
         if (!response.ok || !response.body) {
-          console.error("Sidequest stream failed:", response.status);
+          console.error("Chapter stream failed:", response.status);
           if (!cancelled) reconnectTimer = setTimeout(open, RECONNECT_MS);
           return;
         }
@@ -142,7 +142,7 @@ export default function ChatView({
               try {
                 ingest(JSON.parse(data) as ConversationMessageRecord);
               } catch (err) {
-                console.error("Could not parse Sidequest stream event:", err);
+                console.error("Could not parse Chapter stream event:", err);
               }
             } else if (eventName === "restart") {
               if (controller) controller.abort();
@@ -152,7 +152,7 @@ export default function ChatView({
         }
       } catch (err) {
         if (!cancelled && controller && !controller.signal.aborted) {
-          console.error("Sidequest stream error:", err);
+          console.error("Chapter stream error:", err);
         }
       }
       if (!cancelled && controller && !controller.signal.aborted) {
@@ -229,7 +229,7 @@ export default function ChatView({
       }
       setStatus("idle");
     } catch (err) {
-      console.error("Sidequest chat send failed:", err);
+      console.error("Chapter chat send failed:", err);
       setError("Network glitch. Try again.");
       setStatus("idle");
       setMessages((prev) => prev.filter((m) => m.id !== localId));

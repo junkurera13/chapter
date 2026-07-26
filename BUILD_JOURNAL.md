@@ -2,8 +2,7 @@
 
 ## July 22, 2026 — memory-first foundation
 
-The current competition build contains only the foundation of the new
-Sidequest:
+The current competition build contains only the foundation of Chapter:
 
 - Base44 Google authentication and private account ownership;
 - in-app phone connection and Photon shared-line signup;

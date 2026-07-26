@@ -6,19 +6,19 @@ import {
 } from "next/font/google";
 import "./globals.css";
 
-const sidequestSans = DM_Sans({
-  variable: "--font-sidequest-sans",
+const chapterSans = DM_Sans({
+  variable: "--font-chapter-sans",
   subsets: ["latin"],
 });
 
-const sidequestSerif = Newsreader({
-  variable: "--font-sidequest-serif",
+const chapterSerif = Newsreader({
+  variable: "--font-chapter-serif",
   subsets: ["latin"],
   style: ["normal", "italic"],
 });
 
-const sidequestInstrument = Instrument_Sans({
-  variable: "--font-sidequest-instrument",
+const chapterInstrument = Instrument_Sans({
+  variable: "--font-chapter-instrument",
   subsets: ["latin"],
 });
 
@@ -36,9 +36,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sidequestSans.variable} ${sidequestSerif.variable} ${sidequestInstrument.variable} h-full antialiased`}
+      className={`${chapterSans.variable} ${chapterSerif.variable} ${chapterInstrument.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-white font-[family-name:var(--font-sidequest-sans)] text-[#1c1c19]">
+      <body className="flex min-h-full flex-col bg-white font-[family-name:var(--font-chapter-sans)] text-[#1c1c19]">
         {children}
       </body>
     </html>

@@ -149,7 +149,7 @@ async function ensureSidequestUser(
     });
   }
   throw new MemoryPipelineError(
-    "A Sidequest user is required.",
+    "A Chapter user is required.",
     401,
     "AUTHENTICATION_REQUIRED",
   );

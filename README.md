@@ -53,6 +53,9 @@ People node -> hashed private invite -> verified friend -> reciprocal nodes
   signs short-lived image URLs, then validates and persists Eve’s result.
 - `sidequest-message` deduplicates inbound messages, stores Eve’s opaque session
   cursor, and records reply delivery.
+- The deployed Base44 resource IDs retain their pre-rebrand `sidequest-*`
+  slugs as compatibility contracts. They are internal identifiers, not product
+  branding.
 - Seven Base44 entities hold accounts, messages, source memories, graph nodes,
   graph edges, connection invites, and accepted connections.
 - Raw invite tokens are never persisted. Base44 stores only a SHA-256 hash,
@@ -60,8 +63,8 @@ People node -> hashed private invite -> verified friend -> reciprocal nodes
 
 ## Local development
 
-Requires Node.js 24, a Base44 account, an OpenRouter API key, and a shared
-`SIDEQUEST_INTERNAL_SECRET`.
+Requires Node.js 24, a Base44 account, an OpenRouter API key, and the deployed
+backend’s shared `SIDEQUEST_INTERNAL_SECRET` compatibility secret.
 
 ```bash
 npm install

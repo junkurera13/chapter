@@ -1,9 +1,9 @@
 import Image from "next/image";
 import type { CSSProperties } from "react";
 
-import styles from "./sidequest-loading-mark.module.css";
+import styles from "./chapter-loading-mark.module.css";
 
-export default function SidequestLoadingMark({
+export default function ChapterLoadingMark({
   label,
   size = 88,
 }: {
@@ -17,13 +17,13 @@ export default function SidequestLoadingMark({
       aria-label={label}
       style={
         {
-          "--sidequest-loading-size": `${size}px`,
+          "--chapter-loading-size": `${size}px`,
         } as CSSProperties
       }
     >
       <Image
         className={styles.mark}
-        src="/sidequest-mark.svg"
+        src="/chapter-mark.svg"
         alt=""
         width={112}
         height={112}

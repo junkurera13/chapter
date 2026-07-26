@@ -43,7 +43,7 @@ async function resolveUser(base44: Row, input: Row) {
     const user = rows[0];
     if (!user) {
       return {
-        error: "sidequest profile missing; open the app first",
+        error: "Chapter profile missing; open the app first",
         status: 404,
       };
     }
@@ -239,7 +239,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "sidequest message failed";
+      error instanceof Error ? error.message : "Chapter message failed";
     console.error("sidequest-message failed", error);
     return Response.json({ error: message }, { status: 500 });
   }

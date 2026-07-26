@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import SidequestLoadingMark from "../../components/sidequest-loading-mark";
+import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import { loadMyConnections } from "../../lib/base44Connections";
 import type { MyConnectionsRecord } from "../../lib/backendTypes";
 import styles from "./TogetherView.module.css";
@@ -24,7 +24,7 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
       const connections = await loadMyConnections();
       setState({ status: "ready", connections });
     } catch (error) {
-      console.error("Could not load Sidequest connections", error);
+      console.error("Could not load Chapter connections", error);
       setState({ status: "error" });
     }
   }, []);
@@ -36,7 +36,7 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
         if (active) setState({ status: "ready", connections });
       })
       .catch((error) => {
-        console.error("Could not load Sidequest connections", error);
+        console.error("Could not load Chapter connections", error);
         if (active) setState({ status: "error" });
       });
 
@@ -48,7 +48,7 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
   if (state.status === "loading") {
     return (
       <div className={styles.loading} aria-busy="true">
-        <SidequestLoadingMark label="Opening Together" />
+        <ChapterLoadingMark label="Opening Together" />
       </div>
     );
   }

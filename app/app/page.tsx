@@ -1,6 +1,6 @@
 import AuthGate from "./AuthGate";
 
-export default async function SidequestAppPage({
+export default async function ChapterAppPage({
   searchParams,
 }: {
   searchParams: Promise<{ view?: string | string[] }>;

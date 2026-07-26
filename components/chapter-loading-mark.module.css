@@ -4,8 +4,8 @@
 }
 
 .mark {
-  width: var(--sidequest-loading-size);
-  height: var(--sidequest-loading-size);
+  width: var(--chapter-loading-size);
+  height: var(--chapter-loading-size);
   opacity: 0.2;
   animation: breathe 1.8s ease-in-out infinite;
 }

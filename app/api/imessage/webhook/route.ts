@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
 export function GET() {
   return Response.json({
-    service: "sidequest-imessage",
+    service: "chapter-imessage",
     configured: Boolean(
       (process.env.IMESSAGE_PROJECT_ID || process.env.PHOTON_PROJECT_ID) &&
         (process.env.IMESSAGE_PROJECT_SECRET || process.env.PHOTON_PROJECT_SECRET) &&

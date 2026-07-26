@@ -1,6 +1,6 @@
 ---
 name: distill-memory
-description: Distill one concrete autobiographical memory, including text, images, and per-image context, into a precise Sidequest experience graph. Use whenever Chapter extracts, reprocesses, or reasons about a lived memory before structured output or persistence, especially when identifying the moment, specific people, places, activities, interests, feelings, conditions, patterns, evidence, and relationships.
+description: Distill one concrete autobiographical memory, including text, images, and per-image context, into a precise Chapter experience graph. Use whenever Chapter extracts, reprocesses, or reasons about a lived memory before structured output or persistence, especially when identifying the moment, specific people, places, activities, interests, feelings, conditions, patterns, evidence, and relationships.
 ---
 
 # Distill Memory

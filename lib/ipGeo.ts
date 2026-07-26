@@ -58,7 +58,7 @@ export async function lookupIpGeo(ip: string): Promise<IpGeo | undefined> {
     const res = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, {
       headers: {
         // ipapi.co rate-limits anonymous requests harshly — UA helps.
-        "User-Agent": "sidequest-signup/1.0",
+        "User-Agent": "chapter-signup/1.0",
       },
     });
     if (!res.ok) return undefined;

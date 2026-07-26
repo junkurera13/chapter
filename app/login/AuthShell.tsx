@@ -18,7 +18,7 @@ export default function AuthShell({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className={styles.brandMark}
-            src="/sidequest-mark.svg"
+            src="/chapter-mark.svg"
             alt=""
             width={96}
             height={96}

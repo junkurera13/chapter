@@ -21,7 +21,7 @@
   background: transparent;
   color: rgba(30, 28, 24, 0.48);
   cursor: pointer;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 12px;
 }
 
@@ -56,7 +56,7 @@
 .content h1 {
   max-width: 500px;
   margin: 0 auto;
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
   font-size: clamp(42px, 8vw, 62px);
   font-weight: 500;
   letter-spacing: -0.055em;
@@ -144,7 +144,7 @@
   background: #1c1b18;
   color: #fff;
   cursor: pointer;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
@@ -199,7 +199,7 @@
   background: transparent;
   color: rgba(30, 28, 24, 0.62);
   cursor: pointer;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 13px;
   font-weight: 650;
 }

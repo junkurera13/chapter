@@ -9,7 +9,7 @@ import {
 import { useMemo, useState } from "react";
 
 import {
-  signOutOfSidequest,
+  signOutOfChapter,
   type AuthenticatedViewer,
 } from "@/lib/base44Auth";
 
@@ -138,7 +138,7 @@ export default function PhoneConnection({
       <button
         className={styles.account}
         type="button"
-        onClick={signOutOfSidequest}
+        onClick={signOutOfChapter}
       >
         <span>{viewer.email}</span>
         <span>Sign out</span>
@@ -148,7 +148,7 @@ export default function PhoneConnection({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           className={styles.mark}
-          src="/sidequest-mark.svg"
+          src="/chapter-mark.svg"
           alt=""
           width={124}
           height={124}
@@ -202,11 +202,11 @@ export default function PhoneConnection({
                     ))}
                   </select>
                 </label>
-                <label className={styles.srOnly} htmlFor="sidequest-phone">
+                <label className={styles.srOnly} htmlFor="chapter-phone">
                   Phone number
                 </label>
                 <input
-                  id="sidequest-phone"
+                  id="chapter-phone"
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel-national"

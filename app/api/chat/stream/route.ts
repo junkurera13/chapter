@@ -71,7 +71,7 @@ export async function GET(request: Request) {
             if (message.createdAt > cursor) cursor = message.createdAt;
           }
         } catch (error) {
-          console.error("Sidequest chat stream poll failed:", error);
+          console.error("Chapter chat stream poll failed:", error);
           send("error", { message: "poll-failed" });
         } finally {
           busy = false;

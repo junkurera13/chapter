@@ -15,7 +15,7 @@
   top: 50%;
   left: 18px;
   color: rgba(28, 28, 25, 0.58);
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 15px;
   pointer-events: none;
   transform: translateY(-50%);
@@ -33,7 +33,7 @@
   border-radius: 999px;
   background: #fff;
   color: var(--ink, #1c1c19);
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 15px;
   outline: none;
 }
@@ -56,7 +56,7 @@
 .hint {
   margin: 0 0 4px;
   color: rgba(28, 28, 25, 0.6);
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -70,7 +70,7 @@
   margin: 0;
   padding: 0 4px;
   color: #b4462a;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.45;
 }
@@ -94,7 +94,7 @@
     0 11px 18px rgba(239, 102, 149, 0.25);
   color: #371521;
   cursor: pointer;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 0.98rem;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -144,7 +144,7 @@
   gap: 10px;
   margin-top: 4px;
   color: rgba(28, 28, 25, 0.5);
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 13px;
 }
 

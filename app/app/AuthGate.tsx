@@ -12,11 +12,11 @@ import {
 } from "@/lib/base44Auth";
 import { loadMyExperienceGraph } from "@/lib/base44Graph";
 import type { ExperienceGraphRecord } from "@/lib/backendTypes";
-import SidequestLoadingMark from "@/components/sidequest-loading-mark";
+import ChapterLoadingMark from "@/components/chapter-loading-mark";
 
-import SidequestApp from "./SidequestApp";
+import ChapterApp from "./ChapterApp";
 import PhoneConnection from "./PhoneConnection";
-import type { SidequestTabIndex } from "./BottomNavigation";
+import type { ChapterTabIndex } from "./BottomNavigation";
 import styles from "./AuthGate.module.css";
 
 type GateState =
@@ -31,7 +31,7 @@ type GateState =
 export default function AuthGate({
   initialTab,
 }: {
-  initialTab?: SidequestTabIndex;
+  initialTab?: ChapterTabIndex;
 }) {
   const router = useRouter();
   const [state, setState] = useState<GateState>({ status: "checking" });
@@ -56,7 +56,7 @@ export default function AuthGate({
         return null;
       }
 
-      console.error("Could not open the Sidequest session", error);
+      console.error("Could not open the Chapter session", error);
       throw error;
     }
   }
@@ -105,7 +105,7 @@ export default function AuthGate({
       );
     }
     return (
-      <SidequestApp
+      <ChapterApp
         viewer={state.viewer}
         initialGraph={state.graph}
         onConnectPhone={() => setPhoneConnectionOpen(true)}
@@ -130,7 +130,7 @@ export default function AuthGate({
 
   return (
     <main className={styles.statePage} aria-live="polite" aria-busy="true">
-      <SidequestLoadingMark label="Opening Chapter" />
+      <ChapterLoadingMark label="Opening Chapter" />
     </main>
   );
 }

@@ -45,7 +45,7 @@ export function getSidequestBot() {
   });
 
   bot = new Chat({
-    userName: "sidequest",
+    userName: "chapter",
     adapters: { imessage: adapter },
     state: createMemoryState(),
   });
@@ -83,7 +83,7 @@ export function getSidequestBot() {
         }),
       );
     } catch (error) {
-      console.error("Could not mark the Sidequest reply delivered", error);
+      console.error("Could not mark the Chapter reply delivered", error);
     }
   });
 

@@ -51,7 +51,7 @@ export function clearBase44Session() {
   removeAccessToken({ storageKey: "token" });
 }
 
-export function signOutOfSidequest() {
+export function signOutOfChapter() {
   clearBase44Session();
   window.location.replace("/");
 }

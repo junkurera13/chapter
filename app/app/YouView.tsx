@@ -236,7 +236,7 @@ export default function YouView({
       });
       onInviteCreated?.();
     } catch (error) {
-      console.error("Could not create a Sidequest connection invite", error);
+      console.error("Could not create a Chapter connection invite", error);
       setInviteState({ nodeId: node.key, status: "error" });
     }
   }

@@ -15,7 +15,7 @@
   max-width: 15ch;
   margin: 0;
   color: #1c1c19;
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
   font-size: clamp(3rem, 6.1vw, 5.7rem);
   font-weight: 500;
   letter-spacing: -0.065em;
@@ -74,7 +74,7 @@
   align-items: center;
   gap: 0.55rem;
   color: #fff;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: clamp(0.88rem, 1.3vw, 1.05rem);
   font-weight: 590;
   letter-spacing: -0.02em;
@@ -111,7 +111,7 @@
 .copy p {
   margin: 0;
   color: rgba(28, 28, 25, 0.82);
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
   font-size: clamp(1.3rem, 2.35vw, 1.9rem);
   font-weight: 450;
   letter-spacing: -0.045em;

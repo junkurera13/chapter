@@ -1,5 +1,5 @@
 export const ORB_BIRTH_STORAGE_KEY =
-  "sidequest:you-world:seen-node-keys:v1";
+  "chapter:you-world:seen-node-keys:v1";
 export const ORB_BIRTH_DELAY_MS = 160;
 export const ORB_BIRTH_STAGGER_MS = 70;
 export const ORB_BIRTH_DURATION_MS = 680;

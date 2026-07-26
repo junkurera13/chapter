@@ -27,7 +27,7 @@
   margin: 0;
   padding: 0;
   pointer-events: none;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   list-style: none;
   text-align: center;
 }

@@ -20,7 +20,7 @@ import ceramicsImage from "../assets/ceramics-class.jpg";
 import mojikoImage from "../assets/mojiko-waterfront.jpg";
 import sushiImage from "../assets/sushi-shibuya.webp";
 import AgentOrbVideo from "../../components/landing/agent-orb-video";
-import SidequestLoadingMark from "../../components/sidequest-loading-mark";
+import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import {
   createExperienceMemory,
   describeMemorySubmissionFailure,
@@ -740,7 +740,7 @@ export default function YouOnboarding({
                             ease: [0.22, 1, 0.36, 1],
                           }}
                         >
-                          <SidequestLoadingMark
+                          <ChapterLoadingMark
                             label="Understanding this memory"
                             size={68}
                           />

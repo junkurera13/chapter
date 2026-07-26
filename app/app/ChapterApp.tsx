@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import BottomNavigation, {
-  type SidequestTabIndex,
+  type ChapterTabIndex,
 } from "./BottomNavigation";
 import type { AuthenticatedViewer } from "../../lib/base44Auth";
 import { loadMyExperienceGraph } from "../../lib/base44Graph";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
-import SidequestLoadingMark from "../../components/sidequest-loading-mark";
+import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import { buildWorldGraph } from "./graphData";
 import ChatView from "./ChatView";
 import TogetherView from "./TogetherView";
@@ -22,7 +22,7 @@ type GraphState =
 
 const GRAPH_RETRY_MS = 5000;
 
-export default function SidequestApp({
+export default function ChapterApp({
   viewer,
   initialGraph,
   onConnectPhone,
@@ -31,9 +31,9 @@ export default function SidequestApp({
   viewer: AuthenticatedViewer;
   initialGraph: ExperienceGraphRecord;
   onConnectPhone: () => void;
-  initialTab?: SidequestTabIndex;
+  initialTab?: ChapterTabIndex;
 }) {
-  const [activeIndex, setActiveIndex] = useState<SidequestTabIndex>(initialTab);
+  const [activeIndex, setActiveIndex] = useState<ChapterTabIndex>(initialTab);
   const [graphState, setGraphState] = useState<GraphState>({
     status: "ready",
     graph: initialGraph,
@@ -53,7 +53,7 @@ export default function SidequestApp({
     setGraphState({ status: "loading" });
   }, []);
   const changeTab = useCallback(
-    (nextIndex: SidequestTabIndex) => {
+    (nextIndex: ChapterTabIndex) => {
       if (worldLocked && nextIndex !== 0) return;
       setActiveIndex(nextIndex);
     },
@@ -73,7 +73,7 @@ export default function SidequestApp({
           if (graph.memoryCount === 0) setActiveIndex(0);
         }
       } catch (error) {
-        console.error("Could not load the Sidequest experience graph", error);
+        console.error("Could not load the Chapter experience graph", error);
         if (active) setGraphState({ status: "error" });
       }
     }
@@ -96,7 +96,7 @@ export default function SidequestApp({
   if (graphState.status === "loading") {
     youPanel = (
       <div className={styles.graphLoading} aria-busy="true">
-        <SidequestLoadingMark label="Opening your world" />
+        <ChapterLoadingMark label="Opening your world" />
       </div>
     );
   } else if (graphState.status === "error") {
@@ -113,7 +113,7 @@ export default function SidequestApp({
   } else if (!worldGraph) {
     youPanel = (
       <div className={styles.graphLoading} aria-busy="true">
-        <SidequestLoadingMark label="Shaping your world" />
+        <ChapterLoadingMark label="Shaping your world" />
       </div>
     );
   } else {
@@ -137,9 +137,9 @@ export default function SidequestApp({
     <main className={styles.canvas} aria-label="Chapter app">
       <section
         className={styles.panel}
-        id={`sidequest-panel-${displayedIndex}`}
+        id={`chapter-panel-${displayedIndex}`}
         role="tabpanel"
-        aria-labelledby={`sidequest-tab-${displayedIndex}`}
+        aria-labelledby={`chapter-tab-${displayedIndex}`}
       >
         {activePanel}
       </section>

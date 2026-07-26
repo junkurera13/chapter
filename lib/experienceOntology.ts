@@ -65,7 +65,7 @@ export const EXPERIENCE_CATEGORY_META: Record<
   experience: {
     label: "Moment",
     purpose: "A real episode, memory, trip, ritual, or experience someone lived.",
-    subtypeExamples: ["meaningful_memory", "trip", "ritual", "sidequest"],
+    subtypeExamples: ["meaningful_memory", "trip", "ritual", "chapter"],
   },
   people: {
     label: "People",

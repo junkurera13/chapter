@@ -1,5 +1,5 @@
 export const ORB_LAYOUT_STORAGE_KEY =
-  "sidequest:you-world:orb-layout:v1";
+  "chapter:you-world:orb-layout:v1";
 
 export type OrbPosition = readonly [number, number, number];
 

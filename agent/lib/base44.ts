@@ -13,7 +13,7 @@ export function callerIdentity(attributes: Readonly<
   const authUserId = value("authUserId");
   const phone = value("phone");
   if (!authUserId && !phone) {
-    throw new Error("This Eve session is not linked to a Sidequest user.");
+    throw new Error("This Eve session is not linked to a Chapter user.");
   }
   return { authUserId, phone };
 }

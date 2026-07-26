@@ -88,7 +88,7 @@ export default function AuthModal({
         <div className={styles.header}>
           <Image
             className={styles.mark}
-            src="/sidequest-mark.svg"
+            src="/chapter-mark.svg"
             alt=""
             width={88}
             height={88}

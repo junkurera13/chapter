@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import SidequestLoadingMark from "@/components/sidequest-loading-mark";
+import ChapterLoadingMark from "@/components/chapter-loading-mark";
 import {
   clearBase44Session,
   hasBase44Session,
@@ -43,7 +43,7 @@ export default function InviteAcceptance({ token }: { token: string }) {
           });
         }
       } catch (error) {
-        console.error("Could not open the Sidequest invitation", error);
+        console.error("Could not open the Chapter invitation", error);
         if (active) {
           setState({
             status: "error",
@@ -84,7 +84,7 @@ export default function InviteAcceptance({ token }: { token: string }) {
         return;
       }
 
-      console.error("Could not accept the Sidequest invitation", error);
+      console.error("Could not accept the Chapter invitation", error);
       setState({
         status: "error",
         message: "This invitation may have expired or already been used.",
@@ -95,7 +95,7 @@ export default function InviteAcceptance({ token }: { token: string }) {
   if (state.status === "loading") {
     return (
       <main className={styles.page} aria-busy="true">
-        <SidequestLoadingMark label="Opening invitation" />
+        <ChapterLoadingMark label="Opening invitation" />
       </main>
     );
   }
