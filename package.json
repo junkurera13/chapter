@@ -14,8 +14,10 @@
     "@chat-adapter/state-memory": "^4.34.0",
     "@photon-ai/chat-adapter-imessage": "^3.0.1",
     "@types/three": "^0.184.1",
+    "ai": "^7.0.37",
     "chat": "^4.34.0",
     "clsx": "^2.1.1",
+    "eve": "^0.27.6",
     "framer-motion": "^12.42.2",
     "libphonenumber-js": "^1.13.2",
     "next": "16.2.6",
@@ -23,7 +25,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.6.0",
-    "three": "^0.184.0"
+    "three": "^0.184.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

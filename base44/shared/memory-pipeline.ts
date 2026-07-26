@@ -2,7 +2,6 @@ import {
   buildMemoryExtractionPrompt,
   collapseMemoryGraphRows,
   MEMORY_EXTRACTOR_VERSION,
-  memoryExtractionSchema,
   type MemoryNodeCategory,
   type MemorySourceDescriptor,
   prepareMemoryExtraction,
@@ -23,7 +22,7 @@ export type MemoryImageInput = {
   position: number;
 };
 
-export type IngestExperienceMemoryInput = {
+export type ExperienceMemoryInput = {
   user: Row;
   phone: string;
   authUserId: string;
@@ -33,12 +32,30 @@ export type IngestExperienceMemoryInput = {
   images: MemoryImageInput[];
 };
 
-export type IngestExperienceMemoryResult = {
+export type CompletedExperienceMemory = {
   memoryId: string;
   title: string;
   summary: string;
   created: boolean;
 };
+
+export type PreparedExperienceMemory =
+  | {
+      alreadyComplete: true;
+      memoryId: string;
+      title: string;
+      summary: string;
+    }
+  | {
+      alreadyComplete: false;
+      memoryId: string;
+      prompt: string;
+      attachments: Array<{
+        url: string;
+        fileName: string;
+        mediaType: string;
+      }>;
+    };
 
 export class MemoryPipelineError extends Error {
   readonly status: number;
@@ -91,7 +108,7 @@ function categoryForNode(row: Row): MemoryNodeCategory {
   return categoryByKind[stringValue(row.kind)] ?? "pattern";
 }
 
-function identityQuery(input: IngestExperienceMemoryInput) {
+function identityQuery(input: ExperienceMemoryInput) {
   const identities = [
     input.user?.id ? { owner_user_id: input.user.id } : undefined,
     input.authUserId ? { auth_user_id: input.authUserId } : undefined,
@@ -110,7 +127,7 @@ async function removeFailedAttempt(base44: Row, memoryId: string) {
 
 async function findOrCreateMemory(
   base44: Row,
-  input: IngestExperienceMemoryInput,
+  input: ExperienceMemoryInput,
 ) {
   const memories = base44.asServiceRole.entities.ExperienceMemory;
   const rows = await memories.filter(
@@ -184,7 +201,7 @@ async function findOrCreateMemory(
 async function preserveSources(
   base44: Row,
   memory: Row,
-  input: IngestExperienceMemoryInput,
+  input: ExperienceMemoryInput,
 ) {
   const sources = base44.asServiceRole.entities.ExperienceMemorySource;
   const createdAt = Date.now();
@@ -256,7 +273,7 @@ async function preserveSources(
 async function loadPriorContext(
   base44: Row,
   memoryId: string,
-  input: IngestExperienceMemoryInput,
+  input: ExperienceMemoryInput,
 ) {
   const service = base44.asServiceRole.entities;
   const memories = await service.ExperienceMemory.filter(
@@ -352,18 +369,71 @@ export async function signedImageUrls(
   return urls;
 }
 
-export async function ingestExperienceMemory(
+async function ownedMemory(
   base44: Row,
-  input: IngestExperienceMemoryInput,
-): Promise<IngestExperienceMemoryResult> {
+  input: ExperienceMemoryInput,
+  memoryId: string,
+) {
+  const memories = base44.asServiceRole.entities.ExperienceMemory;
+  const memory = await memories.get(memoryId).catch(() => null);
+  if (!memory || memory.owner_user_id !== input.user.id) {
+    throw new MemoryPipelineError(
+      "That memory could not be found.",
+      404,
+      "MEMORY_NOT_FOUND",
+    );
+  }
+  return memory;
+}
+
+async function sourceDescriptors(base44: Row, memoryId: string) {
+  const rows = await base44.asServiceRole.entities.ExperienceMemorySource.filter(
+    { memory_id: memoryId },
+    "created_at",
+    100,
+  );
+  return rows.flatMap((row: Row): MemorySourceDescriptor[] => {
+    const sourceRef = stringValue(row.source_ref);
+    const sourceType = stringValue(row.source_type);
+    if (!sourceRef) return [];
+    if (sourceType === "text") {
+      return [{ ref: sourceRef, type: "text", text: stringValue(row.text, 6_000) }];
+    }
+    if (sourceType === "image") {
+      return [
+        {
+          ref: sourceRef,
+          type: "image",
+          attachmentIndex: Number(row.position ?? 0),
+        },
+      ];
+    }
+    if (sourceType === "image_context") {
+      return [
+        {
+          ref: sourceRef,
+          type: "image_context",
+          text: stringValue(row.text),
+          attachmentIndex: Number(row.position ?? 0),
+        },
+      ];
+    }
+    return [];
+  });
+}
+
+export async function prepareExperienceMemory(
+  base44: Row,
+  input: ExperienceMemoryInput,
+): Promise<PreparedExperienceMemory> {
   const memories = base44.asServiceRole.entities.ExperienceMemory;
   const { memory, alreadyComplete } = await findOrCreateMemory(base44, input);
   if (alreadyComplete) {
     return {
+      alreadyComplete: true,
       memoryId: memory.id,
       title: stringValue(memory.title),
       summary: stringValue(memory.summary),
-      created: false,
     };
   }
 
@@ -374,17 +444,79 @@ export async function ingestExperienceMemory(
       await loadPriorContext(base44, memory.id, input);
 
     await memories.update(memory.id, { processing_stage: "extracting" });
-    const rawExtraction =
-      await base44.asServiceRole.integrations.Core.InvokeLLM({
-        prompt: buildMemoryExtractionPrompt({
-          text: input.text,
-          sources,
-          existingConcepts,
-          previousMemorySummaries,
-        }),
-        response_json_schema: memoryExtractionSchema,
-        ...(fileUrls.length > 0 ? { file_urls: fileUrls } : {}),
+    const orderedImages = [...input.images].sort(
+      (first, second) => first.position - second.position,
+    );
+    return {
+      alreadyComplete: false,
+      memoryId: memory.id,
+      prompt: buildMemoryExtractionPrompt({
+        text: input.text,
+        sources,
+        existingConcepts,
+        previousMemorySummaries,
+      }),
+      attachments: fileUrls.map((url, index) => ({
+        url,
+        fileName: orderedImages[index].fileName,
+        mediaType: orderedImages[index].mediaType,
+      })),
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Memory preparation failed.";
+    try {
+      await memories.update(memory.id, {
+        status: "failed",
+        processing_stage: "failed",
+        error: message.slice(0, 500),
+        processed_at: Date.now(),
       });
+    } catch {
+      // Preserve the original preparation error.
+    }
+    throw error;
+  }
+}
+
+export async function completeExperienceMemory(
+  base44: Row,
+  input: ExperienceMemoryInput,
+  memoryId: string,
+  rawExtraction: unknown,
+): Promise<CompletedExperienceMemory> {
+  const memories = base44.asServiceRole.entities.ExperienceMemory;
+  const memory = await ownedMemory(base44, input, memoryId);
+  if (memory.status === "complete") {
+    return {
+      memoryId: memory.id,
+      title: stringValue(memory.title),
+      summary: stringValue(memory.summary),
+      created: false,
+    };
+  }
+  if (memory.status !== "pending") {
+    throw new MemoryPipelineError(
+      "That memory is not ready to be completed.",
+      409,
+      "MEMORY_NOT_PENDING",
+    );
+  }
+
+  try {
+    const sources = await sourceDescriptors(base44, memory.id);
+    if (sources.length === 0) {
+      throw new MemoryPipelineError(
+        "The memory sources were not preserved.",
+        422,
+        "MEMORY_SOURCES_MISSING",
+      );
+    }
+    const { existingConcepts } = await loadPriorContext(
+      base44,
+      memory.id,
+      input,
+    );
     const extraction = prepareMemoryExtraction(rawExtraction, {
       memoryId: memory.id,
       sources,
@@ -487,4 +619,22 @@ export async function ingestExperienceMemory(
     }
     throw error;
   }
+}
+
+export async function failExperienceMemory(
+  base44: Row,
+  input: ExperienceMemoryInput,
+  memoryId: string,
+  errorMessage: string,
+) {
+  const memories = base44.asServiceRole.entities.ExperienceMemory;
+  const memory = await ownedMemory(base44, input, memoryId);
+  if (memory.status === "complete") return { failed: false };
+  await memories.update(memory.id, {
+    status: "failed",
+    processing_stage: "failed",
+    error: stringValue(errorMessage, 500) || "Memory extraction failed.",
+    processed_at: Date.now(),
+  });
+  return { failed: true };
 }

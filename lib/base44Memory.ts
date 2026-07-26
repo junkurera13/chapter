@@ -1,4 +1,4 @@
-import { Base44Error } from "@base44/sdk";
+import { Base44Error, getAccessToken } from "@base44/sdk";
 
 import { getBase44BrowserClient } from "./base44BrowserClient";
 
@@ -169,14 +169,43 @@ export async function createExperienceMemory({
   images: UploadedMemoryPhoto[];
   source?: "onboarding" | "reflection";
 }) {
-  const client = getBase44BrowserClient();
-  const response = await client.functions.invoke("sidequest-memory", {
-    action: "create",
-    clientRequestId,
-    source,
-    text: text.trim(),
-    images,
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    throw {
+      status: 401,
+      data: {
+        code: "AUTHENTICATION_REQUIRED",
+        error: "Your session expired.",
+      },
+    };
+  }
+  const response = await fetch("/api/memory", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      clientRequestId,
+      source,
+      text: text.trim(),
+      images,
+    }),
   });
-
-  return (response.data as { value: CreatedExperienceMemory }).value;
+  const payload = (await response.json().catch(() => ({}))) as {
+    value?: CreatedExperienceMemory;
+    error?: string;
+    code?: string;
+  };
+  if (!response.ok || !payload.value) {
+    throw {
+      status: response.status,
+      data: {
+        error: payload.error,
+        code: payload.code,
+      },
+    };
+  }
+  return payload.value;
 }

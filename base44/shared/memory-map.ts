@@ -161,10 +161,9 @@ const MAX_NODES = 24;
 const MAX_EDGES = 48;
 
 export const memoryExtractionSchema = {
-  // Base44's current LLM provider rejects this nested schema with
-  // INVALID_ARGUMENT when additionalProperties/minItems/maxItems are present.
-  // prepareMemoryExtraction enforces the array limits and discards unknown or
-  // invalid values after generation, so keep the provider-facing schema lean.
+  // Keep this portable JSON Schema lean. The runtime Zod schema lives in
+  // lib/memoryExtractionSchema.ts, while prepareMemoryExtraction remains the
+  // authoritative persistence guardrail for generated values.
   type: "object",
   required: ["title", "summary", "nodes", "edges"],
   properties: {

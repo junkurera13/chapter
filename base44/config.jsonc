@@ -1,6 +1,6 @@
 {
   "name": "sidequest-buildoff",
-  "description": "Base44 backend for Chapter, an agent that composes real-world experiences.",
+  "description": "Base44 backend and private memory store for Chapter's Eve agent.",
   "visibility": "public",
   "site": {
     "outputDirectory": "./base44/site"

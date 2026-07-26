@@ -70,6 +70,7 @@ export async function POST(request: Request) {
       threadId: crypto.randomUUID(),
       channel: "web",
       accessToken,
+      origin: new URL(request.url).origin,
     });
   } catch (cause) {
     console.error("Sidequest chat send failed:", cause);

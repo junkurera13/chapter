@@ -19,6 +19,18 @@
     "on_vacation": { "type": "boolean" },
     "notes": { "type": "string" },
     "memory_updated_at": { "type": "number" },
+    "eve_session_id": {
+      "type": "string",
+      "description": "Durable Eve conversation session id"
+    },
+    "eve_continuation_token": {
+      "type": "string",
+      "description": "Opaque Eve continuation token for the user's shared Chapter conversation"
+    },
+    "eve_stream_index": {
+      "type": "number",
+      "description": "Last consumed Eve event index"
+    },
     "latitude": { "type": "number" },
     "longitude": { "type": "number" },
     "signed_up_at": { "type": "number" },

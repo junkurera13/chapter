@@ -66,6 +66,10 @@ export function getSidequestBot() {
         text,
         messageId: message.id,
         threadId: thread.id,
+        origin:
+          process.env.SIDEQUEST_AGENT_URL ||
+          process.env.VERCEL_URL ||
+          process.env.VERCEL_PROJECT_PRODUCTION_URL,
       }),
     );
     if (!result.reply || !result.replyId) return;

@@ -51,3 +51,4 @@ base44/.app.jsonc
 .eve/
 .output/
 .nitro/
+.env*.local

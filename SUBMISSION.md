@@ -23,13 +23,17 @@ patterns that made it meaningful, then reveals that private graph in the
 authenticated **You** view. Explicitly named people remain individual nodes,
 not a single generic group.
 
-Base44 owns authenticated accounts, phone-account linking, conversation state,
-source memories, graph extraction, connection invitations, accepted
-connections, and persistence. Seven Base44 entities model that world.
-`sidequest-message` provides idempotent iMessage processing and structured
-memory extraction through `Core.InvokeLLM`; `sidequest-data` provides
-authenticated ownership, graph retrieval, hashed invite handling, and
-reciprocal nodes. Direct entity access is restricted by access rules.
+Base44 owns authenticated accounts, private image storage, phone-account
+linking, source memories, conversation records, graph validation, connection
+invitations, accepted connections, and persistence. Seven Base44 entities
+model that world. Chapter’s durable conversation and multimodal extraction run
+as an Eve agent on Vercel, using `openai/gpt-5.4-mini` through Vercel AI
+Gateway. `sidequest-memory` preserves sources before model work and validates
+the structured graph before persistence; `sidequest-message` provides
+idempotent web and iMessage processing and stores the opaque Eve continuation
+cursor; `sidequest-data` provides authenticated ownership, graph retrieval,
+hashed invite handling, and reciprocal nodes. Direct entity access is
+restricted by access rules.
 
 Photon is deliberately narrow: it connects Apple Messages to the signed
 Next.js webhook, while Base44 remains the source of truth. The product currently
@@ -43,34 +47,38 @@ intentionally not represented by a placeholder.
 - [x] Authentication & user management
 - [x] Database / entities
 - [x] Backend functions (Deno)
-- [x] AI / LLM structured extraction
+- [x] AI / LLM structured extraction (Eve + Vercel AI Gateway)
 - [ ] Real-time subscriptions
-- [ ] File & media storage
+- [x] File & media storage
 
 ## BaaS feedback
 
 ### What worked well or felt great to use?
 
-The CLI made the first successful vertical slice unusually fast: declare
-entities, add Deno functions, call `Core.InvokeLLM`, and deploy without
-assembling separate database, model, and serverless-function providers.
-`createClientFromRequest` plus `asServiceRole` kept privileged work inside
-Base44, while structured output fit the experience-graph extraction well.
+The CLI made the backend slice unusually fast: declare entities, add Deno
+functions, secure private uploads, and deploy without assembling separate
+database, authentication, storage, and serverless-function providers.
+`createClientFromRequest` plus `asServiceRole` keeps privileged validation and
+persistence inside Base44, while Eve can own the agent loop independently.
 
 ### Where did you get stuck, confused, or blocked?
 
-The external browser SDK's anonymous analytics initialization initially made a
-healthy public integration look broken by logging an authentication error. The
-distinction between deployed resources and production log visibility was also
-unclear while testing an external Next.js frontend.
+The original Base44 LLM integration repeatedly failed on the production
+multimodal extraction path and exposed too little provider/runtime detail to
+diagnose confidently. The external browser SDK's anonymous analytics
+initialization also made a healthy public integration look broken by logging
+an authentication error. The distinction between deployed resources and
+production log visibility was unclear while testing an external Next.js
+frontend.
 
 ### What was missing, or what would you add?
 
 An explicit `analytics: false` client option, a functions-only SDK entry point,
 and a first-party external Next.js example covering authenticated functions,
-CORS, server components, and route handlers would make this workflow easier to
-trust. Typed entity generation for function code and stronger CLI remote-state
-inspection would also help.
+private file handoff to an external model, CORS, server components, and route
+handlers would make this workflow easier to trust. Typed entity generation,
+provider/model observability, and stronger CLI remote-state inspection would
+also help.
 
 - Likelihood to keep using Base44's backend: **7 / 10**
 - Contact permission for follow-up: **confirm before submitting**
