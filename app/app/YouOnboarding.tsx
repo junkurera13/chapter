@@ -6,6 +6,7 @@ import {
   motion,
   useReducedMotion,
 } from "framer-motion";
+import Image from "next/image";
 import {
   type ChangeEvent,
   useEffect,
@@ -13,6 +14,9 @@ import {
   useState,
 } from "react";
 
+import ceramicsImage from "../assets/ceramics-class.jpg";
+import mojikoImage from "../assets/mojiko-waterfront.jpg";
+import sushiImage from "../assets/sushi-shibuya.webp";
 import AgentOrbVideo from "../../components/landing/agent-orb-video";
 
 import styles from "./YouOnboarding.module.css";
@@ -212,39 +216,78 @@ export default function YouOnboarding() {
                       }
                 }
               >
-                <div className={styles.addRow}>
-                  <button
-                    className={styles.addButton}
-                    type="button"
-                    aria-label={
-                      photos.length === 0 ? "Add photos" : "Add more photos"
-                    }
-                    disabled={photos.length >= MAX_PHOTOS}
-                    onClick={openPhotoPicker}
-                  >
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 24 24"
-                      fill="none"
+                <div className={styles.uploadPrompt}>
+                  <div className={styles.memoryWindow} aria-hidden="true">
+                    <div
+                      className={`${styles.sampleCard} ${styles.sampleCardLeft}`}
                     >
-                      <path d="M12 5v14M5 12h14" />
-                    </svg>
-                  </button>
+                      <Image
+                        src={mojikoImage}
+                        alt=""
+                        fill
+                        sizes="18rem"
+                        placeholder="blur"
+                      />
+                    </div>
+                    <div
+                      className={`${styles.sampleCard} ${styles.sampleCardRight}`}
+                    >
+                      <Image
+                        src={ceramicsImage}
+                        alt=""
+                        fill
+                        sizes="18rem"
+                        placeholder="blur"
+                      />
+                    </div>
+                    <div
+                      className={`${styles.sampleCard} ${styles.sampleCardFront}`}
+                    >
+                      <Image
+                        src={sushiImage}
+                        alt=""
+                        fill
+                        sizes="9rem"
+                        placeholder="blur"
+                      />
+                    </div>
 
-                  {photos.length > 0 ? (
-                    <span className={styles.photoCount}>
-                      {photos.length} of {MAX_PHOTOS}
-                    </span>
-                  ) : null}
+                    <div className={styles.addRow}>
+                      <button
+                        className={styles.addButton}
+                        type="button"
+                        aria-label={
+                          photos.length === 0 ? "Add photos" : "Add more photos"
+                        }
+                        disabled={photos.length >= MAX_PHOTOS}
+                        onClick={openPhotoPicker}
+                      >
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        <span>Add</span>
+                      </button>
 
-                  <input
-                    ref={inputRef}
-                    className={styles.fileInput}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={addPhotos}
-                  />
+                      {photos.length > 0 ? (
+                        <span className={styles.photoCount}>
+                          {photos.length} of {MAX_PHOTOS}
+                        </span>
+                      ) : null}
+
+                      <input
+                        ref={inputRef}
+                        className={styles.fileInput}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={addPhotos}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <AnimatePresence initial={false}>
