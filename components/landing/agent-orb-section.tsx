@@ -56,7 +56,7 @@ export default function AgentOrbSection() {
           <AgentOrbVideo />
         </AuthOpenButton>
         <h2 id="agent-orb-invitation" className={styles.invitation}>
-          Be among the first to try Sidequest
+          See where your world takes you.
         </h2>
       </div>
 
