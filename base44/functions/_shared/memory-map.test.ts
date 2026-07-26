@@ -5,7 +5,7 @@ import {
   collapseMemoryGraphRows,
   prepareMemoryExtraction,
   type MemorySourceDescriptor,
-} from "./memory-map";
+} from "../../shared/memory-map";
 
 const textSource: MemorySourceDescriptor = {
   ref: "text:main",

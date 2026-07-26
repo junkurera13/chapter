@@ -4,7 +4,7 @@ import {
   ingestExperienceMemory,
   type MemoryImageInput,
   MemoryPipelineError,
-} from "../_shared/memory-pipeline.ts";
+} from "../../shared/memory-pipeline.ts";
 
 // Base44 entity rows are dynamic at this SDK boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

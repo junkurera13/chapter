@@ -1,6 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
 
-import { collapseMemoryGraphRows } from "../_shared/memory-map.ts";
+import { collapseMemoryGraphRows } from "../../shared/memory-map.ts";
 
 // Base44 entity rows are dynamic at this SDK boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

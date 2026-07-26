@@ -1,6 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
 
-import { ingestExperienceMemory } from "../_shared/memory-pipeline.ts";
+import { ingestExperienceMemory } from "../../shared/memory-pipeline.ts";
 
 // Base44 entity rows are dynamic at this SDK boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
