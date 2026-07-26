@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import InviteAcceptance from "./InviteAcceptance";
 
 export const metadata: Metadata = {
-  title: "A Sidequest invitation",
-  description: "Connect your Sidequest with someone you know.",
+  title: "A Chapter invitation",
+  description: "Connect with someone you know on Chapter.",
 };
 
 export default async function ConnectionInvitePage({

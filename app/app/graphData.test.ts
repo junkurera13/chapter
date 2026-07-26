@@ -120,6 +120,8 @@ describe("buildWorldGraph", () => {
         sourceType: "connection",
         linkedUserId: "friend-user-id",
         connectionId: "connection-id",
+        description: "A friend you connected with through Chapter.",
+        evidence: "You connected through a private Chapter invitation.",
       }),
     );
   });

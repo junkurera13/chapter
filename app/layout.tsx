@@ -23,7 +23,7 @@ const sidequestInstrument = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Sidequest",
+  title: "Chapter",
   description:
     "Experiences that feel strangely meant for you.",
 };

@@ -5,7 +5,7 @@ import {
   safeBase44AuthReturnPath,
 } from "@/lib/base44AuthReturn";
 
-const PRODUCTION_APP_ORIGIN = "https://sidequest-b44.vercel.app";
+const PRODUCTION_APP_ORIGIN = "https://usechapter.vercel.app";
 
 export function GET(request: NextRequest) {
   const savedReturnPath = request.cookies.get(BASE44_AUTH_RETURN_COOKIE)?.value;

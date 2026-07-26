@@ -88,7 +88,7 @@ export default function BottomNavigation({
         <div
           className={styles.tabs}
           role="tablist"
-          aria-label="Sidequest views"
+          aria-label="Chapter views"
           data-active={activeIndex}
         >
           <span className={styles.candy} aria-hidden="true" />

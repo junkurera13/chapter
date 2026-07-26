@@ -81,7 +81,7 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
         <h1>Invite someone you know.</h1>
         <p className={styles.stateCopy}>
           Open a person in You and send them a private link. When they accept,
-          you’ll appear in each other’s Sidequest.
+          you’ll appear in each other’s world.
         </p>
         <button type="button" onClick={onOpenYou}>
           Find a person in You

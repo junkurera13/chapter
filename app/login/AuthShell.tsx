@@ -14,7 +14,7 @@ export default function AuthShell({
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <Link href="/" aria-label="Sidequest home">
+        <Link href="/" aria-label="Chapter home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className={styles.brandMark}

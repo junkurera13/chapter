@@ -250,8 +250,8 @@ export default function YouView({
     if (navigator.share) {
       void navigator
         .share({
-          title: `${name}, join me on Sidequest`,
-          text: "I found you in my Sidequest world. Connect with me so we can build what comes next together.",
+          title: `${name}, join me on Chapter`,
+          text: "I found you in my world on Chapter. Connect with me so we can build what comes next together.",
           url,
         })
         .then(markShared)
@@ -273,7 +273,7 @@ export default function YouView({
       return;
     }
 
-    window.prompt("Copy this private Sidequest invite", url);
+    window.prompt("Copy this private Chapter invite", url);
     markShared();
   }
 
@@ -1526,7 +1526,7 @@ export default function YouView({
               selectedNode.linkedUserId || selectedNode.connectionId ? (
                 <div className={styles.connectedStatus}>
                   <span aria-hidden="true" />
-                  Connected on Sidequest
+                  Connected on Chapter
                 </div>
               ) : (
                 <div className={styles.inviteAction}>
@@ -1582,7 +1582,7 @@ export default function YouView({
                   ? "How this world grows"
                   : selectedNode.sourceType === "connection"
                     ? "How you connected"
-                    : "From what you told Sidequest"}
+                    : "From what you told Chapter"}
               </span>
               <p>{selectedNode.evidence}</p>
             </div>

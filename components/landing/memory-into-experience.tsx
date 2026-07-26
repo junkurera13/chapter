@@ -515,7 +515,7 @@ function ConnectionUpdate({
             <span
               className={styles.thinkingIndicator}
               role="status"
-              aria-label="To Be Alive is thinking"
+              aria-label="Chapter is thinking"
             >
               <AgentOrbVideo />
             </span>
@@ -558,14 +558,14 @@ function ConnectionUpdate({
 
 function cardLabelForPhase(phase: ConnectionPhase) {
   if (phase === "thinking") {
-    return "To Be Alive: peaceful cycling path around Han River. To Be Alive is thinking.";
+    return "Chapter: peaceful cycling path around Han River. Chapter is thinking.";
   }
 
   if (phase === "revealed") {
-    return "To Be Alive: peaceful cycling path around Han River with Olivia";
+    return "Chapter: peaceful cycling path around Han River with Olivia";
   }
 
-  return "To Be Alive: peaceful cycling path around Han River";
+  return "Chapter: peaceful cycling path around Han River";
 }
 
 export default function MemoryIntoExperience() {
@@ -1035,7 +1035,7 @@ export default function MemoryIntoExperience() {
               />
             </span>
             <span className={styles.questBrand}>
-              <strong>To Be Alive</strong>
+              <strong>Chapter</strong>
             </span>
           </header>
 

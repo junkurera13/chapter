@@ -4,20 +4,20 @@
 
 - Full name: **[confirm before submitting]**
 - Email: **[confirm before submitting]**
-- Project title: **Sidequest**
+- Project title: **Chapter**
 - One-line pitch: **An iMessage agent that learns what makes an experience unforgettable and builds a private world around you.**
 - Surface type: **Web app**
-- Live URL: https://sidequest-base44-buildoff.vercel.app
+- Live URL: https://usechapter.vercel.app
 - Public GitHub repo: https://github.com/junkurera13/sidequest-base44-buildoff
-- Access instructions: **Open `/app`, sign in with Google, connect an iMessage-capable phone number, text Sidequest, and share one unforgettable experience. Return to You to see the private graph. Open any named person to create a private invite; after they accept with their own Google account, both people receive reciprocal nodes and appear in Together.**
+- Access instructions: **Open `/app`, sign in with Google, connect an iMessage-capable phone number, text Chapter, and share one unforgettable experience. Return to You to see the private graph. Open any named person to create a private invite; after they accept with their own Google account, both people receive reciprocal nodes and appear in Together.**
 - Demo video URL: **[optional, not recorded yet]**
 - Agentic IDE used: **Codex**
 - Base44 App ID: **6a606ec9966ada5a7874da07**
 
 ### Project write-up
 
-Sidequest starts with lived experience instead of preference checkboxes. A
-person shares one experience they will never forget in iMessage. Sidequest
+Chapter starts with lived experience instead of preference checkboxes. A
+person shares one experience they will never forget in iMessage. Chapter
 extracts a careful graph of the people, places, activities, feelings, and
 patterns that made it meaningful, then reveals that private graph in the
 authenticated **You** view. Explicitly named people remain individual nodes,

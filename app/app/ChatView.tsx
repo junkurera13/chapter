@@ -250,7 +250,7 @@ export default function ChatView({
                 className={styles.inlineCta}
                 onClick={onConnectPhone}
               >
-                Bring Sidequest into iMessage
+                Bring Chapter into iMessage
               </button>
               {" "}
               if you also want it in your pocket.
@@ -261,7 +261,7 @@ export default function ChatView({
 
       <div className={styles.scroll} ref={scrollRef} aria-live="polite">
         {messages.length === 0 ? (
-          <p className={styles.empty}>Sidequest is listening.</p>
+          <p className={styles.empty}>Chapter is listening.</p>
         ) : null}
         {messages.map((message) => (
           <div

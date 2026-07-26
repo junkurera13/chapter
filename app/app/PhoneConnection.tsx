@@ -156,13 +156,13 @@ export default function PhoneConnection({
 
         {connectedViewer && assignedPhone ? (
           <div className={styles.connected}>
-            <h1>Sidequest is in your messages.</h1>
+            <h1>Chapter is in your messages.</h1>
             <p className={styles.support}>
               Text “Hey” once. After that, this app and your conversation will
               remember the same you.
             </p>
             <a className={styles.primary} href={smsHref(assignedPhone)}>
-              Text Sidequest
+              Text Chapter
             </a>
             <button
               className={styles.secondary}
@@ -174,7 +174,7 @@ export default function PhoneConnection({
           </div>
         ) : (
           <div className={styles.formWrap}>
-            <h1>Bring Sidequest into iMessage.</h1>
+            <h1>Bring Chapter into iMessage.</h1>
             <p className={styles.support}>
               Your number links the conversation in your pocket to the private
               world behind this account.
@@ -233,7 +233,7 @@ export default function PhoneConnection({
             </button>
 
             <p className={styles.privacy}>
-              Your number is private and only used to recognize your Sidequest
+              Your number is private and only used to recognize your Chapter
               conversation.
             </p>
           </div>

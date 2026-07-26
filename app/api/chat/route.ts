@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     }
     console.error("Sidequest chat session lookup failed:", cause);
     return Response.json(
-      { error: "Couldn't open your Sidequest profile. Try again." },
+      { error: "Couldn't open your Chapter profile. Try again." },
       { status: 502 },
     );
   }
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
   } catch (cause) {
     console.error("Sidequest chat send failed:", cause);
     return Response.json(
-      { error: "Your message didn't reach Sidequest." },
+      { error: "Your message didn't reach Chapter." },
       { status: 502 },
     );
   }

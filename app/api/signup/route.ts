@@ -107,7 +107,7 @@ export async function POST(request: Request) {
           error:
             cause.status === 429
               ? "Line setup is busy right now. Wait a few seconds and try again."
-              : `Couldn’t set up your Sidequest line (${cause.status}${
+              : `Couldn’t set up your Chapter line (${cause.status}${
                   cause.message ? `: ${cause.message}` : ""
                 }).`,
           photonStatus: cause.status,

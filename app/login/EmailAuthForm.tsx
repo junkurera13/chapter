@@ -96,7 +96,7 @@ export default function EmailAuthForm() {
         } else if (status === 422 || status === 400) {
           setError(messageOf(cause));
         } else {
-          setError("Couldn’t reach Sidequest. Try again.");
+          setError("Couldn’t reach Chapter. Try again.");
         }
       }
     } catch (cause) {
@@ -104,7 +104,7 @@ export default function EmailAuthForm() {
       if (status === 422 || status === 400) {
         setError(messageOf(cause));
       } else {
-        setError("Couldn’t reach Sidequest. Try again.");
+        setError("Couldn’t reach Chapter. Try again.");
       }
     } finally {
       setBusy(false);

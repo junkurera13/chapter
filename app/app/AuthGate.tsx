@@ -106,7 +106,7 @@ export default function AuthGate({
       <main className={styles.statePage}>
         <div className={styles.stateCard}>
           <h1>Your world is still here.</h1>
-          <p>Sidequest couldn&apos;t reach it just now. Try opening it again.</p>
+          <p>Chapter couldn&apos;t reach it just now. Try opening it again.</p>
           <button type="button" onClick={() => void retry()}>
             Try again
           </button>
@@ -117,7 +117,7 @@ export default function AuthGate({
 
   return (
     <main className={styles.statePage} aria-live="polite" aria-busy="true">
-      <SidequestLoadingMark label="Opening Sidequest" />
+      <SidequestLoadingMark label="Opening Chapter" />
     </main>
   );
 }

@@ -51,7 +51,7 @@ export default function AgentOrbSection() {
       <div className={styles.content}>
         <AuthOpenButton
           className={styles.orbAction}
-          aria-label="Get started with Sidequest"
+          aria-label="Get started with Chapter"
         >
           <AgentOrbVideo />
         </AuthOpenButton>
@@ -65,14 +65,11 @@ export default function AgentOrbSection() {
           <span className={styles.brandMark} aria-hidden="true">
             <Image src="/sidequest-mark.svg" alt="" width={36} height={36} />
           </span>
-          <span className={styles.brandName}>To Be Alive</span>
+          <span className={styles.brandName}>Chapter</span>
         </div>
 
         <div className={styles.footerActions}>
           <AuthOpenButton className={styles.textAction}>
-            <span className={styles.actionMark} aria-hidden="true">
-              <Image src="/sidequest-mark.svg" alt="" width={28} height={28} />
-            </span>
             Get Started
           </AuthOpenButton>
           <AuthOpenButton className={styles.loginAction}>
@@ -80,7 +77,10 @@ export default function AgentOrbSection() {
           </AuthOpenButton>
         </div>
 
-        <div className={styles.socialActions} aria-label="Sidequest social links">
+        <div
+          className={styles.socialActions}
+          aria-label="Chapter social links"
+        >
           <button
             className={styles.socialAction}
             type="button"

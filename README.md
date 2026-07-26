@@ -1,6 +1,6 @@
-# Sidequest — Base44 Build-Off
+# Chapter
 
-Sidequest begins by learning from one experience a person will never forget.
+Chapter begins by learning from one experience a person will never forget.
 It meets them in iMessage, turns that experience into a private graph of
 people, places, activities, feelings, and patterns, and lets them explore that
 growing picture in the authenticated **You** view.
@@ -17,7 +17,7 @@ product.
 
 ## Live app
 
-- Frontend: https://sidequest-base44-buildoff.vercel.app
+- Frontend: https://usechapter.vercel.app
 - Base44 app ID: `6a606ec9966ada5a7874da07`
 
 Open `/app` to see the authenticated product and private **You** world.

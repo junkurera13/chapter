@@ -96,7 +96,7 @@ export default function SidequestApp({
       youPanel = (
         <div className={styles.graphState}>
           <h1>Your world is waiting.</h1>
-          <p>Talk to Sidequest in Now and it will begin taking shape here.</p>
+          <p>Talk to Chapter in Now and it will begin taking shape here.</p>
           <button type="button" onClick={() => setActiveIndex(0)}>
             Go to Now
           </button>
@@ -121,7 +121,7 @@ export default function SidequestApp({
     );
 
   return (
-    <main className={styles.canvas} aria-label="Sidequest app">
+    <main className={styles.canvas} aria-label="Chapter app">
       <section
         className={styles.panel}
         id={`sidequest-panel-${activeIndex}`}

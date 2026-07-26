@@ -107,7 +107,7 @@ export default function InviteAcceptance({ token }: { token: string }) {
           <h1>That link has gone quiet.</h1>
           <p className={styles.copy}>{state.message}</p>
           <Link className={styles.secondaryAction} href="/">
-            Go to Sidequest
+            Open Chapter
           </Link>
         </section>
       </main>
@@ -158,10 +158,10 @@ export default function InviteAcceptance({ token }: { token: string }) {
           <span />
           <span />
         </div>
-        <h1>{inviterName} found {invitedName} in their Sidequest.</h1>
+        <h1>{inviterName} found {invitedName} in their world.</h1>
         <p className={styles.copy}>
-          Connect and you’ll each appear in the other’s Sidequest. Your memories
-          stay private.
+          Connect and you’ll each appear in the other’s world. Your memories stay
+          private.
         </p>
         {state.status === "ready" && !state.signedIn ? (
           <button className={styles.primaryAction} type="button" onClick={signIn}>

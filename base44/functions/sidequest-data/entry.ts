@@ -483,11 +483,11 @@ Deno.serve(async (req) => {
         subtype: "friend",
         kind: "person",
         label: displayName(inviter),
-        description: "A friend you connected with through Sidequest.",
+        description: "A friend you connected with through Chapter.",
         certainty: "fact",
         confidence: 1,
         salience: 0.82,
-        evidence: "You connected through a private Sidequest invitation.",
+        evidence: "You connected through a private Chapter invitation.",
         created_at: Date.now(),
       });
       const connectionNodePatch = connection.user_a_id === inviter.id
@@ -837,7 +837,7 @@ Deno.serve(async (req) => {
     console.error("sidequest-data failed", error);
     if (isRateLimitError(error)) {
       return Response.json(
-        { error: "Sidequest is busy. Try again in a moment." },
+        { error: "Chapter is busy. Try again in a moment." },
         { status: 429, headers: { "Retry-After": "2" } },
       );
     }

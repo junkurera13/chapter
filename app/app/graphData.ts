@@ -55,7 +55,7 @@ const SELF_NODE: WorldNodeSeed = {
   subtype: "centre",
   label: "you",
   description:
-    "The person at the centre of every memory, relationship and possibility Sidequest is beginning to understand.",
+    "The person at the centre of every memory, relationship and possibility Chapter is beginning to understand.",
   evidence: "This world grows from the memories you choose to share.",
   certainty: "fact",
   confidence: 1,
@@ -63,6 +63,13 @@ const SELF_NODE: WorldNodeSeed = {
   sourceType: "memory",
   position: [0, 0.08, 0.35],
 };
+
+function currentBrandCopy(value: string) {
+  return value
+    .replace(/\bSidequest\b/g, "Chapter")
+    .replace(/\bTo Be Alive\b/g, "Chapter")
+    .replace(/\bTBA\b/g, "Chapter");
+}
 
 function rootEdge(target: string): WorldEdge {
   return {
@@ -120,8 +127,8 @@ export function buildWorldGraph(graph: ExperienceGraphRecord): WorldGraph {
       category: node.category,
       subtype: node.subtype,
       label: node.label,
-      description: node.description,
-      evidence: node.evidence,
+      description: currentBrandCopy(node.description),
+      evidence: currentBrandCopy(node.evidence),
       certainty: node.certainty,
       confidence: node.confidence,
       salience: node.salience,
