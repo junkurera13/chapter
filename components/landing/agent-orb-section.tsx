@@ -49,7 +49,12 @@ export default function AgentOrbSection() {
       aria-labelledby="agent-orb-invitation"
     >
       <div className={styles.content}>
-        <AgentOrbVideo />
+        <AuthOpenButton
+          className={styles.orbAction}
+          aria-label="Get started with Sidequest"
+        >
+          <AgentOrbVideo />
+        </AuthOpenButton>
         <h2 id="agent-orb-invitation" className={styles.invitation}>
           Be among the first to try Sidequest
         </h2>
