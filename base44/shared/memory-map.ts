@@ -1,4 +1,4 @@
-export const MEMORY_EXTRACTOR_VERSION = "memory-map-v2";
+export const MEMORY_EXTRACTOR_VERSION = "memory-map-v3";
 
 export const MEMORY_NODE_CATEGORIES = [
   "experience",
@@ -415,7 +415,7 @@ export function buildMemoryExtractionPrompt({
     "Extract only meaningful structure. Do not try to fill every pillar.",
     "",
     "PILLAR DEFINITIONS",
-    "- people: a specific person, meaningfully distinct group, or relationship present in the memory.",
+    "- people: one specific individual present in the memory. Record a supported relationship as subtype or description, not as a generic group.",
     "- place: a specific location or useful place archetype. Do not split every visible object into a place.",
     "- activity: something the user or others actually did. Participation in one activity does not by itself prove an interest.",
     "- interest: a subject, taste, medium, cuisine, or domain the user explicitly says draws them.",
@@ -441,7 +441,8 @@ export function buildMemoryExtractionPrompt({
     "- Return exactly one experience node for this moment.",
     "- For a confidently identical prior person/place/activity/interest/etc. that the user identifies in text/context, copy its exact key into existing_key.",
     "- Leave existing_key empty when identity is ambiguous. Same names do not prove the same person.",
-    "- Every named individual gets a separate people node. Do not collapse named people into a generic group.",
+    "- Every identifiable individual gets a separate people node. Never combine multiple people into one people node.",
+    "- If a source mentions only an indistinguishable group, preserve it in the experience description or summary instead of inventing identities. Create anonymous people nodes only when the sources distinguish the individuals.",
     "- A pattern is allowed only when the user explicitly states a general tendency, or when basis=recurring and prior_support_keys cites at least one listed prior key.",
     "- Do not turn one enjoyable event into a general preference or pattern.",
     "",

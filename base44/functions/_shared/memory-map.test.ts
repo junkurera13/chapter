@@ -346,5 +346,11 @@ describe("memory map extraction guardrails", () => {
     expect(prompt).toContain("attachment 1 = [image:0]");
     expect(prompt).toContain("[context:0] That is my cousin Mina.");
     expect(prompt).toContain("Pixels establish only what is visibly present.");
+    expect(prompt).toContain(
+      "Every identifiable individual gets a separate people node.",
+    );
+    expect(prompt).toContain(
+      "Never combine multiple people into one people node.",
+    );
   });
 });

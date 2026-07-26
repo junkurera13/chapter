@@ -145,6 +145,6 @@ personality pattern.
 
 ## Operational versioning
 
-Every new memory, node, and edge records `memory-map-v2`. Prompt or validation
+Every new memory, node, and edge records `memory-map-v3`. Prompt or validation
 changes should increment this version. Reprocessing should create a new derived
 attempt rather than silently mutating a user's original sources.

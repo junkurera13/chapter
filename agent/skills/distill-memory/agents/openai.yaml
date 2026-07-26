@@ -1,0 +1,4 @@
+interface:
+  display_name: "Distill Memory"
+  short_description: "Turn lived moments into precise graph structure"
+  default_prompt: "Use $distill-memory to extract this autobiographical memory into a grounded experience graph."
