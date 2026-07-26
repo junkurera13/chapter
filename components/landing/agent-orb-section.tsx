@@ -65,7 +65,7 @@ export default function AgentOrbSection() {
           <span className={styles.brandMark} aria-hidden="true">
             <Image src="/sidequest-mark.svg" alt="" width={36} height={36} />
           </span>
-          <span className={styles.brandName}>Sidequest</span>
+          <span className={styles.brandName}>To Be Alive</span>
         </div>
 
         <div className={styles.footerActions}>

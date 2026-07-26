@@ -38,6 +38,7 @@ import {
 } from "@/app/app/orbMaterial";
 import type { WorldNodeCategory } from "@/app/app/graphData";
 
+import AgentOrbVideo from "./agent-orb-video";
 import styles from "./memory-into-experience.module.css";
 
 function PlacePinIcon() {
@@ -514,11 +515,9 @@ function ConnectionUpdate({
             <span
               className={styles.thinkingIndicator}
               role="status"
-              aria-label="Sidequest is thinking"
+              aria-label="To Be Alive is thinking"
             >
-              <span className={styles.thinkingDot} aria-hidden="true" />
-              <span className={styles.thinkingDot} aria-hidden="true" />
-              <span className={styles.thinkingDot} aria-hidden="true" />
+              <AgentOrbVideo />
             </span>
           </motion.div>
         ) : null}
@@ -559,14 +558,14 @@ function ConnectionUpdate({
 
 function cardLabelForPhase(phase: ConnectionPhase) {
   if (phase === "thinking") {
-    return "Sidequest: peaceful cycling path around Han River. Sidequest is thinking.";
+    return "To Be Alive: peaceful cycling path around Han River. To Be Alive is thinking.";
   }
 
   if (phase === "revealed") {
-    return "Sidequest: peaceful cycling path around Han River with Olivia";
+    return "To Be Alive: peaceful cycling path around Han River with Olivia";
   }
 
-  return "Sidequest: peaceful cycling path around Han River";
+  return "To Be Alive: peaceful cycling path around Han River";
 }
 
 export default function MemoryIntoExperience() {
@@ -1036,7 +1035,7 @@ export default function MemoryIntoExperience() {
               />
             </span>
             <span className={styles.questBrand}>
-              <strong>Sidequest</strong>
+              <strong>To Be Alive</strong>
             </span>
           </header>
 
