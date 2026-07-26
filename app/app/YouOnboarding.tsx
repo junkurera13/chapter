@@ -9,6 +9,7 @@ import {
 import Image from "next/image";
 import {
   type ChangeEvent,
+  type MouseEvent as ReactMouseEvent,
   useEffect,
   useRef,
   useState,
@@ -23,6 +24,7 @@ import styles from "./YouOnboarding.module.css";
 
 const MIN_PHOTOS = 2;
 const MAX_PHOTOS = 10;
+const PHOTO_ROTATIONS = [-2.4, 1.7, -1.1, 2.2, -1.8, 0.8, 2.5, -2, 1.4, -0.6];
 
 type MemoryPhoto = {
   id: number;
@@ -31,9 +33,14 @@ type MemoryPhoto = {
   url: string;
 };
 
+function focusWithoutScrolling(element: HTMLTextAreaElement | null) {
+  element?.focus({ preventScroll: true });
+}
+
 export default function YouOnboarding() {
   const [started, setStarted] = useState(false);
   const [photos, setPhotos] = useState<MemoryPhoto[]>([]);
+  const [editingPhotoId, setEditingPhotoId] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const nextPhotoId = useRef(0);
@@ -101,6 +108,7 @@ export default function YouOnboarding() {
 
     const nextPhotos = photos.filter((photo) => photo.id !== photoId);
     setPhotos(nextPhotos);
+    if (editingPhotoId === photoId) setEditingPhotoId(null);
     setNotice(
       nextPhotos.length > 0 && nextPhotos.length < MIN_PHOTOS
         ? "Add at least one more photo."
@@ -116,9 +124,42 @@ export default function YouOnboarding() {
     );
   }
 
+  function handleSurfaceClick(event: ReactMouseEvent<HTMLDivElement>) {
+    if (!started || photos.length > 0) return;
+
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest(`.${styles.memoryWindow}`)
+    ) {
+      return;
+    }
+
+    setStarted(false);
+  }
+
+  const addButton = (
+    <button
+      className={styles.addButton}
+      type="button"
+      aria-label={photos.length === 0 ? "Add photos" : "Add more photos"}
+      disabled={photos.length >= MAX_PHOTOS}
+      onClick={openPhotoPicker}
+    >
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+      <span>Add</span>
+    </button>
+  );
+
   return (
     <LayoutGroup>
-      <div className={styles.onboarding} data-started={started}>
+      <div
+        className={styles.onboarding}
+        data-started={started}
+        onClick={handleSurfaceClick}
+      >
         {started ? (
           <>
             <button
@@ -168,7 +209,13 @@ export default function YouOnboarding() {
             >
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.p
-                  key={started ? "photos" : "invitation"}
+                  key={
+                    !started
+                      ? "invitation"
+                      : photos.length > 0
+                        ? "context"
+                        : "photos"
+                  }
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -177,9 +224,11 @@ export default function YouOnboarding() {
                     ease: [0.22, 1, 0.36, 1],
                   }}
                 >
-                  {started
-                    ? "Add 2–10 photos from that moment."
-                    : "What’s a moment that still feels like yesterday?"}
+                  {!started
+                    ? "What’s a moment that still feels like yesterday?"
+                    : photos.length > 0
+                      ? "Tell me what the photos don’t show."
+                      : "Add 2–10 photos from that moment."}
                 </motion.p>
               </AnimatePresence>
             </motion.div>
@@ -217,77 +266,277 @@ export default function YouOnboarding() {
                 }
               >
                 <div className={styles.uploadPrompt}>
-                  <div className={styles.memoryWindow} aria-hidden="true">
-                    <div
-                      className={`${styles.sampleCard} ${styles.sampleCardLeft}`}
-                    >
-                      <Image
-                        src={mojikoImage}
-                        alt=""
-                        fill
-                        sizes="18rem"
-                        placeholder="blur"
-                      />
-                    </div>
-                    <div
-                      className={`${styles.sampleCard} ${styles.sampleCardRight}`}
-                    >
-                      <Image
-                        src={ceramicsImage}
-                        alt=""
-                        fill
-                        sizes="18rem"
-                        placeholder="blur"
-                      />
-                    </div>
-                    <div
-                      className={`${styles.sampleCard} ${styles.sampleCardFront}`}
-                    >
-                      <Image
-                        src={sushiImage}
-                        alt=""
-                        fill
-                        sizes="9rem"
-                        placeholder="blur"
-                      />
-                    </div>
-
-                    <div className={styles.addRow}>
-                      <button
-                        className={styles.addButton}
-                        type="button"
-                        aria-label={
-                          photos.length === 0 ? "Add photos" : "Add more photos"
-                        }
-                        disabled={photos.length >= MAX_PHOTOS}
-                        onClick={openPhotoPicker}
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {photos.length === 0 ? (
+                      <motion.div
+                        className={styles.memoryWindow}
+                        key="starter"
+                        layout
+                        exit={{
+                          opacity: 0,
+                          scale: reduceMotion ? 1 : 0.985,
+                        }}
+                        transition={layoutTransition}
                       >
-                        <svg
-                          aria-hidden="true"
-                          viewBox="0 0 24 24"
-                          fill="none"
+                        <div
+                          className={`${styles.sampleCard} ${styles.sampleCardLeft}`}
                         >
-                          <path d="M12 5v14M5 12h14" />
-                        </svg>
-                        <span>Add</span>
-                      </button>
+                          <Image
+                            src={mojikoImage}
+                            alt=""
+                            fill
+                            sizes="18rem"
+                            placeholder="blur"
+                          />
+                        </div>
+                        <div
+                          className={`${styles.sampleCard} ${styles.sampleCardRight}`}
+                        >
+                          <Image
+                            src={ceramicsImage}
+                            alt=""
+                            fill
+                            sizes="18rem"
+                            placeholder="blur"
+                          />
+                        </div>
+                        <div
+                          className={`${styles.sampleCard} ${styles.sampleCardFront}`}
+                        >
+                          <Image
+                            src={sushiImage}
+                            alt=""
+                            fill
+                            sizes="9rem"
+                            placeholder="blur"
+                          />
+                        </div>
 
-                      {photos.length > 0 ? (
-                        <span className={styles.photoCount}>
-                          {photos.length} of {MAX_PHOTOS}
-                        </span>
-                      ) : null}
+                        <div className={styles.addRow}>{addButton}</div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        className={styles.photoCanvas}
+                        key="canvas"
+                        layout
+                        initial={{
+                          opacity: 0,
+                          scale: reduceMotion ? 1 : 0.985,
+                        }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={layoutTransition}
+                      >
+                        <motion.div className={styles.photoGrid} layout>
+                          <AnimatePresence initial={false}>
+                            {photos.map((photo, index) => {
+                              const rotation =
+                                PHOTO_ROTATIONS[index % PHOTO_ROTATIONS.length];
+                              const isEditing = editingPhotoId === photo.id;
 
-                      <input
-                        ref={inputRef}
-                        className={styles.fileInput}
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={addPhotos}
-                      />
-                    </div>
-                  </div>
+                              return (
+                                <motion.article
+                                  className={styles.photoCard}
+                                  key={photo.id}
+                                  aria-label={`Photo ${index + 1}`}
+                                  data-editing={isEditing}
+                                  layout
+                                  initial={
+                                    reduceMotion
+                                      ? { opacity: 0 }
+                                      : {
+                                          opacity: 0,
+                                          y: 24,
+                                          scale: 0.96,
+                                          rotate: rotation * 0.5,
+                                        }
+                                  }
+                                  animate={{
+                                    opacity: 1,
+                                    y: 0,
+                                    scale: 1,
+                                    rotate: rotation,
+                                  }}
+                                  exit={
+                                    reduceMotion
+                                      ? { opacity: 0 }
+                                      : {
+                                          opacity: 0,
+                                          y: 10,
+                                          scale: 0.97,
+                                          rotate: rotation * 0.5,
+                                        }
+                                  }
+                                  whileHover={
+                                    reduceMotion || isEditing
+                                      ? undefined
+                                      : { y: -5, scale: 1.015 }
+                                  }
+                                  transition={{
+                                    layout: layoutTransition,
+                                    opacity: {
+                                      duration: reduceMotion ? 0.12 : 0.24,
+                                      delay: reduceMotion
+                                        ? 0
+                                        : Math.min(index * 0.045, 0.22),
+                                    },
+                                    y: {
+                                      type: "spring",
+                                      bounce: 0,
+                                      duration: reduceMotion ? 0 : 0.36,
+                                    },
+                                    scale: {
+                                      type: "spring",
+                                      bounce: 0,
+                                      duration: reduceMotion ? 0 : 0.36,
+                                    },
+                                    rotate: {
+                                      duration: reduceMotion ? 0 : 0.38,
+                                      ease: [0.22, 1, 0.36, 1],
+                                    },
+                                  }}
+                                >
+                                  <div className={styles.photo}>
+                                    {/* Blob URLs are local previews and cannot use the Next image optimizer. */}
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={photo.url} alt="" />
+
+                                    <button
+                                      className={`${styles.cardAction} ${styles.removeButton}`}
+                                      type="button"
+                                      aria-label={`Remove ${photo.name}`}
+                                      onClick={() => removePhoto(photo.id)}
+                                    >
+                                      <svg
+                                        aria-hidden="true"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                      >
+                                        <path d="m7 7 10 10M17 7 7 17" />
+                                      </svg>
+                                    </button>
+
+                                    <button
+                                      className={`${styles.cardAction} ${styles.editButton}`}
+                                      type="button"
+                                      aria-label={
+                                        photo.note
+                                          ? `Edit context for ${photo.name}`
+                                          : `Add context to ${photo.name}`
+                                      }
+                                      onClick={() =>
+                                        setEditingPhotoId(photo.id)
+                                      }
+                                    >
+                                      <svg
+                                        aria-hidden="true"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                      >
+                                        <path d="m4 20 4.25-1L19 8.25a2.12 2.12 0 0 0-3-3L5.25 16 4 20Z" />
+                                        <path d="m14.75 6.5 2.75 2.75" />
+                                      </svg>
+                                    </button>
+
+                                    <AnimatePresence initial={false}>
+                                      {isEditing ? (
+                                        <motion.div
+                                          className={styles.noteEditor}
+                                          key="editor"
+                                          initial={
+                                            reduceMotion
+                                              ? { opacity: 0 }
+                                              : {
+                                                  opacity: 0,
+                                                  y: 8,
+                                                  scale: 0.97,
+                                                }
+                                          }
+                                          animate={{
+                                            opacity: 1,
+                                            y: 0,
+                                            scale: 1,
+                                          }}
+                                          exit={
+                                            reduceMotion
+                                              ? { opacity: 0 }
+                                              : {
+                                                  opacity: 0,
+                                                  y: 8,
+                                                  scale: 0.97,
+                                                }
+                                          }
+                                          transition={{
+                                            type: "spring",
+                                            bounce: 0,
+                                            duration: reduceMotion ? 0 : 0.32,
+                                          }}
+                                        >
+                                          <textarea
+                                            className={styles.note}
+                                            value={photo.note}
+                                            maxLength={280}
+                                            ref={focusWithoutScrolling}
+                                            aria-label={`Context for ${photo.name}`}
+                                            placeholder="What should I know about this photo?"
+                                            onChange={(event) =>
+                                              updateNote(
+                                                photo.id,
+                                                event.target.value,
+                                              )
+                                            }
+                                            onKeyDown={(event) => {
+                                              if (event.key === "Escape") {
+                                                setEditingPhotoId(null);
+                                              }
+                                            }}
+                                          />
+                                          <button
+                                            className={styles.doneButton}
+                                            type="button"
+                                            onClick={() =>
+                                              setEditingPhotoId(null)
+                                            }
+                                          >
+                                            Done
+                                          </button>
+                                        </motion.div>
+                                      ) : photo.note ? (
+                                        <motion.p
+                                          className={styles.notePreview}
+                                          key="preview"
+                                          initial={{ opacity: 0 }}
+                                          animate={{ opacity: 1 }}
+                                          exit={{ opacity: 0 }}
+                                        >
+                                          {photo.note}
+                                        </motion.p>
+                                      ) : null}
+                                    </AnimatePresence>
+                                  </div>
+                                </motion.article>
+                              );
+                            })}
+                          </AnimatePresence>
+                        </motion.div>
+
+                        <div className={styles.canvasActions}>
+                          {addButton}
+                          <span className={styles.photoCount}>
+                            {photos.length} of {MAX_PHOTOS}
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <input
+                    ref={inputRef}
+                    className={styles.fileInput}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={addPhotos}
+                  />
                 </div>
 
                 <AnimatePresence initial={false}>
@@ -304,84 +553,6 @@ export default function YouOnboarding() {
                   ) : null}
                 </AnimatePresence>
 
-                {photos.length > 0 ? (
-                  <motion.div className={styles.photoGrid} layout>
-                    <AnimatePresence initial={false}>
-                      {photos.map((photo, index) => (
-                        <motion.article
-                          className={styles.photoCard}
-                          key={photo.id}
-                          layout
-                          initial={
-                            reduceMotion
-                              ? { opacity: 0 }
-                              : { opacity: 0, y: 24, scale: 0.96 }
-                          }
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={
-                            reduceMotion
-                              ? { opacity: 0 }
-                              : { opacity: 0, y: 10, scale: 0.97 }
-                          }
-                          transition={{
-                            layout: layoutTransition,
-                            opacity: {
-                              duration: reduceMotion ? 0.12 : 0.24,
-                              delay: reduceMotion
-                                ? 0
-                                : Math.min(index * 0.045, 0.22),
-                            },
-                            y: {
-                              duration: reduceMotion ? 0 : 0.38,
-                              delay: reduceMotion
-                                ? 0
-                                : Math.min(index * 0.045, 0.22),
-                              ease: [0.22, 1, 0.36, 1],
-                            },
-                            scale: {
-                              duration: reduceMotion ? 0 : 0.38,
-                              delay: reduceMotion
-                                ? 0
-                                : Math.min(index * 0.045, 0.22),
-                              ease: [0.22, 1, 0.36, 1],
-                            },
-                          }}
-                        >
-                          <textarea
-                            className={styles.note}
-                            value={photo.note}
-                            maxLength={280}
-                            aria-label={`Context for ${photo.name}`}
-                            placeholder="Add a note (optional)"
-                            onChange={(event) =>
-                              updateNote(photo.id, event.target.value)
-                            }
-                          />
-
-                          <div className={styles.photo}>
-                            {/* Blob URLs are local previews and cannot use the Next image optimizer. */}
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={photo.url} alt="" />
-                            <button
-                              className={styles.removeButton}
-                              type="button"
-                              aria-label={`Remove ${photo.name}`}
-                              onClick={() => removePhoto(photo.id)}
-                            >
-                              <svg
-                                aria-hidden="true"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                              >
-                                <path d="m7 7 10 10M17 7 7 17" />
-                              </svg>
-                            </button>
-                          </div>
-                        </motion.article>
-                      ))}
-                    </AnimatePresence>
-                  </motion.div>
-                ) : null}
               </motion.div>
             ) : null}
           </AnimatePresence>
