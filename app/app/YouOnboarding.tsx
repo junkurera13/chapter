@@ -20,6 +20,12 @@ import ceramicsImage from "../assets/ceramics-class.jpg";
 import mojikoImage from "../assets/mojiko-waterfront.jpg";
 import sushiImage from "../assets/sushi-shibuya.webp";
 import AgentOrbVideo from "../../components/landing/agent-orb-video";
+import {
+  createExperienceMemory,
+  type UploadedMemoryPhoto,
+  uploadMemoryPhoto,
+  validateMemoryPhoto,
+} from "../../lib/base44Memory";
 
 import styles from "./YouOnboarding.module.css";
 
@@ -30,6 +36,8 @@ type MemoryPhoto = {
   name: string;
   note: string;
   url: string;
+  file: File;
+  uploaded?: UploadedMemoryPhoto;
 };
 
 function focusWithoutScrolling(element: HTMLTextAreaElement | null) {
@@ -41,14 +49,20 @@ function resizeMemoryInput(element: HTMLTextAreaElement) {
   element.style.height = `${element.scrollHeight}px`;
 }
 
-export default function YouOnboarding() {
+export default function YouOnboarding({
+  onMemoryCreated,
+}: {
+  onMemoryCreated: () => void;
+}) {
   const [started, setStarted] = useState(false);
   const [memoryText, setMemoryText] = useState("");
   const [photos, setPhotos] = useState<MemoryPhoto[]>([]);
   const [editingPhotoId, setEditingPhotoId] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextPhotoId = useRef(0);
+  const requestId = useRef<string | null>(null);
   const objectUrls = useRef(new Set<string>());
   const reduceMotion = useReducedMotion();
 
@@ -69,6 +83,7 @@ export default function YouOnboarding() {
       };
 
   function openPhotoPicker() {
+    if (submitting) return;
     setNotice("");
     inputRef.current?.click();
   }
@@ -78,8 +93,20 @@ export default function YouOnboarding() {
     event.target.value = "";
     if (selectedFiles.length === 0) return;
 
+    const validFiles: File[] = [];
+    let validationMessage = "";
+    for (const file of selectedFiles) {
+      try {
+        validateMemoryPhoto(file);
+        validFiles.push(file);
+      } catch (error) {
+        validationMessage =
+          error instanceof Error ? error.message : "That image could not be added.";
+      }
+    }
+
     const remaining = MAX_PHOTOS - photos.length;
-    const acceptedFiles = selectedFiles.slice(0, remaining);
+    const acceptedFiles = validFiles.slice(0, remaining);
     const nextPhotos = acceptedFiles.map((file) => {
       const url = URL.createObjectURL(file);
       objectUrls.current.add(url);
@@ -89,13 +116,16 @@ export default function YouOnboarding() {
         name: file.name,
         note: "",
         url,
+        file,
       };
     });
 
     setPhotos((current) => [...current, ...nextPhotos]);
 
-    if (selectedFiles.length > remaining) {
+    if (validFiles.length > remaining) {
       setNotice("You can add up to 8 photos.");
+    } else if (validationMessage) {
+      setNotice(validationMessage);
     } else {
       setNotice("");
     }
@@ -123,7 +153,14 @@ export default function YouOnboarding() {
   }
 
   function handleSurfaceClick(event: ReactMouseEvent<HTMLDivElement>) {
-    if (!started || photos.length > 0 || memoryText.trim().length > 0) return;
+    if (
+      submitting ||
+      !started ||
+      photos.length > 0 ||
+      memoryText.trim().length > 0
+    ) {
+      return;
+    }
 
     const target = event.target;
     if (
@@ -136,8 +173,45 @@ export default function YouOnboarding() {
     setStarted(false);
   }
 
-  function handleComposerSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleComposerSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting || (!memoryText.trim() && photos.length === 0)) return;
+
+    setSubmitting(true);
+    setEditingPhotoId(null);
+    setNotice("Looking closely at what you shared…");
+
+    try {
+      const uploadedPhotos: UploadedMemoryPhoto[] = [];
+      for (const photo of photos) {
+        const uploaded = photo.uploaded
+          ? { ...photo.uploaded, context: photo.note.trim() }
+          : await uploadMemoryPhoto(photo.file, photo.note);
+        uploadedPhotos.push(uploaded);
+        if (!photo.uploaded) {
+          setPhotos((current) =>
+            current.map((candidate) =>
+              candidate.id === photo.id
+                ? { ...candidate, uploaded }
+                : candidate,
+            ),
+          );
+        }
+      }
+
+      requestId.current ??= crypto.randomUUID();
+      await createExperienceMemory({
+        clientRequestId: requestId.current,
+        text: memoryText,
+        images: uploadedPhotos,
+        source: "onboarding",
+      });
+      onMemoryCreated();
+    } catch (error) {
+      console.error("Could not create the memory map", error);
+      setNotice("I couldn’t hold onto that yet. Your draft is still here—try again.");
+      setSubmitting(false);
+    }
   }
 
   const addButton = (
@@ -145,7 +219,7 @@ export default function YouOnboarding() {
       className={styles.addButton}
       type="button"
       aria-label={photos.length === 0 ? "Add photos" : "Add more photos"}
-      disabled={photos.length >= MAX_PHOTOS}
+      disabled={submitting || photos.length >= MAX_PHOTOS}
       onClick={openPhotoPicker}
     >
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
@@ -171,6 +245,7 @@ export default function YouOnboarding() {
               type="button"
               tabIndex={-1}
               aria-label="Return to the memory question"
+              disabled={submitting}
               onClick={() => setStarted(false)}
             />
             <button
@@ -178,6 +253,7 @@ export default function YouOnboarding() {
               type="button"
               tabIndex={-1}
               aria-label="Return to the memory question"
+              disabled={submitting}
               onClick={() => setStarted(false)}
             />
           </>
@@ -196,6 +272,7 @@ export default function YouOnboarding() {
               layout
               layoutDependency={started}
               transition={layoutTransition}
+              disabled={submitting}
               onClick={() => setStarted((current) => !current)}
             >
               <AgentOrbVideo
@@ -265,6 +342,7 @@ export default function YouOnboarding() {
                   <form
                     className={styles.memoryComposer}
                     onSubmit={handleComposerSubmit}
+                    aria-busy={submitting}
                   >
                     <div className={styles.composerSplit}>
                       <div className={styles.textColumn}>
@@ -273,6 +351,7 @@ export default function YouOnboarding() {
                             className={styles.memoryInput}
                             value={memoryText}
                             maxLength={6000}
+                            disabled={submitting}
                             aria-label="Tell Chapter about this memory"
                             placeholder="Start anywhere. The place, the people, what happened, how it felt… You can also add up to 8 photos, with a little context for each."
                             onChange={(event) => {
@@ -286,7 +365,12 @@ export default function YouOnboarding() {
                               <motion.button
                                 className={styles.sendButton}
                                 type="submit"
-                                aria-label="Send memory to Chapter"
+                                aria-label={
+                                  submitting
+                                    ? "Chapter is understanding this memory"
+                                    : "Send memory to Chapter"
+                                }
+                                disabled={submitting}
                                 initial={
                                   reduceMotion
                                     ? { opacity: 0 }
@@ -416,6 +500,7 @@ export default function YouOnboarding() {
                                       className={`${styles.cardAction} ${styles.removeButton}`}
                                       type="button"
                                       aria-label={`Remove ${photo.name}`}
+                                      disabled={submitting}
                                       onClick={() => removePhoto(photo.id)}
                                     >
                                       <svg
@@ -430,6 +515,7 @@ export default function YouOnboarding() {
                                     <button
                                       className={`${styles.cardAction} ${styles.editButton}`}
                                       type="button"
+                                      disabled={submitting}
                                       aria-label={
                                         photo.note
                                           ? `Edit context for ${photo.name}`
@@ -487,6 +573,7 @@ export default function YouOnboarding() {
                                             className={styles.note}
                                             value={photo.note}
                                             maxLength={280}
+                                            disabled={submitting}
                                             ref={focusWithoutScrolling}
                                             aria-label={`Context for ${photo.name}`}
                                             placeholder="What should I know about this photo?"
@@ -505,6 +592,7 @@ export default function YouOnboarding() {
                                           <button
                                             className={styles.doneButton}
                                             type="button"
+                                            disabled={submitting}
                                             onClick={() =>
                                               setEditingPhotoId(null)
                                             }
@@ -607,6 +695,7 @@ export default function YouOnboarding() {
                       type="file"
                       accept="image/*"
                       multiple
+                      disabled={submitting}
                       onClick={(event) => event.stopPropagation()}
                       onChange={addPhotos}
                     />

@@ -1,0 +1,34 @@
+{
+  "name": "ExperienceMemorySource",
+  "type": "object",
+  "properties": {
+    "memory_id": { "type": "string" },
+    "owner_user_id": { "type": "string" },
+    "auth_user_id": { "type": "string" },
+    "source_ref": {
+      "type": "string",
+      "description": "Stable reference used by extracted evidence, such as text:main, image:0, or context:0"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": ["text", "image", "image_context"]
+    },
+    "position": { "type": "number" },
+    "text": { "type": "string" },
+    "file_uri": {
+      "type": "string",
+      "description": "Private Base44 file URI; never returned as a public graph field"
+    },
+    "file_name": { "type": "string" },
+    "media_type": { "type": "string" },
+    "byte_size": { "type": "number" },
+    "created_at": { "type": "number" }
+  },
+  "required": ["memory_id", "owner_user_id", "source_ref", "source_type", "position", "created_at"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

@@ -10,6 +10,7 @@ export type ExperienceGraphNodeRecord = {
   memoryId?: string;
   ownerUserId?: string;
   sourceType: "memory" | "connection";
+  occurrenceCount?: number;
   linkedUserId?: string;
   connectionId?: string;
   inviteStatus?: "pending";

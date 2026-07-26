@@ -1,0 +1,150 @@
+# Chapter memory-map architecture
+
+## Product contract
+
+A memory can contain three independent evidence sources:
+
+1. The main memory text.
+2. One or more images.
+3. Optional user-written context attached to each image.
+
+All three are preserved separately. The generated graph is a derived view, never
+the only copy of what the user shared.
+
+The graph always has one moment anchor and may contain any meaningful subset of
+the seven pillars:
+
+- People
+- Place
+- Activity
+- Interest
+- Feeling
+- Condition
+- Pattern
+
+Extraction must not fill categories for completeness. A small, well-grounded
+graph is better than a large speculative one.
+
+## Pipeline
+
+```mermaid
+flowchart LR
+  A["Main text"] --> D["Authenticated memory intake"]
+  B["Private images"] --> D
+  C["Per-image context"] --> D
+  D --> E["Immutable memory sources"]
+  E --> F["One multimodal structured extraction"]
+  F --> G["Deterministic validation and calibration"]
+  G --> H["Immutable node and edge mentions"]
+  H --> I["Conservative cross-memory projection"]
+  I --> J["The You world"]
+```
+
+### 1. Private ingestion
+
+The browser uploads each image with Base44 `UploadPrivateFile`. The public graph
+never receives the private file URI. The authenticated `sidequest-memory`
+function validates:
+
+- A non-empty text or image input.
+- At most eight images.
+- Image media types and a 25 MB per-image limit.
+- Text and per-image context length limits.
+- A caller-generated idempotency key.
+
+An identical successful request returns the existing memory rather than creating
+a duplicate.
+
+### 2. Source preservation
+
+`ExperienceMemorySource` stores each source independently:
+
+- `text:main`
+- `image:0`, `image:1`, and so on
+- `context:0`, `context:1`, and so on
+
+Graph nodes and edges store the exact source refs that support them. Images stay
+private; short-lived signed URLs are created only while the extraction call is
+running.
+
+### 3. Multimodal extraction
+
+One structured multimodal call receives:
+
+- The main text.
+- Images in a documented attachment order.
+- The context mapped to each image.
+- A bounded catalog of the user's existing canonical concepts.
+- Recent memory summaries for possible corroboration.
+
+The model proposes nodes, edges, evidence refs, and one of four evidence bases:
+
+- `explicit`: directly stated by the user.
+- `visible`: directly observable in an image.
+- `inferred`: a careful, unresolved interpretation.
+- `recurring`: a cross-memory hypothesis with cited prior support.
+
+### 4. Deterministic trust boundary
+
+The server validates and recalibrates the proposal before any graph rows are
+written.
+
+- Image-only evidence may establish visible people, places, and activities.
+- Image-only evidence cannot establish the user's feelings, interests,
+  conditions, preferences, relationships, or patterns.
+- Named people are separate nodes. An image cannot supply a person's name or
+  relationship unless the user wrote it.
+- Sensitive traits are never inferred from pixels.
+- `fact` is reserved for explicit authored evidence or narrow visible facts.
+- Inferences and recurring patterns remain hypotheses.
+- Confidence is capped by evidence basis.
+- Every source ref must exist in the preserved input.
+- Every edge endpoint must exist and self-loops are removed.
+- Every retained node is connected to the moment.
+- Exactly one moment anchor is required.
+
+If extraction or persistence fails, the memory is marked failed. `getMyGraph`
+only projects complete memories, so a partial attempt cannot leak into the
+user's world.
+
+### 5. Future-memory identity
+
+Each processed memory writes immutable node and edge mentions. Existing graph
+rows are never rewritten by a new extraction.
+
+For a future memory, the model may reuse an existing canonical key only when it
+is confidently the same concept. A name match alone is not enough. Ambiguous or
+new concepts receive a memory-scoped key.
+
+At read time, complete mentions with the same canonical key are projected into
+one stable graph node. Their occurrence count, strongest evidence, salience,
+and relationships are combined conservatively. This gives future memories a
+way to deepen the world without letting a failed or weak extraction overwrite
+what was already known.
+
+Patterns are stricter than other pillars. They are accepted only when:
+
+- The user explicitly states a general tendency in text/context; or
+- The current memory plus at least one cited prior concept supports a recurring
+  hypothesis.
+
+One enjoyable memory is never automatically promoted into a preference or
+personality pattern.
+
+## Resource boundaries
+
+- `ExperienceMemory`: intake, idempotency, processing status, title, and summary.
+- `ExperienceMemorySource`: private text/image/context evidence.
+- `ExperienceGraphNode`: one immutable concept mention with its evidence basis.
+- `ExperienceGraphEdge`: one immutable relationship mention with its evidence
+  basis.
+- `sidequest-memory`: authenticated web memory intake.
+- Shared memory pipeline: the same extraction rules for web onboarding and the
+  existing iMessage onboarding path.
+- `sidequest-data`: complete-memory filtering and conservative graph projection.
+
+## Operational versioning
+
+Every new memory, node, and edge records `memory-map-v2`. Prompt or validation
+changes should increment this version. Reprocessing should create a new derived
+attempt rather than silently mutating a user's original sources.

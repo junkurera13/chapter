@@ -3,6 +3,7 @@
   "type": "object",
   "properties": {
     "phone": { "type": "string" },
+    "auth_user_id": { "type": "string" },
     "memory_id": { "type": "string" },
     "owner_user_id": {
       "type": "string",
@@ -21,6 +22,10 @@
       "description": "Accepted SidequestConnection represented by this node"
     },
     "key": { "type": "string" },
+    "canonical_key": {
+      "type": "string",
+      "description": "Conservative cross-memory identity; reused only when the same concept is clear"
+    },
     "category": {
       "type": "string",
       "enum": ["experience", "people", "place", "activity", "interest", "feeling", "condition", "pattern"]
@@ -32,10 +37,25 @@
     },
     "label": { "type": "string" },
     "description": { "type": "string" },
+    "basis": {
+      "type": "string",
+      "enum": ["explicit", "visible", "inferred", "recurring"]
+    },
     "certainty": { "type": "string", "enum": ["fact", "hypothesis"] },
     "confidence": { "type": "number" },
     "salience": { "type": "number" },
     "evidence": { "type": "string" },
+    "source_refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Exact text, image, or image-context sources supporting this mention"
+    },
+    "prior_support_keys": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Earlier concepts that support a recurring-pattern hypothesis"
+    },
+    "extractor_version": { "type": "string" },
     "created_at": { "type": "number" }
   },
   "required": ["key", "kind", "label", "description", "certainty", "confidence", "evidence", "created_at"],

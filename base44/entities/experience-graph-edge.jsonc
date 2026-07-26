@@ -4,6 +4,7 @@
   "properties": {
     "phone": { "type": "string", "description": "Caller phone (iMessage channel). Optional for web-only users." },
     "auth_user_id": { "type": "string", "description": "Base44 auth user id; backfilled when the SidequestUser is linked." },
+    "owner_user_id": { "type": "string", "description": "SidequestUser that owns this private relationship" },
     "memory_id": { "type": "string" },
     "from_node_id": { "type": "string" },
     "to_node_id": { "type": "string" },
@@ -16,9 +17,19 @@
     "strength": { "type": "number" },
     "relationship": { "type": "string" },
     "description": { "type": "string" },
+    "basis": {
+      "type": "string",
+      "enum": ["explicit", "visible", "inferred", "recurring"]
+    },
     "certainty": { "type": "string", "enum": ["fact", "hypothesis"] },
     "confidence": { "type": "number" },
     "evidence": { "type": "string" },
+    "source_refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Exact text, image, or image-context sources supporting this relationship"
+    },
+    "extractor_version": { "type": "string" },
     "created_at": { "type": "number" }
   },
   "required": ["memory_id", "from_node_id", "to_node_id", "relationship", "description", "certainty", "confidence", "evidence", "created_at"],

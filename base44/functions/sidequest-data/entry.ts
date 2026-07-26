@@ -1,5 +1,7 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
 
+import { collapseMemoryGraphRows } from "../_shared/memory-map.ts";
+
 // Base44 entity rows are dynamic at this SDK boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -117,6 +119,10 @@ function graphNodeRecord(row: Row, inviteStatus?: "pending") {
       ["memory", "connection"] as const,
       "memory",
     ),
+    occurrenceCount:
+      typeof row.occurrence_count === "number"
+        ? row.occurrence_count
+        : undefined,
     linkedUserId: row.linked_user_id,
     connectionId: row.connection_id,
     inviteStatus,
@@ -711,7 +717,7 @@ Deno.serve(async (req) => {
               }
             : { auth_user_id: authUserId, status: "complete" },
           "created_at",
-          100,
+          5000,
         )
       );
       const nodeRows = await readWithRateLimitRetry(() =>
@@ -722,7 +728,7 @@ Deno.serve(async (req) => {
               }
             : { owner_user_id: user.id },
           "created_at",
-          100,
+          5000,
         )
       );
       const completeMemoryIds = new Set(memoryRows.map((row: Row) => row.id));
@@ -741,7 +747,7 @@ Deno.serve(async (req) => {
                 }
               : { auth_user_id: authUserId },
             "created_at",
-            100,
+            5000,
           )
         )
         : [];
@@ -751,9 +757,10 @@ Deno.serve(async (req) => {
           completedNodeIds.has(row.from_node_id) &&
           completedNodeIds.has(row.to_node_id),
       );
+      const projected = collapseMemoryGraphRows(completedNodes, completedEdges);
       const now = Date.now();
       const inviteStatusByNode = new Map<string, "pending">();
-      const hasPeopleNodes = completedNodes.some(
+      const hasPeopleNodes = projected.nodes.some(
         (node: Row) => categoryForNode(node) === "people",
       );
       const pendingInvites = hasPeopleNodes
@@ -766,8 +773,11 @@ Deno.serve(async (req) => {
         )
         : [];
       for (const invite of pendingInvites) {
-        if (invite.expires_at > now && !inviteStatusByNode.has(invite.inviter_node_id)) {
-          inviteStatusByNode.set(invite.inviter_node_id, "pending");
+        const projectedNodeId =
+          projected.aliases.get(invite.inviter_node_id) ??
+          invite.inviter_node_id;
+        if (invite.expires_at > now && !inviteStatusByNode.has(projectedNodeId)) {
+          inviteStatusByNode.set(projectedNodeId, "pending");
         }
       }
 
@@ -775,10 +785,10 @@ Deno.serve(async (req) => {
         value: {
           memoryCount: memoryRows.length,
           onboardingStep: user.onboarding_step,
-          nodes: completedNodes.map((node) =>
+          nodes: projected.nodes.map((node) =>
             graphNodeRecord(node, inviteStatusByNode.get(node.id))
           ),
-          edges: completedEdges.map(graphEdgeRecord),
+          edges: projected.edges.map(graphEdgeRecord),
         },
       });
     }

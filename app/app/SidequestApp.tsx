@@ -109,7 +109,7 @@ export default function SidequestApp({
       </div>
     );
   } else if (graphState.graph.memoryCount === 0) {
-    youPanel = <YouOnboarding />;
+    youPanel = <YouOnboarding onMemoryCreated={queueGraphLoad} />;
   } else if (!worldGraph) {
     youPanel = (
       <div className={styles.graphLoading} aria-busy="true">
