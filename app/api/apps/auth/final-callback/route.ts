@@ -2,10 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import {
   BASE44_AUTH_RETURN_COOKIE,
+  safeBase44AuthReturnOrigin,
   safeBase44AuthReturnPath,
 } from "@/lib/base44AuthReturn";
-
-const PRODUCTION_APP_ORIGIN = "https://usechapter.vercel.app";
 
 export function GET(request: NextRequest) {
   const savedReturnPath = request.cookies.get(BASE44_AUTH_RETURN_COOKIE)?.value;
@@ -20,7 +19,10 @@ export function GET(request: NextRequest) {
   const returnPath = safeBase44AuthReturnPath(
     decodedReturnPath,
   );
-  const destination = new URL(returnPath || "/app", PRODUCTION_APP_ORIGIN);
+  const destination = new URL(
+    returnPath || "/app",
+    safeBase44AuthReturnOrigin(request.url),
+  );
 
   // Base44 completes provider authentication on its own domain, then sends the
   // resulting session token through this app-local endpoint. Forward the
