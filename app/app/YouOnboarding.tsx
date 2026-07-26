@@ -36,6 +36,11 @@ function focusWithoutScrolling(element: HTMLTextAreaElement | null) {
   element?.focus({ preventScroll: true });
 }
 
+function resizeMemoryInput(element: HTMLTextAreaElement) {
+  element.style.height = "auto";
+  element.style.height = `${element.scrollHeight}px`;
+}
+
 export default function YouOnboarding() {
   const [started, setStarted] = useState(false);
   const [memoryText, setMemoryText] = useState("");
@@ -262,54 +267,61 @@ export default function YouOnboarding() {
                     onSubmit={handleComposerSubmit}
                   >
                     <div className={styles.composerSplit}>
-                      <div className={styles.textWindow}>
-                        <textarea
-                          className={styles.memoryInput}
-                          value={memoryText}
-                          maxLength={6000}
-                          aria-label="Tell Chapter about this memory"
-                          placeholder="Start anywhere. The place, the people, what happened, how it felt… You can also add up to 8 photos, with a little context for each."
-                          onChange={(event) => setMemoryText(event.target.value)}
-                        />
+                      <div className={styles.textColumn}>
+                        <div className={styles.textWindow}>
+                          <textarea
+                            className={styles.memoryInput}
+                            value={memoryText}
+                            maxLength={6000}
+                            aria-label="Tell Chapter about this memory"
+                            placeholder="Start anywhere. The place, the people, what happened, how it felt… You can also add up to 8 photos, with a little context for each."
+                            onChange={(event) => {
+                              setMemoryText(event.target.value);
+                              resizeMemoryInput(event.currentTarget);
+                            }}
+                          />
 
-                        <AnimatePresence initial={false}>
-                          {canSend ? (
-                            <motion.button
-                              className={styles.sendButton}
-                              type="submit"
-                              aria-label="Send memory to Chapter"
-                              initial={
-                                reduceMotion
-                                  ? { opacity: 0 }
-                                  : { opacity: 0, y: 4, scale: 0.92 }
-                              }
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              whileHover={
-                                reduceMotion ? undefined : { y: -1 }
-                              }
-                              whileTap={
-                                reduceMotion ? undefined : { y: 2, scale: 0.985 }
-                              }
-                              exit={
-                                reduceMotion
-                                  ? { opacity: 0 }
-                                  : { opacity: 0, y: 4, scale: 0.96 }
-                              }
-                              transition={{
-                                duration: reduceMotion ? 0.12 : 0.22,
-                                ease: [0.22, 1, 0.36, 1],
-                              }}
-                            >
-                              <svg
-                                aria-hidden="true"
-                                viewBox="0 0 24 24"
-                                fill="none"
+                          <AnimatePresence initial={false}>
+                            {canSend ? (
+                              <motion.button
+                                className={styles.sendButton}
+                                type="submit"
+                                aria-label="Send memory to Chapter"
+                                initial={
+                                  reduceMotion
+                                    ? { opacity: 0 }
+                                    : { opacity: 0, y: 4, scale: 0.92 }
+                                }
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                whileHover={
+                                  reduceMotion ? undefined : { y: -1 }
+                                }
+                                whileTap={
+                                  reduceMotion
+                                    ? undefined
+                                    : { y: 2, scale: 0.985 }
+                                }
+                                exit={
+                                  reduceMotion
+                                    ? { opacity: 0 }
+                                    : { opacity: 0, y: 4, scale: 0.96 }
+                                }
+                                transition={{
+                                  duration: reduceMotion ? 0.12 : 0.22,
+                                  ease: [0.22, 1, 0.36, 1],
+                                }}
                               >
-                                <path d="M12 19V5M6 11l6-6 6 6" />
-                              </svg>
-                            </motion.button>
-                          ) : null}
-                        </AnimatePresence>
+                                <svg
+                                  aria-hidden="true"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                >
+                                  <path d="M12 19V5M6 11l6-6 6 6" />
+                                </svg>
+                              </motion.button>
+                            ) : null}
+                          </AnimatePresence>
+                        </div>
                       </div>
 
                       <AnimatePresence mode="popLayout" initial={false}>
@@ -497,7 +509,9 @@ export default function YouOnboarding() {
                                               setEditingPhotoId(null)
                                             }
                                           >
-                                            Done
+                                            {photo.note.trim()
+                                              ? "Done"
+                                              : "Cancel"}
                                           </button>
                                         </motion.div>
                                       ) : photo.note ? (
@@ -508,7 +522,7 @@ export default function YouOnboarding() {
                                           animate={{ opacity: 1 }}
                                           exit={{ opacity: 0 }}
                                         >
-                                          {photo.note}
+                                          <span>{photo.note}</span>
                                         </motion.p>
                                       ) : null}
                                     </AnimatePresence>
