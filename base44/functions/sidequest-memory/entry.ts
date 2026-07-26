@@ -33,7 +33,11 @@ function requestId(value: unknown) {
 function validatedImages(value: unknown): MemoryImageInput[] {
   if (!Array.isArray(value)) return [];
   if (value.length > MAX_IMAGES) {
-    throw new MemoryPipelineError("You can add up to 8 images.", 400);
+    throw new MemoryPipelineError(
+      "You can add up to 8 images.",
+      400,
+      "MEMORY_INPUT_INVALID",
+    );
   }
 
   return value.map((rawValue, position) => {
@@ -50,16 +54,25 @@ function validatedImages(value: unknown): MemoryImageInput[] {
         : 0;
     const context = textValue(image.context, MAX_CONTEXT_LENGTH);
 
-    if (!fileUri.startsWith("private/")) {
-      throw new MemoryPipelineError("Every image must be privately uploaded.", 400);
+    if (!fileUri) {
+      throw new MemoryPipelineError(
+        `${fileName} needs to be uploaded again.`,
+        422,
+        "IMAGE_REFERENCE_INVALID",
+      );
     }
     if (!mediaType.startsWith("image/")) {
-      throw new MemoryPipelineError(`${fileName} is not an image.`, 400);
+      throw new MemoryPipelineError(
+        `${fileName} is not an image.`,
+        400,
+        "MEMORY_INPUT_INVALID",
+      );
     }
     if (byteSize <= 0 || byteSize > MAX_IMAGE_BYTES) {
       throw new MemoryPipelineError(
         `${fileName} must be smaller than 25 MB.`,
         400,
+        "MEMORY_INPUT_INVALID",
       );
     }
 
@@ -114,18 +127,30 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const viewer = await base44.auth.me().catch(() => null);
     if (!viewer) {
-      return Response.json({ error: "authentication required" }, { status: 401 });
+      return Response.json(
+        {
+          error: "Your session expired. Sign in again, then retry your draft.",
+          code: "AUTHENTICATION_REQUIRED",
+        },
+        { status: 401 },
+      );
     }
 
     const input = (await req.json()) as Record<string, unknown>;
     if (input.action !== "create") {
-      return Response.json({ error: "unknown action" }, { status: 400 });
+      return Response.json(
+        { error: "Unknown memory action.", code: "MEMORY_INPUT_INVALID" },
+        { status: 400 },
+      );
     }
 
     const clientRequestId = requestId(input.clientRequestId);
     if (!clientRequestId) {
       return Response.json(
-        { error: "a valid client request id is required" },
+        {
+          error: "A valid memory request id is required.",
+          code: "MEMORY_INPUT_INVALID",
+        },
         { status: 400 },
       );
     }
@@ -134,7 +159,10 @@ Deno.serve(async (req) => {
     const images = validatedImages(input.images);
     if (!text && images.length === 0) {
       return Response.json(
-        { error: "a memory needs text or at least one image" },
+        {
+          error: "A memory needs text or at least one image.",
+          code: "MEMORY_INPUT_INVALID",
+        },
         { status: 400 },
       );
     }
@@ -168,9 +196,13 @@ Deno.serve(async (req) => {
   } catch (error) {
     const status =
       error instanceof MemoryPipelineError ? error.status : 500;
+    const code =
+      error instanceof MemoryPipelineError
+        ? error.code
+        : "MEMORY_PROCESSING_FAILED";
     const message =
       error instanceof Error ? error.message : "Memory processing failed.";
     console.error("sidequest-memory failed", error);
-    return Response.json({ error: message }, { status });
+    return Response.json({ error: message, code }, { status });
   }
 });

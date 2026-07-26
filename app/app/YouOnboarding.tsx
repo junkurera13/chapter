@@ -20,8 +20,11 @@ import ceramicsImage from "../assets/ceramics-class.jpg";
 import mojikoImage from "../assets/mojiko-waterfront.jpg";
 import sushiImage from "../assets/sushi-shibuya.webp";
 import AgentOrbVideo from "../../components/landing/agent-orb-video";
+import SidequestLoadingMark from "../../components/sidequest-loading-mark";
 import {
   createExperienceMemory,
+  describeMemorySubmissionFailure,
+  type MemorySubmissionFailure,
   type UploadedMemoryPhoto,
   uploadMemoryPhoto,
   validateMemoryPhoto,
@@ -59,8 +62,11 @@ export default function YouOnboarding({
   const [photos, setPhotos] = useState<MemoryPhoto[]>([]);
   const [editingPhotoId, setEditingPhotoId] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
+  const [submissionFailure, setSubmissionFailure] =
+    useState<MemorySubmissionFailure | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const nextPhotoId = useRef(0);
   const requestId = useRef<string | null>(null);
   const objectUrls = useRef(new Set<string>());
@@ -85,6 +91,7 @@ export default function YouOnboarding({
   function openPhotoPicker() {
     if (submitting) return;
     setNotice("");
+    setSubmissionFailure(null);
     inputRef.current?.click();
   }
 
@@ -179,7 +186,8 @@ export default function YouOnboarding({
 
     setSubmitting(true);
     setEditingPhotoId(null);
-    setNotice("Looking closely at what you shared…");
+    setNotice("");
+    setSubmissionFailure(null);
 
     try {
       const uploadedPhotos: UploadedMemoryPhoto[] = [];
@@ -209,7 +217,19 @@ export default function YouOnboarding({
       onMemoryCreated();
     } catch (error) {
       console.error("Could not create the memory map", error);
-      setNotice("I couldn’t hold onto that yet. Your draft is still here—try again.");
+      const failure = describeMemorySubmissionFailure(error);
+      if (failure.reuploadImages) {
+        setPhotos((current) =>
+          current.map((photo) => ({
+            id: photo.id,
+            name: photo.name,
+            note: photo.note,
+            url: photo.url,
+            file: photo.file,
+          })),
+        );
+      }
+      setSubmissionFailure(failure);
       setSubmitting(false);
     }
   }
@@ -340,9 +360,17 @@ export default function YouOnboarding({
               >
                 <div className={styles.composerShell}>
                   <form
+                    ref={formRef}
                     className={styles.memoryComposer}
                     onSubmit={handleComposerSubmit}
                     aria-busy={submitting}
+                    aria-describedby={
+                      submissionFailure
+                        ? "memory-submission-error"
+                        : notice
+                          ? "memory-composer-notice"
+                          : undefined
+                    }
                   >
                     <div className={styles.composerSplit}>
                       <div className={styles.textColumn}>
@@ -699,24 +727,73 @@ export default function YouOnboarding({
                       onClick={(event) => event.stopPropagation()}
                       onChange={addPhotos}
                     />
+
+                    <AnimatePresence initial={false}>
+                      {submitting ? (
+                        <motion.div
+                          className={styles.processingOverlay}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{
+                            duration: reduceMotion ? 0.12 : 0.24,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                        >
+                          <SidequestLoadingMark
+                            label="Understanding this memory"
+                            size={68}
+                          />
+                          <p>Understanding this memory…</p>
+                        </motion.div>
+                      ) : null}
+                    </AnimatePresence>
                   </form>
 
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {submissionFailure ? (
+                      <motion.div
+                        className={styles.feedback}
+                        id="memory-submission-error"
+                        role="alert"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -2 }}
+                      >
+                        <p>{submissionFailure.message}</p>
+                        {submissionFailure.requiresAuthentication ? (
+                          <a
+                            className={styles.retryButton}
+                            href="/login"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Sign in again
+                          </a>
+                        ) : (
+                          <button
+                            className={styles.retryButton}
+                            type="button"
+                            onClick={() => formRef.current?.requestSubmit()}
+                          >
+                            Try again
+                          </button>
+                        )}
+                      </motion.div>
+                    ) : notice ? (
+                      <motion.p
+                        className={styles.notice}
+                        id="memory-composer-notice"
+                        role="status"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        {notice}
+                      </motion.p>
+                    ) : null}
+                  </AnimatePresence>
                 </div>
-
-                <AnimatePresence initial={false}>
-                  {notice ? (
-                    <motion.p
-                      className={styles.notice}
-                      role="status"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                    >
-                      {notice}
-                    </motion.p>
-                  ) : null}
-                </AnimatePresence>
-
               </motion.div>
             ) : null}
           </AnimatePresence>

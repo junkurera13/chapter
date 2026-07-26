@@ -1,3 +1,5 @@
+import { Base44Error } from "@base44/sdk";
+
 import { getBase44BrowserClient } from "./base44BrowserClient";
 
 const IMAGE_MEDIA_TYPES_BY_EXTENSION: Record<string, string> = {
@@ -25,6 +27,101 @@ export type CreatedExperienceMemory = {
   summary: string;
   created: boolean;
 };
+
+export type MemorySubmissionFailure = {
+  message: string;
+  reuploadImages: boolean;
+  requiresAuthentication: boolean;
+};
+
+function recordValue(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function errorDetails(error: unknown) {
+  if (error instanceof Base44Error) {
+    return {
+      status: error.status,
+      data: recordValue(error.data),
+    };
+  }
+
+  const value = recordValue(error);
+  const response = recordValue(value.response);
+  return {
+    status:
+      typeof value.status === "number"
+        ? value.status
+        : typeof response.status === "number"
+          ? response.status
+          : undefined,
+    data: recordValue(value.data ?? response.data),
+  };
+}
+
+export function describeMemorySubmissionFailure(
+  error: unknown,
+): MemorySubmissionFailure {
+  const { status, data } = errorDetails(error);
+  const code = stringValue(data.code);
+  const serverMessage = stringValue(data.error);
+
+  if (code === "IMAGE_REFERENCE_INVALID") {
+    return {
+      message:
+        serverMessage ||
+        "One of those photos needs to be uploaded again. Your draft and contexts are still here.",
+      reuploadImages: true,
+      requiresAuthentication: false,
+    };
+  }
+
+  if (code === "AUTHENTICATION_REQUIRED" || status === 401 || status === 403) {
+    return {
+      message:
+        "Your session expired. Sign in in a new tab, then come back and retry—this draft will stay here.",
+      reuploadImages: false,
+      requiresAuthentication: true,
+    };
+  }
+
+  if (code === "MEMORY_IN_PROGRESS" || status === 409) {
+    return {
+      message: "Chapter is still working on this memory. Give it a moment, then retry.",
+      reuploadImages: false,
+      requiresAuthentication: false,
+    };
+  }
+
+  if (code === "MEMORY_INPUT_INVALID" && serverMessage) {
+    return {
+      message: serverMessage,
+      reuploadImages: false,
+      requiresAuthentication: false,
+    };
+  }
+
+  if (status === 413) {
+    return {
+      message: "One of those photos is too large to upload. Remove it and try again.",
+      reuploadImages: true,
+      requiresAuthentication: false,
+    };
+  }
+
+  return {
+    message:
+      "Chapter couldn’t finish that memory just now. Your draft and photos are still here—try again.",
+    reuploadImages: false,
+    requiresAuthentication: false,
+  };
+}
 
 function mediaTypeFor(file: File) {
   if (file.type.startsWith("image/")) return file.type.toLocaleLowerCase("en");

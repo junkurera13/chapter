@@ -42,11 +42,17 @@ export type IngestExperienceMemoryResult = {
 
 export class MemoryPipelineError extends Error {
   readonly status: number;
+  readonly code: string;
 
-  constructor(message: string, status = 500) {
+  constructor(
+    message: string,
+    status = 500,
+    code = "MEMORY_PROCESSING_FAILED",
+  ) {
     super(message);
     this.name = "MemoryPipelineError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -128,6 +134,7 @@ async function findOrCreateMemory(
     throw new MemoryPipelineError(
       "This memory is already being processed.",
       409,
+      "MEMORY_IN_PROGRESS",
     );
   }
 
@@ -318,7 +325,7 @@ async function loadPriorContext(
   return { existingConcepts, previousMemorySummaries };
 }
 
-async function signedImageUrls(
+export async function signedImageUrls(
   base44: Row,
   images: readonly MemoryImageInput[],
 ) {
@@ -326,19 +333,21 @@ async function signedImageUrls(
   for (const image of [...images].sort(
     (first, second) => first.position - second.position,
   )) {
-    const result =
-      await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({
+    try {
+      const result = await base44.integrations.Core.CreateFileSignedUrl({
         file_uri: image.fileUri,
         expires_in: 3600,
       });
-    const signedUrl = stringValue(result?.signed_url);
-    if (!signedUrl) {
+      const signedUrl = stringValue(result?.signed_url);
+      if (!signedUrl) throw new Error("Signed URL was empty.");
+      urls.push(signedUrl);
+    } catch {
       throw new MemoryPipelineError(
-        `Could not open ${image.fileName} for analysis.`,
+        `I couldn’t securely open ${image.fileName}. I’ll upload it again when you retry.`,
         422,
+        "IMAGE_REFERENCE_INVALID",
       );
     }
-    urls.push(signedUrl);
   }
   return urls;
 }
@@ -359,10 +368,10 @@ export async function ingestExperienceMemory(
   }
 
   try {
+    const fileUrls = await signedImageUrls(base44, input.images);
     const sources = await preserveSources(base44, memory, input);
     const { existingConcepts, previousMemorySummaries } =
       await loadPriorContext(base44, memory.id, input);
-    const fileUrls = await signedImageUrls(base44, input.images);
 
     await memories.update(memory.id, { processing_stage: "extracting" });
     const rawExtraction =
