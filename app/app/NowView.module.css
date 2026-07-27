@@ -58,7 +58,7 @@
 }
 
 .stateScreen > button,
-.cityForm button,
+.cityForm button[type="submit"],
 .actions button {
   padding: 13px 22px;
   border: none;
@@ -71,7 +71,7 @@
 }
 
 .stateScreen > button:disabled,
-.cityForm button:disabled,
+.cityForm button[type="submit"]:disabled,
 .actions button:disabled {
   opacity: 0.45;
   cursor: default;
@@ -85,10 +85,191 @@
 
 /* Mirrors the You onboarding invitation: centred orb video over a balanced
    headline, with the single input beneath. */
+/* Cut from the landing stack: white surface, 18px corners, hairline ring and a
+   soft lift. Wide and low, so it reads as a card rather than a chip. */
+.homeCard {
+  position: absolute;
+  z-index: 4;
+  top: 22px;
+  right: 22px;
+  display: flex;
+  width: min(19rem, calc(100vw - 44px));
+  align-items: center;
+  gap: 12px;
+  padding: 12px 13px 12px 14px;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 10px 26px rgba(46, 32, 20, 0.13),
+    0 3px 7px rgba(46, 32, 20, 0.07);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.homeCard:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 16px 34px rgba(46, 32, 20, 0.17),
+    0 5px 10px rgba(46, 32, 20, 0.09);
+}
+
+.homeCard:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 2px;
+}
+
+.homeCardOrb {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  box-shadow:
+    inset 3px 4px 5px rgba(255, 255, 255, 0.24),
+    inset -2px -3px 5px rgba(24, 17, 13, 0.18),
+    0 2px 5px rgba(47, 34, 24, 0.13);
+}
+
+.homeCardCopy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  text-align: left;
+}
+
+.homeCardKicker {
+  color: #a09a97;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.homeCardName {
+  color: #1c1c19;
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.homeCardAction {
+  flex: none;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(28, 28, 25, 0.05);
+  color: rgba(28, 28, 25, 0.6);
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 12.5px;
+  font-weight: 560;
+  letter-spacing: -0.015em;
+}
+
+.homeCard:hover .homeCardAction {
+  background: rgba(28, 28, 25, 0.08);
+  color: rgba(28, 28, 25, 0.78);
+}
+
+/* The change dialog: the same card, grown up to hold the ask. */
+.homeDialog {
+  /* The app's reset zeroes margins, which un-centres a modal <dialog>. */
+  margin: auto;
+  width: min(31rem, calc(100vw - 2rem));
+  max-height: min(40rem, calc(100svh - 3rem));
+  padding: 0;
+  border: 0;
+  border-radius: 26px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 30px 70px rgba(35, 24, 14, 0.3),
+    0 8px 18px rgba(35, 24, 14, 0.16);
+  color: #1c1c19;
+  overflow: hidden;
+}
+
+.homeDialog::backdrop {
+  background: rgba(28, 24, 20, 0.34);
+  backdrop-filter: blur(3px);
+}
+
+.homeDialogPanel {
+  display: flex;
+  max-height: inherit;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(1.6rem, 4vw, 2.25rem) clamp(1.1rem, 3.5vw, 2rem)
+    clamp(1.3rem, 3vw, 1.75rem);
+  text-align: center;
+}
+
+.homeDialogPanel h2 {
+  margin: 0;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(1.4rem, 4.2vw, 1.85rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.homeDialogNow {
+  margin: 0.55rem 0 0;
+  color: rgba(28, 28, 25, 0.45);
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.homeDialogNow strong {
+  color: rgba(28, 28, 25, 0.66);
+  font-weight: 560;
+}
+
+/* The ask arrives with its own top margin; the dialog supplies the rest. */
+.homeDialogPanel .cityForm {
+  min-height: 0;
+  margin-top: clamp(1rem, 2.5vh, 1.5rem);
+}
+
+.homeDialogClose {
+  flex: none;
+  margin-top: 0.9rem;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(28, 28, 25, 0.45);
+  cursor: pointer;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 540;
+}
+
+.homeDialogClose:hover {
+  color: rgba(28, 28, 25, 0.72);
+}
+
+/* The ask holds one screen exactly — a growing list of suggestions scrolls
+   inside itself rather than pushing the orb and the button out of view. */
 .cityScreen {
   display: grid;
-  min-height: 100svh;
-  padding: clamp(2.5rem, 7vh, 4.75rem) clamp(1rem, 4vw, 3rem) 9rem;
+  height: 100svh;
+  overflow: hidden;
+  /* Bottom clears the fixed dock; both ends give way on short screens so the
+     suggestions keep as much room as they can. */
+  padding: clamp(1.75rem, 5vh, 4.75rem) clamp(1rem, 4vw, 3rem)
+    clamp(6rem, 13vh, 9rem);
   background: #fff;
   color: #1c1c19;
   place-items: center;
@@ -97,6 +278,8 @@
 .cityPrompt {
   display: flex;
   max-width: 32rem;
+  max-height: 100%;
+  min-height: 0;
   flex-direction: column;
   align-items: center;
   text-align: center;
@@ -106,6 +289,7 @@
 .cityOrb {
   display: block;
   width: clamp(10rem, min(21.5vw, 25vh), 15.5rem);
+  flex: none;
   aspect-ratio: 1;
   line-height: 0;
 }
@@ -120,17 +304,128 @@
   text-wrap: balance;
 }
 
+/* An open line to write on, not a box: the input is transparent and the only
+   edge is a hairline that warms up on focus. */
 .cityForm {
   display: flex;
   width: 100%;
-  max-width: 430px;
+  max-width: 30rem;
+  min-height: 0;
   margin-top: clamp(1.4rem, 3.4vh, 2.2rem);
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
 }
 
-.cityForm input,
+.cityField {
+  position: relative;
+  width: 100%;
+  flex: none;
+}
+
+.cityInput {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.25rem 0.7rem;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #1c1c19;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  text-align: center;
+}
+
+.cityInput::placeholder {
+  color: rgba(28, 28, 25, 0.26);
+  opacity: 1;
+}
+
+.cityRule {
+  display: block;
+  height: 1px;
+  background: rgba(57, 48, 43, 0.14);
+  transition:
+    background 180ms ease,
+    transform 220ms ease;
+  transform: scaleX(0.82);
+}
+
+.cityInput:focus-visible + .cityRule {
+  background: rgba(158, 130, 101, 0.55);
+  transform: scaleX(1);
+}
+
+.cityHint {
+  margin: 0.85rem 0 0;
+  max-width: 26rem;
+  color: rgba(28, 28, 25, 0.42);
+  font-size: 0.83rem;
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
+/* Stays mounted so the narrowing prompt is announced when it arrives, but
+   takes no room while there's nothing to say. */
+.cityHint:empty {
+  margin: 0;
+}
+
+.suggestions {
+  display: grid;
+  width: 100%;
+  min-height: 0;
+  max-height: 20rem;
+  margin: 0;
+  padding: 0;
+  gap: 1px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  align-content: start;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.suggestions:not(:empty) {
+  margin-top: 0.85rem;
+}
+
+.suggestion {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.62rem 0.75rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #1c1c19;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.97rem;
+  text-align: left;
+  transition: background 140ms ease;
+}
+
+.suggestion[data-active="true"] {
+  background: rgba(28, 28, 25, 0.06);
+}
+
+.suggestionName {
+  font-weight: 560;
+}
+
+.suggestionContext {
+  color: rgba(28, 28, 25, 0.45);
+  font-size: 0.85rem;
+}
+
+.cityForm > button[type="submit"] {
+  flex: none;
+  margin-top: clamp(1.1rem, 2.6vh, 1.6rem);
+}
+
 .declineForm input,
 .reflectionForm textarea {
   flex: 1 1 220px;
@@ -142,7 +437,6 @@
   font-size: 15px;
 }
 
-.cityForm input:focus-visible,
 .declineForm input:focus-visible,
 .reflectionForm textarea:focus-visible {
   outline: 2px solid #9e8265;

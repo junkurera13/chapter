@@ -1,6 +1,9 @@
 import { getAccessToken } from "@base44/sdk";
 
 import type { NowChapterRecord } from "./nowChapterSchema";
+import type { PlaceSuggestion } from "./placeSearch";
+
+export type { PlaceSuggestion };
 
 export type NowState = {
   homeCity: string;
@@ -65,6 +68,40 @@ export function saveHomeCity(homeCity: string) {
     method: "POST",
     body: { action: "setHomeCity", homeCity },
   });
+}
+
+/**
+ * Type-ahead suggestions for the home-city ask. Aborting an in-flight lookup
+ * rejects with the fetch AbortError, which callers ignore.
+ */
+export async function searchPlaceSuggestions(
+  query: string,
+  options: {
+    near?: { latitude: number; longitude: number };
+    signal?: AbortSignal;
+  } = {},
+): Promise<PlaceSuggestion[]> {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return [];
+
+  const accessToken = await getAccessToken();
+  if (!accessToken) return [];
+
+  const params = new URLSearchParams({ q: trimmed });
+  if (options.near) {
+    params.set("lat", `${options.near.latitude}`);
+    params.set("lon", `${options.near.longitude}`);
+  }
+
+  const response = await fetch(`/api/places?${params}`, {
+    headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+    signal: options.signal,
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    value?: { places?: PlaceSuggestion[] };
+  };
+  if (!response.ok) return [];
+  return payload.value?.places ?? [];
 }
 
 export function startNowChapter() {

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import AgentOrbVideo from "../../components/landing/agent-orb-video";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
@@ -16,6 +23,8 @@ import {
   nextSaturdayIso,
   NowRequestError,
   saveHomeCity,
+  searchPlaceSuggestions,
+  type PlaceSuggestion,
   startNowChapter,
   type NowState,
 } from "../../lib/nowClient";
@@ -109,6 +118,277 @@ function AnchoredCopy({
   );
 }
 
+/**
+ * The home-city ask: an open line to write on rather than a box, with
+ * type-ahead places beneath it and the commit button last.
+ *
+ * One question, answered by one pick — a whole city is accepted as it stands.
+ * Deep research does better with somewhere walkable, so a city sets the centre
+ * of the next lookup and invites a neighbourhood without demanding one.
+ */
+function HomeCityAsk({
+  busy,
+  notice,
+  onSubmit,
+}: {
+  busy: boolean;
+  notice: string;
+  onSubmit: (homeCity: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const [chosen, setChosen] = useState<PlaceSuggestion | null>(null);
+  const [narrowing, setNarrowing] = useState<PlaceSuggestion | null>(null);
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const settled = chosen !== null && draft.trim() === chosen.label;
+  const homeCity = draft.trim().length >= 2 ? draft.trim() : (chosen?.label ?? "");
+
+  useEffect(() => {
+    if (settled || draft.trim().length < 2) return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void searchPlaceSuggestions(draft, {
+        near: narrowing
+          ? { latitude: narrowing.latitude, longitude: narrowing.longitude }
+          : undefined,
+        signal: controller.signal,
+      })
+        .then((places) => {
+          setSuggestions(places);
+          setActiveIndex(-1);
+        })
+        .catch(() => {
+          /* An aborted or failed lookup just leaves the last list in place. */
+        });
+    }, 260);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [draft, narrowing, settled]);
+
+  // The list scrolls inside itself, so arrowing past its edge has to follow.
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    document
+      .getElementById(`home-city-option-${activeIndex}`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
+
+  function choose(place: PlaceSuggestion) {
+    setSuggestions([]);
+    setActiveIndex(-1);
+    setChosen(place);
+    setDraft(place.label);
+    // A whole city is a complete answer — the ask is one question. But hold it
+    // as the centre of the next lookup, so anyone who does keep typing gets
+    // Gangnam rather than a Gang on the other side of the world.
+    setNarrowing(place.broad ? place : null);
+    inputRef.current?.focus();
+  }
+
+  return (
+    <form
+      className={styles.cityForm}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (homeCity.length >= 2) onSubmit(homeCity);
+      }}
+    >
+      <div className={styles.cityField}>
+        <input
+          ref={inputRef}
+          className={styles.cityInput}
+          type="text"
+          value={draft}
+          onChange={(event) => {
+            const value = event.target.value;
+            setDraft(value);
+            if (chosen && !narrowing) setChosen(null);
+            if (value.trim().length < 2) {
+              setSuggestions([]);
+              setActiveIndex(-1);
+            }
+          }}
+          onKeyDown={(event) => {
+            if (suggestions.length === 0) return;
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              setActiveIndex((index) => (index + 1) % suggestions.length);
+            } else if (event.key === "ArrowUp") {
+              event.preventDefault();
+              setActiveIndex((index) =>
+                index <= 0 ? suggestions.length - 1 : index - 1,
+              );
+            } else if (event.key === "Enter" && activeIndex >= 0) {
+              event.preventDefault();
+              choose(suggestions[activeIndex]);
+            } else if (event.key === "Escape") {
+              setSuggestions([]);
+              setActiveIndex(-1);
+            }
+          }}
+          /* The example is the instruction: a neighbourhood, then the city. */
+          placeholder={narrowing ? "Bangbae-dong" : "Bangbae-dong, Seoul"}
+          aria-label="Where you live"
+          autoComplete="off"
+          autoCapitalize="words"
+          spellCheck={false}
+          maxLength={80}
+          role="combobox"
+          aria-expanded={suggestions.length > 0}
+          aria-controls="home-city-suggestions"
+          aria-autocomplete="list"
+          aria-activedescendant={
+            activeIndex >= 0 ? `home-city-option-${activeIndex}` : undefined
+          }
+        />
+        <span className={styles.cityRule} aria-hidden="true" />
+      </div>
+
+      <p className={styles.cityHint} aria-live="polite">
+        {narrowing
+          ? `${narrowing.name} works. A neighbourhood gives Chapter more to go on.`
+          : ""}
+      </p>
+
+      <ul
+        className={styles.suggestions}
+        id="home-city-suggestions"
+        role="listbox"
+        aria-label="Places"
+      >
+        {suggestions.map((place, index) => (
+          <li key={place.id}>
+            <button
+              type="button"
+              id={`home-city-option-${index}`}
+              className={styles.suggestion}
+              role="option"
+              aria-selected={index === activeIndex}
+              data-active={index === activeIndex}
+              onMouseEnter={() => setActiveIndex(index)}
+              onClick={() => choose(place)}
+            >
+              <span className={styles.suggestionName}>{place.name}</span>
+              {place.context ? (
+                <span className={styles.suggestionContext}>{place.context}</span>
+              ) : null}
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <button type="submit" disabled={busy || homeCity.length < 2}>
+        That’s home for now
+      </button>
+      {notice ? <p className={styles.notice}>{notice}</p> : null}
+    </form>
+  );
+}
+
+/**
+ * Where Now is currently looking: a card in the corner, cut from the same
+ * cloth as the landing stack — white, hairline ring, soft lift — and the way
+ * in to changing it. Shows the neighbourhood alone; the city and country ride
+ * along on the title.
+ */
+function HomeCityCard({
+  homeCity,
+  notice,
+  onChange,
+}: {
+  homeCity: string;
+  notice: string;
+  /** Resolves true once the new place is saved, which closes the dialog. */
+  onChange: (homeCity: string) => Promise<boolean>;
+}) {
+  const [saving, setSaving] = useState(false);
+  // Counts visits rather than tracking openness: <dialog> already knows whether
+  // it's open, and Escape closes it without telling React. Mirroring that in
+  // state only creates a way for the two to disagree and strand the card shut.
+  const [visit, setVisit] = useState(0);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const near = homeCity.split(",")[0].trim() || homeCity;
+
+  function openDialog() {
+    const dialog = dialogRef.current;
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
+    setVisit((count) => count + 1);
+  }
+
+  function closeDialog() {
+    dialogRef.current?.close();
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.homeCard}
+        onClick={openDialog}
+        title={homeCity}
+        aria-label={`Now is looking in ${homeCity}. Change it.`}
+      >
+        <span
+          className={styles.homeCardOrb}
+          style={{ background: categoryOrbGradient("place") }}
+          aria-hidden="true"
+        />
+        <span className={styles.homeCardCopy}>
+          <span className={styles.homeCardKicker}>Now is looking in</span>
+          <span className={styles.homeCardName}>{near}</span>
+        </span>
+        <span className={styles.homeCardAction} aria-hidden="true">
+          Change
+        </span>
+      </button>
+
+      <dialog
+        ref={dialogRef}
+        className={styles.homeDialog}
+        onClick={(event) => {
+          // Clicks land on the dialog itself only when they miss the panel.
+          if (event.target === dialogRef.current) closeDialog();
+        }}
+      >
+        <div className={styles.homeDialogPanel}>
+          <h2>Where does your life happen now?</h2>
+          <p className={styles.homeDialogNow}>
+            Currently <strong>{homeCity}</strong>
+          </p>
+          {/* Keyed on the visit, so each opening starts on a blank line. */}
+          <HomeCityAsk
+            key={visit}
+            busy={saving}
+            notice={notice}
+            onSubmit={(next) => {
+              setSaving(true);
+              void onChange(next)
+                .then((saved) => {
+                  if (saved) closeDialog();
+                })
+                .finally(() => setSaving(false));
+            }}
+          />
+          <button
+            type="button"
+            className={styles.homeDialogClose}
+            onClick={closeDialog}
+          >
+            Keep {near}
+          </button>
+        </div>
+      </dialog>
+    </>
+  );
+}
+
 function todayIso() {
   const date = new Date();
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
@@ -124,7 +404,6 @@ export default function NowView({
   const [state, setState] = useState<ViewState>({ status: "loading" });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const [cityDraft, setCityDraft] = useState("");
   const [dateDraft, setDateDraft] = useState(nextSaturdayIso());
   const [declining, setDeclining] = useState(false);
   const [declineDraft, setDeclineDraft] = useState("");
@@ -209,6 +488,26 @@ export default function NowView({
     [refresh],
   );
 
+  /** Like runAction, but the caller needs to know whether it took. */
+  const changeHomeCity = useCallback(
+    async (homeCity: string) => {
+      setNotice("");
+      try {
+        await saveHomeCity(homeCity);
+        await refresh();
+        return true;
+      } catch (error) {
+        setNotice(
+          error instanceof NowRequestError
+            ? error.message
+            : "Chapter couldn’t save that place.",
+        );
+        return false;
+      }
+    },
+    [refresh],
+  );
+
   if (state.status === "loading") {
     return (
       <div className={styles.loading} aria-busy="true">
@@ -247,39 +546,35 @@ export default function NowView({
             />
           </span>
           <h1>Where does your life happen right now?</h1>
-          <form
-            className={styles.cityForm}
-            onSubmit={(event) => {
-              event.preventDefault();
+          <HomeCityAsk
+            busy={busy}
+            notice={notice}
+            onSubmit={(homeCity) =>
               void runAction(
-                () => saveHomeCity(cityDraft),
+                () => saveHomeCity(homeCity),
                 "Chapter couldn’t save that city.",
-              );
-            }}
-          >
-            <input
-              type="text"
-              value={cityDraft}
-              onChange={(event) => setCityDraft(event.target.value)}
-              placeholder="Seoul"
-              aria-label="Your city"
-              maxLength={80}
-            />
-            <button
-              type="submit"
-              disabled={busy || cityDraft.trim().length < 2}
-            >
-              That’s home for now
-            </button>
-          </form>
-          {notice ? <p className={styles.notice}>{notice}</p> : null}
+              )
+            }
+          />
         </div>
       </section>
     );
   }
 
+  // Every screen past the ask carries the corner card, whatever it's showing.
+  const withHomeCard = (screen: ReactNode) => (
+    <>
+      <HomeCityCard
+        homeCity={now.homeCity}
+        notice={notice}
+        onChange={changeHomeCity}
+      />
+      {screen}
+    </>
+  );
+
   if (!chapter || ["declined", "lived", "failed"].includes(chapter.status)) {
-    return (
+    return withHomeCard(
       <section className={styles.stateScreen}>
         <h1>One chapter at a time.</h1>
         <p className={styles.stateCopy}>
@@ -304,36 +599,36 @@ export default function NowView({
           Write my next chapter
         </button>
         {notice ? <p className={styles.notice}>{notice}</p> : null}
-      </section>
+      </section>,
     );
   }
 
   if (chapter.status === "researching") {
-    return (
+    return withHomeCard(
       <div className={styles.researching} aria-busy="true" aria-live="polite">
         <ChapterLoadingMark label={RESEARCH_STAGES[stageIndex]} />
         <p className={styles.researchNote}>
           Deep research takes a few minutes. It’s looking past the obvious.
         </p>
-      </div>
+      </div>,
     );
   }
 
   const content = chapter.content;
   const anchors = chapter.brief?.anchors ?? [];
   if (!content) {
-    return (
+    return withHomeCard(
       <section className={styles.stateScreen}>
         <h1>This chapter went missing.</h1>
         <button type="button" onClick={() => void refresh()}>
           Reload
         </button>
-      </section>
+      </section>,
     );
   }
 
   if (chapter.status === "proposed") {
-    return (
+    return withHomeCard(
       <section className={styles.chapterScreen}>
         <article className={styles.card}>
           <p className={styles.kicker}>Your next chapter</p>
@@ -446,7 +741,7 @@ export default function NowView({
           )}
           {notice ? <p className={styles.notice}>{notice}</p> : null}
         </article>
-      </section>
+      </section>,
     );
   }
 
@@ -454,7 +749,7 @@ export default function NowView({
   const dayArrived =
     Boolean(chapter.scheduledFor) && chapter.scheduledFor! <= todayIso();
 
-  return (
+  return withHomeCard(
     <section className={styles.chapterScreen}>
       <article className={styles.card}>
         <p className={styles.kicker}>
@@ -530,6 +825,6 @@ export default function NowView({
         )}
         {notice ? <p className={styles.notice}>{notice}</p> : null}
       </article>
-    </section>
+    </section>,
   );
 }
