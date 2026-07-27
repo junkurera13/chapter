@@ -14,6 +14,7 @@ import {
   responseOf,
   sharedAnchorsBetween,
   sideFor,
+  takesPartInIntroductions,
 } from "../../shared/introductions";
 
 const NOW = 1_800_000_000_000;
@@ -156,6 +157,43 @@ describe("sharedAnchorsBetween", () => {
       [node("cycling", "activity", 0.6), node("opera", "interest", 0.9)],
     );
     expect(shared.anchors.length).toBeLessThan(INTRODUCTION_MIN_ANCHORS);
+  });
+});
+
+describe("takesPartInIntroductions", () => {
+  it("takes part by default, because being in the pool discloses nothing", () => {
+    expect(takesPartInIntroductions({ home_city: "Fukuoka" })).toBe(true);
+    expect(
+      takesPartInIntroductions({
+        home_city: "Fukuoka",
+        introductions_muted: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("stops the moment someone says stop", () => {
+    expect(
+      takesPartInIntroductions({
+        home_city: "Fukuoka",
+        introductions_muted: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("needs a city, because two people who cannot meet are not introduced", () => {
+    expect(takesPartInIntroductions({})).toBe(false);
+    expect(takesPartInIntroductions({ home_city: "   " })).toBe(false);
+  });
+
+  it("reads only an explicit true as muted", () => {
+    // A truthy-looking leftover must never be mistaken for consent withdrawn,
+    // and nothing but `true` may quietly remove someone from the pool.
+    expect(
+      takesPartInIntroductions({
+        home_city: "Fukuoka",
+        introductions_muted: undefined,
+      }),
+    ).toBe(true);
   });
 });
 

@@ -41,7 +41,7 @@ web / iMessage <-> Next.js <-> Eve <-> OpenRouter
   home city + graph            People node -> hashed private invite
           |                    -> verified friend -> reciprocal nodes
           |                                |
-          |                    opt in -> same-city pool scan
+          |                    home city -> same-city pool scan
           |                    -> strict intersection -> unnamed gist
           |                    -> both say yes -> reciprocal nodes
           v                              |
@@ -111,8 +111,16 @@ less again. No name, no face, no city more specific than your own, and no count
 of how well you supposedly match. It does not report whether the other person
 has answered, because that is a fact about them and because knowing it would
 change the answer you give. Only the second yes does anything at all, and it
-creates an ordinary connection with a name attached. Both people must opt in
-first, and opting back out withdraws every offer already standing.
+creates an ordinary connection with a name attached.
+
+There is no opt-in, and that is deliberate rather than careless. A strict
+intersection is made only of what the reader already holds, so being in the
+pool discloses nothing about you to anyone: what reaches a stranger's screen
+is a sentence that is already true in their own world. Consent belongs at the
+moment something actually crosses, which is the yes. A home city is the only
+thing taking part requires, because it is what makes two people able to meet.
+Anyone can stop being shown them from the card itself, which withdraws every
+offer already standing on both sides.
 
 ## Local development
 

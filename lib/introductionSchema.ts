@@ -30,8 +30,15 @@ export type IntroductionRecord = {
   expiresAt: number;
 };
 
+/**
+ * There is no `optedIn` here, and that is the design.
+ *
+ * Nothing about you reaches a stranger's screen: what reaches it is a sentence
+ * made of what they already hold, which happens to also be true of you. So
+ * there is nothing to opt into, only something to stop, and `muted` is that.
+ */
 export type IntroductionsState = {
-  optedIn: boolean;
+  muted: boolean;
   homeCity: string;
   introductions: IntroductionRecord[];
 };

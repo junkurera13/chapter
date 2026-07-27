@@ -17,6 +17,7 @@ import {
   responseOf,
   sharedAnchorsBetween,
   sideFor,
+  takesPartInIntroductions,
 } from "../../shared/introductions.ts";
 import {
   TOGETHER_OPEN_STATUSES,
@@ -218,8 +219,7 @@ function viewerRecord(viewer: Row, user: Row) {
     phone: user.phone,
     assignedPhone: user.assigned_phone,
     messagingConnected: Boolean(user.phone && user.assigned_phone),
-    // Absent means no. Being reachable by a stranger is never a default.
-    introductionsOptIn: Boolean(user.introductions_opt_in),
+    introductionsMuted: Boolean(user.introductions_muted),
     homeCity: stringValue(user.home_city) || undefined,
   };
 }
@@ -247,6 +247,10 @@ async function ensureSidequestUser(users: Row, viewer: Row) {
   if (existing) {
     if (!existing.onboarding_step) {
       identityPatch.onboarding_step = "needs_memory_invite";
+    }
+    // Backfilled for accounts whose home city predates the introduction pool.
+    if (existing.home_city && !existing.home_city_key) {
+      identityPatch.home_city_key = normalizeCity(existing.home_city);
     }
 
     return Object.keys(identityPatch).length
@@ -856,10 +860,17 @@ Deno.serve(async (req) => {
     }
 
     /**
-     * Being reachable by someone you have not met is a decision, made once,
-     * reversible at any moment. Opting out does not only stop new offers: it
-     * withdraws every live one, because an offer standing in someone else's
-     * app after you left is a promise you did not make.
+     * The way out.
+     *
+     * There is no way in, because there is nothing to consent to: a gist about
+     * someone unmet is built from the strict intersection, so every word of it
+     * is already true in the reader's own world and none of it is the other
+     * person's to disclose. Nothing crosses until both people say yes, and that
+     * yes is the consent gate.
+     *
+     * Muting does not only stop new offers. It withdraws every live one,
+     * because an offer standing in someone else's app after you left is a
+     * promise you did not make.
      */
     if (action === "setMyIntroductions") {
       const viewer = await authenticatedViewer(base44);
@@ -868,13 +879,13 @@ Deno.serve(async (req) => {
       }
 
       const user = await ensureSidequestUser(users, viewer);
-      const optIn = data.optIn === true;
+      const muted = data.muted === true;
       await users.update(user.id, {
-        introductions_opt_in: optIn,
-        ...(optIn ? { introductions_opt_in_at: Date.now() } : {}),
+        introductions_muted: muted,
+        ...(muted ? { introductions_muted_at: Date.now() } : {}),
       });
 
-      if (!optIn) {
+      if (muted) {
         const introductions = base44.asServiceRole.entities.Introduction;
         const live = await readWithRateLimitRetry(() =>
           introductions.filter(
@@ -893,7 +904,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      return Response.json({ value: { introductionsOptIn: optIn } });
+      return Response.json({ value: { introductionsMuted: muted } });
     }
 
     if (action === "getMyIntroductions") {
@@ -903,9 +914,9 @@ Deno.serve(async (req) => {
       }
 
       const user = await ensureSidequestUser(users, viewer);
-      if (!user.introductions_opt_in) {
+      if (user.introductions_muted) {
         return Response.json({
-          value: { optedIn: false, homeCity: "", introductions: [] },
+          value: { muted: true, homeCity: "", introductions: [] },
         });
       }
 
@@ -930,7 +941,7 @@ Deno.serve(async (req) => {
 
       return Response.json({
         value: {
-          optedIn: true,
+          muted: false,
           homeCity: stringValue(user.home_city),
           introductions: value.slice(0, MAX_LIVE_INTRODUCTIONS),
         },
@@ -955,7 +966,7 @@ Deno.serve(async (req) => {
 
       const user = await ensureSidequestUser(users, viewer);
       const city = normalizeCity(user.home_city);
-      if (!user.introductions_opt_in || !city) {
+      if (!takesPartInIntroductions(user)) {
         return Response.json({ value: { candidates: [] } });
       }
 
@@ -1001,21 +1012,27 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Queried on the city rather than scanned and compared, so a pool that
+      // grows in other cities costs this one nothing.
       const pool = await readWithRateLimitRetry(() =>
-        users.filter({ introductions_opt_in: true }, "-first_seen_at", INTRODUCTION_SCAN_LIMIT)
+        users.filter(
+          { home_city_key: city },
+          "-first_seen_at",
+          INTRODUCTION_SCAN_LIMIT,
+        )
       );
       const mine = (await planningGraphFor(base44, user)).nodes;
       if (mine.length === 0) {
         return Response.json({ value: { candidates: [] } });
       }
 
-      // The city filter is free. Opening a world is not, so only so many are
-      // opened per scan, and the count that was skipped is said out loud
-      // rather than quietly presented as though the city held nobody else.
+      // Narrowing is free. Opening a world is not, so only so many are opened
+      // per scan, and the count that was skipped is said out loud rather than
+      // quietly presented as though the city held nobody else.
       const reachable = pool.filter((candidate: Row) =>
         candidate.id !== user.id &&
         !alreadyPaired.has(candidate.id) &&
-        normalizeCity(candidate.home_city) === city
+        takesPartInIntroductions(candidate)
       );
       const opened = reachable.slice(0, INTRODUCTION_GRAPH_READS);
 
@@ -1067,7 +1084,7 @@ Deno.serve(async (req) => {
       const otherUserId = stringValue(data.otherUserId);
       const line = stringValue(data.line);
       const matchCity = normalizeCity(data.matchCity);
-      if (!user.introductions_opt_in || !otherUserId || !line || !matchCity) {
+      if (!takesPartInIntroductions(user) || !otherUserId || !line || !matchCity) {
         return Response.json({ error: "introduction unavailable" }, { status: 400 });
       }
       if (otherUserId === user.id) {
@@ -1080,9 +1097,9 @@ Deno.serve(async (req) => {
       } catch {
         other = undefined;
       }
-      // Re-checked here rather than trusted from the scan: consent can be
-      // withdrawn between finding a candidate and writing the offer down.
-      if (!other || !other.introductions_opt_in) {
+      // Re-checked here rather than trusted from the scan: someone can mute
+      // between being found as a candidate and the offer being written down.
+      if (!other || !takesPartInIntroductions(other)) {
         return Response.json({ error: "introduction unavailable" }, { status: 409 });
       }
 
@@ -1494,7 +1511,12 @@ Deno.serve(async (req) => {
         return Response.json({ error: "home city required" }, { status: 400 });
       }
 
-      await users.update(user.id, { home_city: homeCity });
+      // The normalised key is written beside the city so the introduction pool
+      // can be queried on an exact match rather than scanned and compared.
+      await users.update(user.id, {
+        home_city: homeCity,
+        home_city_key: normalizeCity(homeCity),
+      });
       return Response.json({ value: { homeCity } });
     }
 

@@ -17,11 +17,15 @@
     "home_city": { "type": "string" },
     "current_city": { "type": "string" },
     "on_vacation": { "type": "boolean" },
-    "introductions_opt_in": {
+    "introductions_muted": {
       "type": "boolean",
-      "description": "Whether this account may be offered introductions to people it has not met. Absent means no."
+      "description": "Set only when someone has asked to stop being shown people they have not met. Absent means they take part, because a gist about a stranger is made only of what the reader already holds and discloses nothing about either of them."
     },
-    "introductions_opt_in_at": { "type": "number" },
+    "introductions_muted_at": { "type": "number" },
+    "home_city_key": {
+      "type": "string",
+      "description": "Normalised home_city, so two people who wrote their city differently are still in one place. The introduction pool is queried on this."
+    },
     "notes": { "type": "string" },
     "memory_updated_at": { "type": "number" },
     "eve_session_id": {

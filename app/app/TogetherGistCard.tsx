@@ -93,6 +93,7 @@ export default function TogetherGistCard({
   stageLabel,
   onGo,
   onAnswer,
+  onMute,
   onSend,
   onAccept,
   onDecline,
@@ -107,6 +108,7 @@ export default function TogetherGistCard({
   stageLabel: string;
   onGo: () => void;
   onAnswer: (answer: "yes" | "no") => void;
+  onMute: () => void;
   onSend: (proposedFor: string) => void;
   onAccept: (scheduledFor: string) => void;
   onDecline: (reason: string) => void;
@@ -248,6 +250,22 @@ export default function TogetherGistCard({
           <p className={styles.strangerWaiting}>
             If they say yes too, you’ll both know.
           </p>
+        ) : null}
+
+        {/*
+          The way out, where the thing it is about is. There is no setting for
+          this elsewhere and no switch to find: someone who does not want these
+          says so the first time they see one.
+        */}
+        {unanswered ? (
+          <button
+            type="button"
+            className={styles.strangerMute}
+            disabled={busy}
+            onClick={onMute}
+          >
+            Stop showing me these
+          </button>
         ) : null}
 
         {!chapter && !introduction ? (

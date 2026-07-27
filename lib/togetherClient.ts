@@ -79,11 +79,12 @@ export function loadIntroductions() {
   return togetherFetch<IntroductionsState>({ path: "/introductions" });
 }
 
-export function setIntroductionsOptIn(optIn: boolean) {
-  return togetherFetch<{ introductionsOptIn: boolean }>({
+/** The way out. There is no way in, because taking part discloses nothing. */
+export function muteIntroductions() {
+  return togetherFetch<{ introductionsMuted: boolean }>({
     path: "/introductions",
     method: "POST",
-    body: { action: "optIn", optIn },
+    body: { action: "mute", muted: true },
   });
 }
 

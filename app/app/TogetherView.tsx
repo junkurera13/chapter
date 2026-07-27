@@ -12,7 +12,7 @@ import {
   loadTogetherGists,
   markTogetherChapterLived,
   sendTogetherChapter,
-  setIntroductionsOptIn,
+  muteIntroductions,
   startTogetherChapter,
   type TogetherState,
   TogetherRequestError,
@@ -23,7 +23,6 @@ import type { TogetherGist } from "../../lib/togetherGistSchema";
 import { categoryOrbGradient } from "./categoryAppearance";
 import type { WorldNode } from "./graphData";
 import TogetherGistCard from "./TogetherGistCard";
-import TogetherOpenToCard from "./TogetherOpenToCard";
 import TogetherFriendsCard, {
   type TogetherPerson,
 } from "./TogetherFriendsCard";
@@ -90,7 +89,6 @@ export default function TogetherView({
   const [state, setState] = useState<ViewState>({ status: "loading" });
   const [gists, setGists] = useState<TogetherGist[]>([]);
   const [introductions, setIntroductions] = useState<IntroductionRecord[]>([]);
-  const [openTo, setOpenTo] = useState({ optedIn: false, homeCity: "" });
   /** True until the gist request has answered, either way. */
   const [reading, setReading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -166,7 +164,6 @@ export default function TogetherView({
     try {
       const found = await loadIntroductions();
       setIntroductions(found.introductions);
-      setOpenTo({ optedIn: found.optedIn, homeCity: found.homeCity });
     } catch (error) {
       console.error("Could not read your introductions", error);
     }
@@ -177,9 +174,7 @@ export default function TogetherView({
     void (async () => {
       try {
         const found = await loadIntroductions();
-        if (!active) return;
-        setIntroductions(found.introductions);
-        setOpenTo({ optedIn: found.optedIn, homeCity: found.homeCity });
+        if (active) setIntroductions(found.introductions);
       } catch (error) {
         console.error("Could not read your introductions", error);
       }
@@ -295,16 +290,18 @@ export default function TogetherView({
     [refresh, readIntroductions, onGraphAdvanced],
   );
 
-  const onChangeOpenTo = useCallback(
-    async (optIn: boolean) => {
+  /**
+   * The way out, asked for from the card it is about rather than from a
+   * setting somewhere else. Every live offer goes with it, on both sides.
+   */
+  const onMuteIntroductions = useCallback(
+    async (cardId: string) => {
       setBusy(true);
       setNotice("");
-      setNoticeFor("open-to");
+      setNoticeFor(cardId);
       try {
-        await setIntroductionsOptIn(optIn);
-        setOpenTo((current) => ({ ...current, optedIn: optIn }));
-        if (!optIn) setIntroductions([]);
-        else await readIntroductions();
+        await muteIntroductions();
+        setIntroductions([]);
       } catch (error) {
         setNotice(
           error instanceof TogetherRequestError
@@ -315,7 +312,7 @@ export default function TogetherView({
         setBusy(false);
       }
     },
-    [readIntroductions],
+    [],
   );
 
   const entries = useMemo(
@@ -375,7 +372,7 @@ export default function TogetherView({
   // Someone with no people in their world can still have somewhere to be and
   // something they love, which is all an introduction is made of — so the
   // empty state only holds when there is nothing on either side of the tab.
-  if (people.length === 0 && introductions.length === 0 && !openTo.optedIn) {
+  if (people.length === 0 && introductions.length === 0) {
     return (
       <section className={styles.state}>
         <div className={styles.emptyOrbs} aria-hidden="true">
@@ -394,9 +391,7 @@ export default function TogetherView({
   // A failure belongs under the button that caused it. It only floats free
   // when the card that owned it has already gone.
   const noticeOrphaned = Boolean(
-    notice &&
-      noticeFor !== "open-to" &&
-      !entries.some((entry) => entry.id === noticeFor),
+    notice && !entries.some((entry) => entry.id === noticeFor),
   );
 
   return (
@@ -453,6 +448,7 @@ export default function TogetherView({
                 onAnswer={(answer) =>
                   void onAnswerIntroduction(entry.id, answer)
                 }
+                onMute={() => void onMuteIntroductions(entry.id)}
                 onGo={() => {
                   // Deep research costs real money, and a sample has no real
                   // person behind it. It says so rather than spending anything.
@@ -511,14 +507,6 @@ export default function TogetherView({
       {/* The standing furniture of the tab: who you have, and what's behind you. */}
       <div className={styles.rail}>
         <TogetherFriendsCard people={people} onInviteCreated={onGraphAdvanced} />
-
-        <TogetherOpenToCard
-          optedIn={openTo.optedIn}
-          homeCity={openTo.homeCity}
-          busy={busy}
-          notice={noticeFor === "open-to" ? notice : ""}
-          onChange={(optIn) => void onChangeOpenTo(optIn)}
-        />
 
         {pastChapters.length > 0 ? (
           <section className={styles.past}>

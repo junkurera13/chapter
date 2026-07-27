@@ -119,6 +119,25 @@ export function introductionPairKey(firstUserId: string, secondUserId: string) {
 }
 
 /**
+ * Whether an account is in the pool.
+ *
+ * Taking part is the default, and that follows from the rule rather than being
+ * a shortcut around it: a gist is the strict intersection, so what reaches a
+ * stranger's screen is a sentence already true in their own world, and being
+ * in the pool discloses nothing about you to anyone. There is nothing for an
+ * opt-in to protect. Consent belongs where something actually crosses, which
+ * is the second yes.
+ *
+ * A home city is the only requirement, because it is what makes two people
+ * able to meet at all. Muting is the only way out, and it is honoured here as
+ * well as in the query, so a stale row can never put a muted account back in.
+ */
+export function takesPartInIntroductions(row: Row) {
+  if (row?.introductions_muted === true) return false;
+  return Boolean(normalizeCity(row?.home_city));
+}
+
+/**
  * The threads two worlds genuinely hold in common, ranked by how much they
  * matter to the two people put together.
  *

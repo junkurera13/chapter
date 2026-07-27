@@ -200,9 +200,9 @@ export function fetchMyIntroductions(accessToken: string) {
   );
 }
 
-export function setMyIntroductions(optIn: boolean, accessToken: string) {
-  return invokeSidequestData<{ introductionsOptIn: boolean }>(
-    { action: "setMyIntroductions", optIn },
+export function setMyIntroductions(muted: boolean, accessToken: string) {
+  return invokeSidequestData<{ introductionsMuted: boolean }>(
+    { action: "setMyIntroductions", muted },
     accessToken,
   );
 }

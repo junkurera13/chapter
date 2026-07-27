@@ -400,44 +400,31 @@
   text-align: right;
 }
 
-/* The standing decision, kept in the rail beside the people it concerns. */
-.openTo {
-  display: grid;
-  gap: 10px;
-  padding: 14px 14px 13px;
-  border-radius: 18px;
-  background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.08),
-    0 12px 28px rgba(0, 0, 0, 0.11),
-    0 4px 8px rgba(0, 0, 0, 0.07);
-}
-
-.openToHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  color: #1c1c19;
+/*
+ * Quiet on purpose. It is the way out of a whole kind of card, so it has to
+ * be findable — and it is not the thing the card is asking, so it must never
+ * compete with the two answers above it.
+ */
+.strangerMute {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(45, 39, 34, 0.4);
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
-.openToCopy {
-  margin: 0;
-  color: rgba(45, 39, 34, 0.58);
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 13px;
-  letter-spacing: -0.012em;
-  line-height: 1.45;
-  text-wrap: pretty;
+.strangerMute:hover:not(:disabled) {
+  color: rgba(45, 39, 34, 0.66);
 }
 
-.openToActions {
-  display: flex;
-  justify-content: flex-end;
+.strangerMute:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .rail {

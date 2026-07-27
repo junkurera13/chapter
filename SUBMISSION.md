@@ -9,7 +9,7 @@
 - Surface type: **Web app**
 - Live URL: https://usechapter.vercel.app
 - Public GitHub repo: https://github.com/junkurera13/chapter
-- Access instructions: **Open `/app`, sign in with Google, connect an iMessage-capable phone number, text Chapter, and share one unforgettable experience. Return to You to see the private graph. Set a home city in Now to get one researched chapter to live this weekend. Together works two ways. To connect by name, open any named person and create a private invite; after they accept with their own Google account, both people receive reciprocal nodes and Chapter names what their two worlds share, then plans a chapter for both of them. To be introduced to someone you have not met, press "Look for someone" in Together. Chapter scans other accounts that have opted in and set the same home city, and offers a sentence made only of what the two worlds already share, with no name attached. Both people must say yes before either learns anything more; the second yes creates an ordinary connection. With one opted-in account the pool is empty by design and the tab says so.**
+- Access instructions: **Open `/app`, sign in with Google, connect an iMessage-capable phone number, text Chapter, and share one unforgettable experience. Return to You to see the private graph. Set a home city in Now to get one researched chapter to live this weekend. Together works two ways. To connect by name, open any named person and create a private invite; after they accept with their own Google account, both people receive reciprocal nodes and Chapter names what their two worlds share, then plans a chapter for both of them. Introductions need no setup: with a home city set, Chapter looks among other accounts in the same city and offers a sentence made only of what the two worlds already share, with no name attached, as another gist in the same list. Both people must say yes before either learns anything more; the second yes turns that card into an ordinary connection. Any card offers a way to stop being shown them. With one account in a city the pool is empty by design.**
 - Demo video URL: **[optional, not recorded yet]**
 - Agentic IDE used: **Codex and Claude Code**
 - Base44 App ID: **6a606ec9966ada5a7874da07**
@@ -67,6 +67,14 @@ is the introduction itself. Chapter does not show you a profile, a photograph,
 or a compatibility score. It shows you one true thing your world and a stranger's
 world both contain, and asks whether that is worth an afternoon. Nothing else
 about either person crosses until both people say yes.
+
+There is no opt-in screen and no button to press, which is a consequence of the
+rule rather than a shortcut around it. If a sentence is made only of what the
+reader already holds, then being in the pool discloses nothing, and a consent
+step would be asking permission for something that never happens. Consent
+belongs where something actually crosses, which is the second yes. One card
+carries a person from stranger to chapter without ever becoming a second kind
+of object.
 
 Base44 owns authenticated accounts, private image storage, phone-account
 linking, source memories, conversation records, graph validation, connection

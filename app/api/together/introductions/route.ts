@@ -92,10 +92,10 @@ export async function GET(request: Request) {
     ]);
     const nodeIdsByLabel = shareableNodeIdsByLabel(planningGraphFrom(graph));
 
-    if (!existing.optedIn) {
+    if (existing.muted) {
       return Response.json({
         value: {
-          optedIn: false,
+          muted: true,
           homeCity: existing.homeCity,
           introductions: [],
         } satisfies IntroductionsState,
@@ -191,8 +191,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (body.action === "optIn") {
-      const result = await setMyIntroductions(body.optIn === true, accessToken);
+    if (body.action === "mute") {
+      const result = await setMyIntroductions(body.muted !== false, accessToken);
       return Response.json({ value: result });
     }
 
