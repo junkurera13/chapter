@@ -5,18 +5,16 @@
   place-items: center;
   gap: 12px;
   padding: 24px;
-  background:
-    radial-gradient(circle at 50% 42%, rgba(235, 219, 197, 0.22), transparent 30%),
-    #fff;
+  background: #fff;
   text-align: center;
 }
 
 .stateCard {
   width: min(100%, 420px);
   padding: 36px;
-  border: 1px solid #e8e2d8;
+  border: 1px solid rgba(57, 48, 43, 0.12);
   border-radius: 28px;
-  background: #faf8f4;
+  background: #fff;
   box-shadow: 0 20px 60px rgba(43, 37, 28, 0.08);
 }
 

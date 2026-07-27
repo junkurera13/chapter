@@ -12,11 +12,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background:
-    radial-gradient(circle at 50% 42%, rgba(233, 218, 198, 0.16), transparent 31%),
-    radial-gradient(circle at 14% 24%, rgba(209, 231, 232, 0.12), transparent 25%),
-    radial-gradient(circle at 84% 77%, rgba(224, 206, 230, 0.1), transparent 24%),
-    #fff;
+  background: #fff;
 }
 
 .atmosphere::after {
@@ -339,9 +335,9 @@
   margin-top: 18px;
   padding: 11px 13px;
   align-items: center;
-  border: 1px solid rgba(88, 118, 98, 0.12);
+  border: 1px solid rgba(88, 118, 98, 0.24);
   border-radius: 999px;
-  background: rgba(226, 239, 230, 0.48);
+  background: #fff;
   color: #53705c;
   font-size: 11px;
   font-weight: 620;

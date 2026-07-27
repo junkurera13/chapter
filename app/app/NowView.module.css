@@ -4,9 +4,7 @@
 .loading {
   min-height: 100svh;
   padding: 84px 24px 132px;
-  background:
-    radial-gradient(circle at 50% 10%, rgba(240, 187, 143, 0.14), transparent 32%),
-    #fff;
+  background: #fff;
   color: #25211d;
 }
 
@@ -85,38 +83,24 @@
 
 /* Mirrors the You onboarding invitation: centred orb video over a balanced
    headline, with the single input beneath. */
-/* Cut from the landing stack: white surface, 18px corners, hairline ring and a
-   soft lift. Wide and low, so it reads as a card rather than a chip. */
 .homeCard {
   position: absolute;
   z-index: 4;
   top: 22px;
   right: 22px;
   display: flex;
-  width: min(19rem, calc(100vw - 44px));
-  align-items: center;
-  gap: 12px;
-  padding: 12px 13px 12px 14px;
+  flex-direction: column;
+  width: min(17rem, calc(100vw - 44px));
+  padding: 10px;
   border: 0;
   border-radius: 18px;
   background: #fff;
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.08),
-    0 10px 26px rgba(46, 32, 20, 0.13),
-    0 3px 7px rgba(46, 32, 20, 0.07);
+    0 12px 28px rgba(0, 0, 0, 0.18),
+    0 4px 8px rgba(0, 0, 0, 0.12);
   cursor: pointer;
   text-align: left;
-  transition:
-    box-shadow 180ms ease,
-    transform 180ms ease;
-}
-
-.homeCard:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.08),
-    0 16px 34px rgba(46, 32, 20, 0.17),
-    0 5px 10px rgba(46, 32, 20, 0.09);
 }
 
 .homeCard:focus-visible {
@@ -124,9 +108,17 @@
   outline-offset: 2px;
 }
 
+.homeCardHeader {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  padding: 3px 3px 10px;
+}
+
 .homeCardOrb {
-  width: 22px;
-  height: 22px;
+  width: 30px;
+  height: 30px;
   flex: none;
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 50%;
@@ -136,27 +128,14 @@
     0 2px 5px rgba(47, 34, 24, 0.13);
 }
 
-.homeCardCopy {
-  display: grid;
-  min-width: 0;
-  flex: 1;
-  gap: 1px;
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  letter-spacing: -0.025em;
-  text-align: left;
-}
-
-.homeCardKicker {
-  color: #a09a97;
-  font-size: 11.5px;
-  font-weight: 500;
-  line-height: 1.2;
-}
-
 .homeCardName {
+  flex: 1;
+  min-width: 0;
   color: #1c1c19;
-  font-size: 15.5px;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: -0.025em;
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
@@ -165,19 +144,44 @@
 
 .homeCardAction {
   flex: none;
-  padding: 5px 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   border-radius: 999px;
   background: rgba(28, 28, 25, 0.05);
   color: rgba(28, 28, 25, 0.6);
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 12.5px;
-  font-weight: 560;
-  letter-spacing: -0.015em;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
 }
 
-.homeCard:hover .homeCardAction {
+.homeCardAction svg {
+  width: 13px;
+  height: 13px;
+}
+
+.homeCardAction:hover {
   background: rgba(28, 28, 25, 0.08);
   color: rgba(28, 28, 25, 0.78);
+}
+
+.homeCardImage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #f3efe9;
+}
+
+.homeCardImageImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 /* The change dialog: the same card, grown up to hold the ask. */
@@ -244,7 +248,7 @@
 
 .homeDialogClose {
   flex: none;
-  margin-top: 0.9rem;
+  margin-top: 0.35rem;
   padding: 8px 14px;
   border: 0;
   border-radius: 999px;
@@ -509,8 +513,6 @@
   gap: 7px;
   padding: 14px 16px;
   border-left: 2px solid rgba(160, 108, 66, 0.35);
-  background: rgba(240, 187, 143, 0.08);
-  border-radius: 0 14px 14px 0;
 }
 
 .knownLine,

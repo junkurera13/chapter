@@ -81,7 +81,7 @@
   padding: 0.75rem 0.9rem;
   border: 1px solid rgba(28, 28, 25, 0.07);
   border-radius: 0.3rem;
-  background: rgba(247, 246, 243, 0.96);
+  background: #fff;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9) inset,
     0 12px 35px rgba(28, 28, 25, 0.06);

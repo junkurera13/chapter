@@ -1,11 +1,16 @@
+/**
+ * Pure white background, no tints. Colour appears only where it carries
+ * meaning: people are rose everywhere in Chapter's world
+ * (categoryAppearance.ts), and the one unfamiliar thing speaks in Now's amber,
+ * so a stretch reads the same on whichever tab you meet it.
+ */
+
 .together,
 .state,
 .loading {
   min-height: 100svh;
   padding: 84px 24px 132px;
-  background:
-    radial-gradient(circle at 50% 12%, rgba(215, 166, 243, 0.12), transparent 30%),
-    #fff;
+  background: #fff;
   color: #25211d;
 }
 
@@ -30,15 +35,241 @@
 }
 
 .header > p:last-child {
+  max-width: 400px;
   margin: 17px 0 0;
-  color: rgba(45, 39, 34, 0.48);
+  color: rgba(45, 39, 34, 0.5);
   font-size: 13px;
+  line-height: 1.55;
+}
+
+/* A chapter is a letter, not a form: hairlines and air, no nested boxes. */
+.cards {
+  display: grid;
+  gap: 14px;
+  margin-top: 40px;
+}
+
+.card {
+  display: grid;
+  gap: 11px;
+  padding: 26px 24px 22px;
+  border: 1px solid rgba(57, 48, 43, 0.09);
+  border-radius: 20px;
+  background: #fff;
+}
+
+.cardResearching {
+  justify-items: center;
+  padding: 34px 24px 30px;
+  text-align: center;
+}
+
+.researchNote {
+  max-width: 320px;
+  margin: 0;
+  color: rgba(45, 39, 34, 0.45);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.kicker {
+  margin: 0;
+  color: rgba(96, 56, 70, 0.62);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cardTitle {
+  margin: 0;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(27px, 4.6vw, 35px);
+  font-weight: 500;
+  letter-spacing: -0.042em;
+  line-height: 1.02;
+}
+
+.cardStatus {
+  margin: -4px 0 0;
+  color: rgba(45, 39, 34, 0.44);
+  font-size: 12px;
+}
+
+/* Chapter's own voice, in the face it already speaks with in Chat and You. */
+.invitation {
+  max-width: 46ch;
+  margin: 7px 0 0;
+  color: rgba(37, 33, 29, 0.88);
+  font-family: var(--font-chapter-serif), Georgia, serif;
+  font-size: 18px;
+  line-height: 1.58;
+}
+
+.knownUnknown {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 12px 0 12px 15px;
+  border-left: 2px solid rgba(160, 108, 66, 0.32);
+}
+
+.knownLine,
+.unknownLine {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.knownLine {
+  color: rgba(45, 39, 34, 0.66);
+}
+
+.unknownLine {
+  color: rgba(160, 108, 66, 0.95);
+  font-weight: 590;
+}
+
+/* The venue sits like an address at the foot of a letter. */
+.venue {
+  display: grid;
+  gap: 2px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(57, 48, 43, 0.08);
+}
+
+.venueName {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 640;
+  letter-spacing: -0.015em;
+}
+
+.venueMeta {
+  margin: 0;
+  color: rgba(45, 39, 34, 0.46);
+  font-size: 12px;
+}
+
+.whyUncommon {
+  max-width: 48ch;
+  margin: 9px 0 0;
+  color: rgba(45, 39, 34, 0.6);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 9px 0 0;
+}
+
+.evidence a {
+  color: rgba(96, 56, 70, 0.6);
+  font-size: 11px;
+  text-underline-offset: 3px;
+}
+
+.acceptRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.proposedFor {
+  margin: 0 0 12px;
+  color: rgba(45, 39, 34, 0.62);
+  font-size: 13px;
+}
+
+.dateField {
+  display: grid;
+  gap: 5px;
+  color: rgba(49, 44, 38, 0.4);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dateField input,
+.declineForm input {
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid rgba(57, 48, 43, 0.14);
+  border-radius: 12px;
+  background: #fff;
+  color: #25211d;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.dateField input:focus-visible,
+.declineForm input:focus-visible {
+  outline: 2px solid rgba(201, 118, 135, 0.85);
+  outline-offset: 1px;
+}
+
+.declineForm {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions button {
+  min-height: 44px;
+  padding: 11px 19px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: #25211d;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.actions button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.actions .quiet {
+  border: 1px solid rgba(57, 48, 43, 0.16);
+  background: transparent;
+  color: rgba(45, 39, 34, 0.66);
+}
+
+.actions button:focus-visible,
+.planButton:focus-visible,
+.addButton:focus-visible,
+.state button:focus-visible {
+  outline: 2px solid rgba(201, 118, 135, 0.85);
+  outline-offset: 3px;
+}
+
+.notice {
+  margin: 4px 0 0;
+  color: rgba(150, 74, 74, 0.82);
+  font-size: 12px;
 }
 
 .people {
   display: grid;
   gap: 2px;
-  margin-top: 54px;
+  margin-top: 48px;
   border-top: 1px solid rgba(57, 48, 43, 0.08);
 }
 
@@ -52,6 +283,7 @@
   border-bottom: 1px solid rgba(57, 48, 43, 0.08);
 }
 
+/* The people orb, in the colour people already have everywhere else. */
 .personOrb {
   display: grid;
   width: 42px;
@@ -59,12 +291,12 @@
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: 50%;
-  background: linear-gradient(145deg, #ead7f5, #b77ae0 64%, #7f4dac);
+  background: radial-gradient(circle at 34% 24%, #ffe9ed, #c97687 48%, #603846 100%);
   box-shadow:
-    inset 7px 8px 12px rgba(255, 255, 255, 0.35),
-    inset -5px -6px 10px rgba(39, 19, 52, 0.2),
-    0 5px 14px rgba(93, 55, 118, 0.12);
-  color: rgba(48, 26, 62, 0.72);
+    inset 6px 7px 12px rgba(255, 255, 255, 0.3),
+    inset -5px -6px 10px rgba(56, 25, 34, 0.22),
+    0 5px 14px rgba(96, 56, 70, 0.14);
+  color: rgba(255, 240, 243, 0.92);
   font-size: 13px;
   font-weight: 680;
 }
@@ -78,23 +310,50 @@
   white-space: nowrap;
 }
 
-.personStatus {
-  color: rgba(67, 93, 73, 0.52);
-  font-size: 10px;
+.planButton {
+  min-height: 38px;
+  padding: 9px 15px;
+  appearance: none;
+  border: 1px solid rgba(57, 48, 43, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(45, 39, 34, 0.74);
+  cursor: pointer;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
+  font-size: 11px;
   font-weight: 620;
+  white-space: nowrap;
 }
 
+.planButton:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.past,
 .pending {
-  margin-top: 34px;
+  margin-top: 36px;
 }
 
+.past > p,
 .pending > p {
   margin: 0;
-  color: rgba(49, 44, 38, 0.38);
+  color: rgba(49, 44, 38, 0.36);
   font-size: 10px;
   font-weight: 650;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.past > div {
+  display: grid;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.past span {
+  color: rgba(52, 41, 58, 0.55);
+  font-size: 12px;
 }
 
 .pending > div {
@@ -105,18 +364,18 @@
 }
 
 .pending span {
-  padding: 7px 10px;
-  border: 1px solid rgba(76, 60, 85, 0.09);
+  padding: 7px 11px;
+  border: 1px solid rgba(96, 56, 70, 0.11);
   border-radius: 999px;
-  background: rgba(234, 215, 245, 0.24);
-  color: rgba(52, 41, 58, 0.58);
+  background: #fff;
+  color: rgba(52, 41, 45, 0.6);
   font-size: 11px;
 }
 
 .addButton,
 .state button {
   min-height: 44px;
-  padding: 11px 18px;
+  padding: 11px 19px;
   appearance: none;
   border: 0;
   border-radius: 999px;
@@ -129,13 +388,7 @@
 }
 
 .addButton {
-  margin-top: 42px;
-}
-
-.addButton:focus-visible,
-.state button:focus-visible {
-  outline: 2px solid #9c76b0;
-  outline-offset: 3px;
+  margin-top: 44px;
 }
 
 .state {
@@ -161,9 +414,10 @@
   margin-top: 24px;
 }
 
+/* Two people, overlapping. The same orb material, one in each warmth. */
 .emptyOrbs {
   position: relative;
-  width: 72px;
+  width: 74px;
   height: 48px;
   margin-bottom: 24px;
 }
@@ -175,17 +429,17 @@
   height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 50%;
-  box-shadow: 0 7px 18px rgba(91, 56, 111, 0.12);
+  box-shadow: 0 7px 18px rgba(96, 56, 70, 0.13);
 }
 
 .emptyOrbs span:first-child {
   left: 0;
-  background: linear-gradient(145deg, #ffd4e1, #f0719d 66%, #c94674);
+  background: radial-gradient(circle at 34% 24%, #ffe9ed, #c97687 48%, #603846 100%);
 }
 
 .emptyOrbs span:last-child {
   right: 0;
-  background: linear-gradient(145deg, #ead7f5, #b77ae0 66%, #7f4dac);
+  background: radial-gradient(circle at 34% 24%, #fff1e8, #c7795f 48%, #442422 100%);
 }
 
 .loading {
@@ -204,5 +458,22 @@
   .header h1,
   .state h1 {
     font-size: 40px;
+  }
+
+  .card {
+    padding: 22px 18px 20px;
+  }
+
+  .invitation {
+    font-size: 17px;
+  }
+
+  .acceptRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .acceptRow .actions button {
+    flex: 1;
   }
 }
