@@ -3,6 +3,11 @@ export type GrowthPosition = readonly [number, number, number];
 export type GrowthNode = {
   key: string;
   radius: number;
+  /**
+   * Placement order within a pass: higher values place first, so dependents
+   * (an activity naming a person) can anchor to them instead of the moment.
+   */
+  anchorPriority?: number;
   position?: GrowthPosition;
 };
 
@@ -214,7 +219,17 @@ export function resolveOutwardPositions<T extends GrowthNode>(
   while (pending.size > 0) {
     let placedDuringPass = false;
 
-    for (const [key, node] of pending) {
+    // Branch roots first, then by anchor priority (people before the
+    // activities and feelings that mention them), so a node placed later in
+    // the same pass can chain under its most meaningful connection.
+    const pendingOrdered = [...pending.entries()].sort(
+      ([, nodeA], [, nodeB]) =>
+        (branchIndexByKey.has(nodeB.key) ? 100 : nodeB.anchorPriority ?? 0) -
+        (branchIndexByKey.has(nodeA.key) ? 100 : nodeA.anchorPriority ?? 0),
+    );
+
+    for (const [key, node] of pendingOrdered) {
+      if (!pending.has(key)) continue;
       const connectedKeys = edges.flatMap((edge) => {
         if (edge.from === key && placed.has(edge.to)) return [edge.to];
         if (edge.to === key && placed.has(edge.from)) return [edge.from];

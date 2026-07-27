@@ -122,6 +122,44 @@ describe("radial growth placement", () => {
     }
   });
 
+  it("chains a node under its high-priority connection, not the moment", () => {
+    // The activity appears BEFORE the person in source order; only its higher
+    // anchorPriority lets the person place first so the activity chains
+    // beyond it instead of sitting on the moment's ring.
+    const nodes: readonly GrowthNode[] = [
+      centre,
+      { key: "memory", radius: 0.55 },
+      { key: "activity", radius: 0.42, anchorPriority: 1 },
+      { key: "person", radius: 0.45, anchorPriority: 3 },
+    ];
+    const edges = [
+      { from: "self", to: "memory" },
+      { from: "memory", to: "activity" },
+      { from: "memory", to: "person" },
+      { from: "activity", to: "person" },
+    ];
+
+    const positioned = resolveOutwardPositions(nodes, edges);
+    const byKey = new Map(positioned.map((node) => [node.key, node]));
+    const activity = byKey.get("activity")!;
+    const person = byKey.get("person")!;
+    const memory = byKey.get("memory")!;
+
+    const planarDistance = (position: readonly [number, number, number]) =>
+      Math.hypot(position[0], position[1]);
+    const gap = (
+      a: readonly [number, number, number],
+      b: readonly [number, number, number],
+    ) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+    expect(planarDistance(activity.position)).toBeGreaterThan(
+      planarDistance(person.position),
+    );
+    expect(gap(activity.position, person.position)).toBeLessThan(
+      gap(activity.position, memory.position),
+    );
+  });
+
   it("resolves chained generated nodes deterministically", () => {
     const nodes: readonly GrowthNode[] = [
       centre,

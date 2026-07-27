@@ -5,6 +5,7 @@ import type {
   ExperienceRelation,
 } from "../../lib/experienceOntology";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
+import { repairExperienceGraph } from "../../lib/graphRepair";
 import { resolveOrbSizes } from "./orbSizing";
 import { resolveOutwardPositions } from "./radialGrowth";
 
@@ -12,6 +13,7 @@ export type WorldNodeCategory = "self" | ExperienceNodeCategory;
 
 type WorldNodeSeed = {
   key: string;
+  anchorPriority?: number;
   category: WorldNodeCategory;
   subtype: string;
   label: string;
@@ -49,6 +51,15 @@ export type WorldGraph = {
   edges: readonly WorldEdge[];
 };
 
+// People place before places, places before activities, so each node can
+// chain under the most meaningful connection available in its memory branch.
+const ANCHOR_PRIORITY_BY_CATEGORY: Partial<Record<WorldNodeCategory, number>> =
+  {
+    people: 3,
+    place: 2,
+    activity: 1,
+  };
+
 const SELF_NODE: WorldNodeSeed = {
   key: "self",
   category: "self",
@@ -84,7 +95,8 @@ function rootEdge(target: string): WorldEdge {
   };
 }
 
-export function buildWorldGraph(graph: ExperienceGraphRecord): WorldGraph {
+export function buildWorldGraph(rawGraph: ExperienceGraphRecord): WorldGraph {
+  const graph = repairExperienceGraph(rawGraph);
   const graphNodeIds = new Set(graph.nodes.map((node) => node.id));
   const graphEdges: WorldEdge[] = graph.edges
     .filter(
@@ -124,6 +136,7 @@ export function buildWorldGraph(graph: ExperienceGraphRecord): WorldGraph {
     SELF_NODE,
     ...graph.nodes.map((node) => ({
       key: node.id,
+      anchorPriority: ANCHOR_PRIORITY_BY_CATEGORY[node.category] ?? 0,
       category: node.category,
       subtype: node.subtype,
       label: node.label,

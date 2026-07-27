@@ -448,6 +448,8 @@ export function buildMemoryExtractionPrompt({
     "",
     "GRAPH QUALITY",
     "- Keep labels short, natural, and specific. Avoid generic filler such as fun, travel, friends, or happiness unless that is genuinely the meaningful concept.",
+    "- Never write another node's name inside a label. Label the activity alone (activity: 'Sharing tiramisu cake', NOT 'Sharing tiramisu cake with Halmoni') and express who or where through edges instead.",
+    "- Connect every activity to the people who took part (shared_with) and to the place where it happened (happened_at) whenever the sources state them. Connect feelings to the node that evoked them, not only to the moment.",
     "- Use concise evidence grounded in the cited sources. source_refs must contain only source refs listed below.",
     "- Every non-experience node must connect to the moment or another returned node.",
     "- Edges may reference only returned local_key values.",
@@ -650,18 +652,31 @@ export function prepareMemoryExtraction(
     const description = stringValue(edge.description, 360);
     const evidence = stringValue(edge.evidence, 360);
 
+    const fromNode = nodeByLocalKey.get(fromLocalKey ?? "");
+    const toNode = nodeByLocalKey.get(toLocalKey ?? "");
     if (
       !fromLocalKey ||
       !toLocalKey ||
       fromLocalKey === toLocalKey ||
-      !nodeByLocalKey.has(fromLocalKey) ||
-      !nodeByLocalKey.has(toLocalKey) ||
-      sourceRefs.length === 0 ||
-      !description ||
-      !evidence
+      !fromNode ||
+      !toNode
     ) {
       continue;
     }
+
+    // The topology a structurally sound edge carries is worth more than its
+    // wording: dropping it silently flattens the graph into a star around the
+    // moment. Backfill thin wording from the endpoints at reduced confidence.
+    const backfilled =
+      sourceRefs.length === 0 || !description || !evidence;
+    const effectiveSourceRefs =
+      sourceRefs.length > 0
+        ? sourceRefs
+        : mergeStringLists(fromNode.sourceRefs, toNode.sourceRefs);
+    const effectiveDescription =
+      description ||
+      `${fromNode.label} connects to ${toNode.label} in this memory.`;
+    const effectiveEvidence = evidence || fromNode.evidence || toNode.evidence;
 
     const key = `${fromLocalKey}:${toLocalKey}:${relation}`;
     if (edgeKeys.has(key)) continue;
@@ -676,20 +691,23 @@ export function prepareMemoryExtraction(
         FAMILIARITIES,
         "not_applicable",
       ),
-      description,
+      description: effectiveDescription,
       basis,
-      certainty: certaintyForEdge(
-        basis,
-        relation,
-        sourceRefs,
-        sourceByRef,
-      ),
+      certainty: backfilled
+        ? "hypothesis"
+        : certaintyForEdge(
+            basis,
+            relation,
+            sourceRefs,
+            sourceByRef,
+          ),
       confidence: Math.min(
         boundedUnit(edge.confidence, 0.6),
         confidenceCap(basis),
+        backfilled ? 0.55 : 1,
       ),
-      evidence,
-      sourceRefs,
+      evidence: effectiveEvidence,
+      sourceRefs: effectiveSourceRefs,
     });
   }
 
@@ -731,12 +749,128 @@ export function prepareMemoryExtraction(
     });
   }
 
+  repairEmbeddedPeople(nodes, edges);
+
   return {
     title,
     summary,
     nodes,
     edges: edges.slice(0, MAX_EDGES),
   };
+}
+
+const REPAIRABLE_EMBED_CATEGORIES = new Set<MemoryNodeCategory>([
+  "activity",
+  "interest",
+  "feeling",
+  "condition",
+  "pattern",
+  "place",
+]);
+
+const COMPANION_CLAUSE = /\s+(?:together\s+with|with|alongside)\s+(.+)$/i;
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function mentionsPerson(text: string, personLabel: string) {
+  const name = personLabel.trim();
+  if (name.length < 3) return false;
+  return new RegExp(
+    `(^|[^\\p{L}\\p{N}])${escapeRegExp(name)}([^\\p{L}\\p{N}]|$)`,
+    "iu",
+  ).test(text);
+}
+
+function embeddedPersonRelation(
+  node: PreparedMemoryNode,
+  person: PreparedMemoryNode,
+): Pick<PreparedMemoryEdge, "fromLocalKey" | "toLocalKey" | "relation"> {
+  switch (node.category) {
+    case "activity":
+      return {
+        fromLocalKey: node.localKey,
+        toLocalKey: person.localKey,
+        relation: "shared_with",
+      };
+    case "place":
+      return {
+        fromLocalKey: person.localKey,
+        toLocalKey: node.localKey,
+        relation: "familiar_with",
+      };
+    case "feeling":
+      return {
+        fromLocalKey: person.localKey,
+        toLocalKey: node.localKey,
+        relation: "evoked",
+      };
+    default:
+      return {
+        fromLocalKey: node.localKey,
+        toLocalKey: person.localKey,
+        relation: "involved",
+      };
+  }
+}
+
+/**
+ * Models sometimes encode a relationship as text ("Sharing tiramisu cake with
+ * Halmoni") instead of structure. Rewire it: connect the node to the person it
+ * names, and trim a trailing companion clause so the relationship lives in the
+ * graph rather than the label.
+ */
+function repairEmbeddedPeople(
+  nodes: PreparedMemoryNode[],
+  edges: PreparedMemoryEdge[],
+) {
+  const people = nodes.filter(
+    (node) => node.category === "people" && node.label.trim().length >= 3,
+  );
+  if (people.length === 0) return;
+
+  const connectedPairs = new Set<string>();
+  for (const edge of edges) {
+    connectedPairs.add(`${edge.fromLocalKey}|${edge.toLocalKey}`);
+    connectedPairs.add(`${edge.toLocalKey}|${edge.fromLocalKey}`);
+  }
+
+  for (const node of nodes) {
+    if (!REPAIRABLE_EMBED_CATEGORIES.has(node.category)) continue;
+
+    const mentioned = people.filter(
+      (person) => person !== node && mentionsPerson(node.label, person.label),
+    );
+    if (mentioned.length === 0) continue;
+
+    for (const person of mentioned) {
+      const pair = `${node.localKey}|${person.localKey}`;
+      if (connectedPairs.has(pair)) continue;
+      connectedPairs.add(pair);
+      connectedPairs.add(`${person.localKey}|${node.localKey}`);
+      edges.push({
+        ...embeddedPersonRelation(node, person),
+        polarity: "neutral",
+        familiarity: "not_applicable",
+        description: `${person.label} is part of ${node.label}.`,
+        basis: node.basis,
+        certainty: "hypothesis",
+        confidence: Math.min(node.confidence, 0.55),
+        evidence: node.evidence,
+        sourceRefs: node.sourceRefs,
+      });
+    }
+
+    const match = node.label.match(COMPANION_CLAUSE);
+    if (!match) continue;
+    const clause = match[1];
+    if (!mentioned.some((person) => mentionsPerson(clause, person.label))) {
+      continue;
+    }
+    const trimmed = node.label.slice(0, match.index).trim();
+    if (trimmed.length >= 3) node.label = trimmed;
+  }
 }
 
 function numberValue(value: unknown, fallback = 0) {
