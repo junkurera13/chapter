@@ -41,8 +41,12 @@ import TogetherFriendsCard, {
 } from "./TogetherFriendsCard";
 import styles from "./TogetherView.module.css";
 
-/** Fast only while a chapter is actually being written; idle otherwise. */
-const RESEARCH_POLL_MS = 8_000;
+/**
+ * Only while a chapter is actually being written; idle otherwise. A research
+ * run takes minutes, so asking every eight seconds bought nothing and spent a
+ * rate limit the reads that people are waiting on also have to pass through.
+ */
+const RESEARCH_POLL_MS = 15_000;
 
 const RESEARCH_STAGES = [
   "Reading both your worlds",
@@ -153,40 +157,6 @@ export default function TogetherView({
     }
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      if (active) await refresh();
-    })();
-    return () => {
-      active = false;
-    };
-  }, [refresh]);
-
-  // Read once. What two worlds share changes when a world changes, not while
-  // someone is looking at it — so this never polls and never blocks the page.
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const found = await loadTogetherGists();
-        if (active) setGists(found.gists);
-      } catch (error) {
-        console.error("Could not read your gists", error);
-      } finally {
-        if (active) setReading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  /**
-   * Read on the same terms, and separately. Introductions scan a pool and can
-   * take longer than a gist, so a slow search among strangers must never hold
-   * up the people this person already knows.
-   */
   const readIntroductions = useCallback(async () => {
     try {
       const found = await loadIntroductions();
@@ -196,19 +166,54 @@ export default function TogetherView({
     }
   }, []);
 
+  /**
+   * Opening Together, one read at a time and in the order they matter.
+   *
+   * These used to start together, which read as three independent things
+   * refusing to block each other. Behind them they are not independent at all:
+   * they are three requests to one backend, each fanning out into several
+   * more, and the pool scan alone opens a stranger's world for every candidate
+   * it weighs. Started at once they don't finish sooner, they rate-limit each
+   * other, and the page ends up with none of the three.
+   *
+   * So the chapters come first, because they are what the tab is for. Gists
+   * follow. The search among strangers goes last: it is the most expensive
+   * read Chapter makes and the only one nobody is waiting on.
+   *
+   * A gist and an introduction are both answers to "what do these two worlds
+   * share", which changes when a world changes and not while someone is
+   * looking at the page. So when this tab has been open before, they are not
+   * asked for again — the answer on screen is the answer.
+   */
   useEffect(() => {
     let active = true;
     void (async () => {
-      try {
-        const found = await loadIntroductions();
-        if (active) setIntroductions(found.introductions);
-      } catch (error) {
-        console.error("Could not read your introductions", error);
+      await refresh();
+      if (!active) return;
+
+      if (openedGists) {
+        setReading(false);
+      } else {
+        try {
+          const found = await loadTogetherGists();
+          if (active) setGists(found.gists);
+        } catch (error) {
+          console.error("Could not read your gists", error);
+        } finally {
+          if (active) setReading(false);
+        }
       }
+      if (!active || openedIntroductions) return;
+
+      await readIntroductions();
     })();
     return () => {
       active = false;
     };
+    // Deliberately once per mount: the seeds are read at mount and the two
+    // loaders are stable, so re-running this would only re-ask the backend
+    // for what the page already has on it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const chapters = useMemo(
@@ -222,12 +227,15 @@ export default function TogetherView({
     (chapter) => chapter.status === "proposed" && chapter.role === "initiator",
   );
 
-  // Poll hard only while research is in flight. A pair waiting on an answer
-  // refreshes when the tab comes back instead — the backend reads several
-  // entities per call, and nothing here changes second to second.
+  // Poll only while research is in flight, and only while someone is there to
+  // see it land. The backend reads several entities per call and answers 429
+  // when asked too often, so a poll running behind a hidden tab is load spent
+  // on nobody that the visible reads then have to compete with.
   useEffect(() => {
     if (!researching) return;
-    const poll = window.setInterval(() => void refresh(), RESEARCH_POLL_MS);
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, RESEARCH_POLL_MS);
     const stage = window.setInterval(
       () =>
         setStageIndex((index) =>

@@ -136,6 +136,13 @@ async function readGistSource(
     if (error instanceof Base44FunctionError && error.status === 401) {
       throw error;
     }
+    // Being told the app is busy is the one failure the long way cannot help
+    // with, because the long way is six more calls to the thing that just said
+    // it was busy. Falling back on a 429 turned one refused read into seven,
+    // which is how a rate limit that would have passed became one that stayed.
+    if (error instanceof Base44FunctionError && error.status === 429) {
+      throw error;
+    }
     // Logged with the status and the message, not just the error's name: the
     // difference between 400 and 403 here is the difference between a stale
     // backend and a misconfigured one, and the name says neither.

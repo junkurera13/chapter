@@ -35,7 +35,11 @@ import type { WorldNodeCategory } from "./graphData";
 import placeholderLocationImage from "../assets/mojiko-waterfront.jpg";
 import styles from "./NowView.module.css";
 
-const POLL_INTERVAL_MS = 8_000;
+/**
+ * A research run takes minutes, and the backend answers 429 when asked too
+ * often, so the reads a person is actually waiting on come first.
+ */
+const POLL_INTERVAL_MS = 15_000;
 
 const RESEARCH_STAGES = [
   "Reading your world",
@@ -476,7 +480,11 @@ export default function NowView({
   useEffect(() => {
     if (!researching) return;
 
-    const poll = window.setInterval(() => void refresh(), POLL_INTERVAL_MS);
+    // Only while someone is there to see it land: a poll behind a hidden tab
+    // is load spent on nobody, which the visible reads then compete with.
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, POLL_INTERVAL_MS);
     const stage = window.setInterval(
       () =>
         setStageIndex((index) =>

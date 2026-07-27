@@ -1,7 +1,17 @@
 import { BASE44_APP_ID } from "./base44Client";
 
 const BASE44_MAX_ATTEMPTS = 3;
-const BASE44_RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+/**
+ * Deliberately without 429.
+ *
+ * The backend retries rate limits itself, with backoff, before it ever answers
+ * — so a 429 arriving here is one that already survived three attempts over
+ * several seconds. Retrying it three more times doesn't outlast the limit, it
+ * feeds it: one read becomes a dozen attempts, and every other read the page
+ * is making is doing the same thing at the same moment. Being told the app is
+ * busy is a reason to stop asking, which is the one thing this used not to do.
+ */
+const BASE44_RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
 
 export class Base44FunctionError extends Error {
   constructor(
@@ -13,9 +23,14 @@ export class Base44FunctionError extends Error {
   }
 }
 
+/**
+ * Backoff with jitter. Together opens three reads at once, and without the
+ * jitter their retries stay in lockstep and collide again on every attempt.
+ */
 function retryDelay(attempt: number) {
+  const base = attempt * 600;
   return new Promise((resolve) => {
-    setTimeout(resolve, attempt * 400);
+    setTimeout(resolve, base + Math.random() * base);
   });
 }
 
