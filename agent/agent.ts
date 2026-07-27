@@ -13,7 +13,7 @@ const openrouter = createOpenRouter({
       allow_fallbacks: true,
       data_collection: "deny",
       require_parameters: true,
-      sort: "price",
+      zdr: true,
     },
   },
 });

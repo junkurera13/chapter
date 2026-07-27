@@ -1,9 +1,10 @@
 import { Base44FunctionError, fetchMySession } from "@/lib/base44Functions";
+import { MemoryExtractionUnavailableError } from "@/lib/memoryExtractor";
 import { extractAndPersistMemory } from "@/lib/sidequestAgent";
 import { SidequestBackendError } from "@/lib/sidequestAgentBackend";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 120;
 
 type MemoryRequestBody = {
   clientRequestId?: unknown;
@@ -17,6 +18,9 @@ function requestBody(value: unknown): value is MemoryRequestBody {
 }
 
 export async function POST(request: Request) {
+  const requestStartedAt = Date.now();
+  const requestId = crypto.randomUUID();
+  console.info("[memory:route] request started", { requestId });
   const authorization = request.headers.get("authorization");
   const accessToken = authorization?.startsWith("Bearer ")
     ? authorization.slice("Bearer ".length).trim()
@@ -24,7 +28,7 @@ export async function POST(request: Request) {
   if (!accessToken) {
     return Response.json(
       {
-        error: "Your session expired. Sign in again, then retry your draft.",
+        error: "Your session expired. Sign in again, then start once more.",
         code: "AUTHENTICATION_REQUIRED",
       },
       { status: 401 },
@@ -46,7 +50,6 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-
   try {
     const session = await fetchMySession(accessToken);
     const value = await extractAndPersistMemory({
@@ -67,9 +70,31 @@ export async function POST(request: Request) {
         : [],
       accessToken,
       origin: new URL(request.url).origin,
+      signal: request.signal,
+    });
+    console.info("[memory:route] request completed", {
+      requestId,
+      memoryId: value.memoryId,
+      elapsedMs: Date.now() - requestStartedAt,
     });
     return Response.json({ value });
   } catch (error) {
+    console.error("[memory:route] request failed", {
+      requestId,
+      elapsedMs: Date.now() - requestStartedAt,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    if (error instanceof MemoryExtractionUnavailableError) {
+      return Response.json(
+        {
+          error: error.timedOut
+            ? "Chapter took too long to read that memory."
+            : "Chapter couldn’t extract a reliable memory graph.",
+          code: error.timedOut ? "MEMORY_TIMEOUT" : "MEMORY_PROCESSING_FAILED",
+        },
+        { status: error.timedOut ? 504 : 502 },
+      );
+    }
     if (error instanceof SidequestBackendError) {
       return Response.json(
         { error: error.message, code: error.code },
@@ -88,7 +113,6 @@ export async function POST(request: Request) {
         { status: error.status === 401 ? 401 : 502 },
       );
     }
-    console.error("Eve memory extraction failed:", error);
     return Response.json(
       {
         error: "Chapter couldn’t finish that memory just now.",

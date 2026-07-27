@@ -14,12 +14,11 @@ describe("memory submission failures", () => {
       }),
     ).toEqual({
       message: "That photo needs to be uploaded again.",
-      reuploadImages: true,
       requiresAuthentication: false,
     });
   });
 
-  it("keeps in-progress retries from re-uploading photos", () => {
+  it("describes an in-progress submission without claiming a saved draft", () => {
     expect(
       describeMemorySubmissionFailure({
         response: {
@@ -29,8 +28,7 @@ describe("memory submission failures", () => {
       }),
     ).toEqual({
       message:
-        "Chapter is still working on this memory. Give it a moment, then retry.",
-      reuploadImages: false,
+        "Chapter is still working on this memory. Start again in a moment.",
       requiresAuthentication: false,
     });
   });
@@ -42,9 +40,7 @@ describe("memory submission failures", () => {
         data: { code: "AUTHENTICATION_REQUIRED" },
       }),
     ).toEqual({
-      message:
-        "Your session expired. Sign in in a new tab, then come back and retry—this draft will stay here.",
-      reuploadImages: false,
+      message: "Your session expired. Sign in again, then start once more.",
       requiresAuthentication: true,
     });
   });
@@ -52,9 +48,7 @@ describe("memory submission failures", () => {
   it("uses a calm recoverable fallback for unknown provider failures", () => {
     expect(describeMemorySubmissionFailure(new Error("provider details"))).toEqual(
       {
-        message:
-          "Chapter couldn’t finish that memory just now. Your draft and photos are still here—try again.",
-        reuploadImages: false,
+        message: "Chapter couldn’t finish that memory just now. Start again.",
         requiresAuthentication: false,
       },
     );

@@ -189,13 +189,15 @@ async function updateUserAfterMemory(
 Deno.serve(async (req) => {
   try {
     const input = (await req.json()) as Row;
+    const base44 = createClientFromRequest(req);
+    const viewer = await base44.auth.me().catch(() => null);
     const expectedSecret = Deno.env.get("SIDEQUEST_INTERNAL_SECRET");
-    if (!expectedSecret || input.internalSecret !== expectedSecret) {
+    const trustedInternalRequest =
+      Boolean(expectedSecret) && input.internalSecret === expectedSecret;
+    if (!trustedInternalRequest && !viewer) {
       return Response.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const base44 = createClientFromRequest(req);
-    const viewer = await base44.auth.me().catch(() => null);
     const user = await ensureSidequestUser(base44, input, viewer);
     const preparedInput = pipelineInput(user, input);
 
@@ -239,12 +241,7 @@ Deno.serve(async (req) => {
     }
 
     if (input.action === "fail") {
-      await failExperienceMemory(
-        base44,
-        preparedInput,
-        memoryId,
-        stringValue(input.error),
-      );
+      await failExperienceMemory(base44, preparedInput, memoryId);
       return Response.json({ value: { failed: true } });
     }
 

@@ -62,6 +62,9 @@ type Base44FunctionPayload<T> = {
   code?: string;
 };
 
+const BASE44_MAX_ATTEMPTS = 3;
+const BASE44_RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+
 export class SidequestBackendError extends Error {
   constructor(
     message: string,
@@ -71,6 +74,12 @@ export class SidequestBackendError extends Error {
     super(message);
     this.name = "SidequestBackendError";
   }
+}
+
+function retryDelay(attempt: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, attempt * 400);
+  });
 }
 
 async function invokeBase44<T>(
@@ -87,29 +96,62 @@ async function invokeBase44<T>(
     );
   }
 
-  const response = await fetch(
-    `https://base44.app/api/apps/${BASE44_APP_ID}/functions/${functionName}`,
-    {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-App-Id": BASE44_APP_ID,
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
-      body: JSON.stringify({ ...data, internalSecret }),
-      cache: "no-store",
-    },
-  );
-  const payload = (await response.json().catch(() => ({}))) as Base44FunctionPayload<T>;
-  if (!response.ok || payload.value === undefined) {
-    throw new SidequestBackendError(
-      payload.error || `Base44 ${functionName} failed.`,
-      response.status,
-      payload.code,
-    );
+  const url =
+    `https://base44.app/api/apps/${BASE44_APP_ID}/functions/${functionName}`;
+
+  for (let attempt = 1; attempt <= BASE44_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-App-Id": BASE44_APP_ID,
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ ...data, internalSecret }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(20_000),
+      });
+      const payload = (await response.json().catch(() => ({}))) as
+        Base44FunctionPayload<T>;
+      if (response.ok && payload.value !== undefined) {
+        return payload.value;
+      }
+
+      const error = new SidequestBackendError(
+        payload.error || `Base44 ${functionName} failed.`,
+        response.status,
+        payload.code,
+      );
+      if (
+        attempt === BASE44_MAX_ATTEMPTS ||
+        !BASE44_RETRYABLE_STATUSES.has(response.status)
+      ) {
+        throw error;
+      }
+      console.warn("[base44:function] transient response", {
+        functionName,
+        attempt,
+        status: response.status,
+      });
+    } catch (error) {
+      if (error instanceof SidequestBackendError) throw error;
+      if (attempt === BASE44_MAX_ATTEMPTS) throw error;
+      console.warn("[base44:function] transient request failure", {
+        functionName,
+        attempt,
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+    }
+
+    await retryDelay(attempt);
   }
-  return payload.value;
+
+  throw new SidequestBackendError(
+    `Base44 ${functionName} failed.`,
+    502,
+  );
 }
 
 export function prepareMemory(

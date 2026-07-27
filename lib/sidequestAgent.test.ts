@@ -1,19 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const send = vi.hoisted(() => vi.fn());
+const extractMemory = vi.hoisted(() => vi.fn());
 const prepareMemory = vi.hoisted(() => vi.fn());
 const completeMemory = vi.hoisted(() => vi.fn());
 const failMemory = vi.hoisted(() => vi.fn());
 
-vi.mock("eve/client", () => ({
-  Client: class {
-    session() {
-      return {
-        send,
-        state: { streamIndex: 0 },
-      };
-    }
-  },
+vi.mock("./memoryExtractor", () => ({
+  extractMemory,
 }));
 
 vi.mock("./sidequestAgentBackend", () => ({
@@ -32,7 +25,7 @@ const extraction = {
 };
 
 beforeEach(() => {
-  send.mockReset();
+  extractMemory.mockReset();
   prepareMemory.mockReset();
   completeMemory.mockReset();
   failMemory.mockReset();
@@ -40,65 +33,21 @@ beforeEach(() => {
 });
 
 describe("extractAndPersistMemory", () => {
-  it("accepts schema-valid JSON text when the model omits final_output", async () => {
-    prepareMemory.mockResolvedValue({
-      alreadyComplete: false,
-      memoryId: "memory_text_fallback",
-      prompt: "Extract this memory.",
-      attachments: [],
-    });
-    send.mockResolvedValueOnce({
-      result: vi.fn().mockResolvedValue({
-        status: "waiting",
-        data: undefined,
-        message: `\`\`\`json\n${JSON.stringify(extraction)}\n\`\`\``,
-      }),
-    });
-    completeMemory.mockResolvedValue({
-      memoryId: "memory_text_fallback",
-      ...extraction,
-      created: true,
-    });
-
-    await expect(
-      extractAndPersistMemory({
-        authUserId: "user_text_fallback",
-        clientRequestId: "request_text_fallback",
-        source: "reflection",
-        text: "A rainy afternoon in Busan.",
-        images: [],
-        accessToken: "access-token",
-      }),
-    ).resolves.toMatchObject({ created: true });
-
-    expect(send).toHaveBeenCalledTimes(1);
-    expect(completeMemory).toHaveBeenCalledWith(
-      expect.objectContaining({ extraction }),
-      "access-token",
-    );
-    expect(failMemory).not.toHaveBeenCalled();
-  });
-
-  it("retries a fresh Eve session when the first structured result is missing", async () => {
+  it("extracts directly and persists the validated graph", async () => {
+    const signal = new AbortController().signal;
     prepareMemory.mockResolvedValue({
       alreadyComplete: false,
       memoryId: "memory_1",
       prompt: "Extract this memory.",
-      attachments: [],
+      attachments: [
+        {
+          url: "https://example.com/photo.jpg",
+          fileName: "photo.jpg",
+          mediaType: "image/jpeg",
+        },
+      ],
     });
-    send
-      .mockResolvedValueOnce({
-        result: vi.fn().mockResolvedValue({
-          status: "waiting",
-          data: undefined,
-        }),
-      })
-      .mockResolvedValueOnce({
-        result: vi.fn().mockResolvedValue({
-          status: "waiting",
-          data: extraction,
-        }),
-      });
+    extractMemory.mockResolvedValue(extraction);
     completeMemory.mockResolvedValue({
       memoryId: "memory_1",
       ...extraction,
@@ -113,10 +62,21 @@ describe("extractAndPersistMemory", () => {
       text: "A rainy afternoon in Busan.",
       images: [],
       accessToken: "access-token",
-      origin: "https://chapter.example",
+      signal,
     });
 
-    expect(send).toHaveBeenCalledTimes(2);
+    expect(extractMemory).toHaveBeenCalledWith({
+      prompt: "Extract this memory.",
+      attachments: [
+        {
+          url: "https://example.com/photo.jpg",
+          fileName: "photo.jpg",
+          mediaType: "image/jpeg",
+        },
+      ],
+      requestId: "request_123",
+      signal,
+    });
     expect(completeMemory).toHaveBeenCalledWith(
       {
         authUserId: "user_1",
@@ -130,19 +90,43 @@ describe("extractAndPersistMemory", () => {
     expect(result.created).toBe(true);
   });
 
-  it("marks the Base44 memory failed only after both Eve attempts miss", async () => {
+  it("returns an already completed idempotent memory without another model call", async () => {
+    prepareMemory.mockResolvedValue({
+      alreadyComplete: true,
+      memoryId: "memory_complete",
+      title: "Already there",
+      summary: "Previously completed.",
+    });
+
+    await expect(
+      extractAndPersistMemory({
+        authUserId: "user_complete",
+        clientRequestId: "request_complete",
+        source: "reflection",
+        text: "A memory.",
+        images: [],
+        accessToken: "access-token",
+      }),
+    ).resolves.toEqual({
+      memoryId: "memory_complete",
+      title: "Already there",
+      summary: "Previously completed.",
+      created: false,
+    });
+
+    expect(extractMemory).not.toHaveBeenCalled();
+    expect(completeMemory).not.toHaveBeenCalled();
+    expect(failMemory).not.toHaveBeenCalled();
+  });
+
+  it("removes the pending Base44 attempt when extraction fails", async () => {
     prepareMemory.mockResolvedValue({
       alreadyComplete: false,
       memoryId: "memory_2",
       prompt: "Extract this memory.",
       attachments: [],
     });
-    send.mockResolvedValue({
-      result: vi.fn().mockResolvedValue({
-        status: "waiting",
-        data: undefined,
-      }),
-    });
+    extractMemory.mockRejectedValue(new Error("model unavailable"));
     failMemory.mockResolvedValue({ failed: true });
 
     await expect(
@@ -154,9 +138,8 @@ describe("extractAndPersistMemory", () => {
         images: [],
         accessToken: "access-token",
       }),
-    ).rejects.toThrow("after two attempts");
+    ).rejects.toThrow("model unavailable");
 
-    expect(send).toHaveBeenCalledTimes(2);
     expect(completeMemory).not.toHaveBeenCalled();
     expect(failMemory).toHaveBeenCalledWith(
       expect.objectContaining({

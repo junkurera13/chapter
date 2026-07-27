@@ -6,12 +6,32 @@ import styles from "./agent-orb-section.module.css";
 
 const ORB_PLAYBACK_RATE = 0.9;
 
+export function shouldPlayAgentOrb({
+  documentVisible,
+  isVisible,
+  playWhileMounted,
+  reducedMotion,
+}: {
+  documentVisible: boolean;
+  isVisible: boolean;
+  playWhileMounted: boolean;
+  reducedMotion: boolean;
+}) {
+  return (
+    documentVisible &&
+    (playWhileMounted || isVisible) &&
+    (playWhileMounted || !reducedMotion)
+  );
+}
+
 export default function AgentOrbVideo({
   src = "/agent-orb.mp4",
   poster = "/agent-orb-poster.jpg",
+  playWhileMounted = false,
 }: {
   src?: string;
   poster?: string;
+  playWhileMounted?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -28,10 +48,12 @@ export default function AgentOrbVideo({
     let isVisible = false;
 
     const updatePlayback = () => {
-      const shouldPlay =
-        isVisible &&
-        !reducedMotion.matches &&
-        document.visibilityState === "visible";
+      const shouldPlay = shouldPlayAgentOrb({
+        documentVisible: document.visibilityState === "visible",
+        isVisible,
+        playWhileMounted,
+        reducedMotion: reducedMotion.matches,
+      });
 
       if (shouldPlay) {
         void video.play().catch(() => {
@@ -63,7 +85,7 @@ export default function AgentOrbVideo({
       document.removeEventListener("visibilitychange", updatePlayback);
       video.pause();
     };
-  }, []);
+  }, [playWhileMounted]);
 
   return (
     <video
@@ -72,6 +94,7 @@ export default function AgentOrbVideo({
       muted
       loop
       playsInline
+      autoPlay={playWhileMounted}
       preload="metadata"
       poster={poster}
       aria-hidden="true"
