@@ -168,6 +168,12 @@ export default function YouView({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRefs = useRef(new Map<string, HTMLButtonElement>());
   const selectedKeyRef = useRef<string | null>(null);
+  /**
+   * The system share sheet is single-flight: asking for a second one while the
+   * first is still open rejects the call outright. On desktop the first can sit
+   * unsettled for a long time, so a second click is easy to make by accident.
+   */
+  const sharingRef = useRef(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [inviteState, setInviteState] = useState<{
     nodeId: string;
@@ -247,7 +253,29 @@ export default function YouView({
       setInviteState({ nodeId: node.key, status: "shared", url });
     };
 
+    /** Every path that isn't the share sheet: the link still has to reach them. */
+    const copyInvite = () => {
+      if (navigator.clipboard) {
+        void navigator.clipboard
+          .writeText(url)
+          .then(markShared)
+          .catch((error) => {
+            console.error("Could not copy the invite", error);
+            setInviteState({ nodeId: node.key, status: "error", url });
+          });
+        return;
+      }
+
+      window.prompt("Copy this private Chapter invite", url);
+      markShared();
+    };
+
+    // A sheet is already open. The click that got here is a double-tap on a
+    // modal dialog, and the right answer is to do nothing.
+    if (sharingRef.current) return;
+
     if (navigator.share) {
+      sharingRef.current = true;
       void navigator
         .share({
           title: `${name}, join me on Chapter`,
@@ -256,25 +284,22 @@ export default function YouView({
         })
         .then(markShared)
         .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === "AbortError") return;
+          // Dismissing the sheet is an answer, not a failure. So is a race we
+          // already lost — a share is open somewhere and will settle on its own.
+          const errorName = error instanceof DOMException ? error.name : "";
+          if (errorName === "AbortError" || errorName === "InvalidStateError") {
+            return;
+          }
           console.error("Could not open the share sheet", error);
+          copyInvite();
+        })
+        .finally(() => {
+          sharingRef.current = false;
         });
       return;
     }
 
-    if (navigator.clipboard) {
-      void navigator.clipboard
-        .writeText(url)
-        .then(markShared)
-        .catch((error) => {
-          console.error("Could not copy the invite", error);
-          setInviteState({ nodeId: node.key, status: "error", url });
-        });
-      return;
-    }
-
-    window.prompt("Copy this private Chapter invite", url);
-    markShared();
+    copyInvite();
   }
 
   useEffect(() => {
