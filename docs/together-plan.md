@@ -1,5 +1,10 @@
 # Together — build plan
 
+> **Status, July 28 2026.** Phase 1 has shipped. Phases 2–4 are still plan.
+> Phase 0 was never needed as written. What actually landed, and where it
+> diverged from this document, is recorded under each phase below. Everything
+> not marked shipped is a proposal, not a description of the code.
+
 Together is the tab that owns the **person axis** of Chapter's bridge principle.
 Now keeps the person familiar and stretches place, activity, or time. Together
 stretches the person — in two directions:
@@ -38,7 +43,12 @@ The four-quadrant map, for the record:
 
 ---
 
-## Phase 0 — schema groundwork (small, do first)
+## Phase 0 — schema groundwork (small, do first) — **not built, and not needed**
+
+`personFamiliarity` was never added. Wing 1 spends the person dimension
+implicitly — the partner *is* the familiar person — so the flag carried no
+information the record didn't already have. The shared types landed with Phase 1
+instead of ahead of it. Revisit only if Wing 2 actually needs the split.
 
 Encode the person-stretch split so the data model is ready before the pool is.
 
@@ -49,10 +59,34 @@ Encode the person-stretch split so the data model is ready before the pool is.
   `TogetherIntroductionRecord` (shapes below).
 - No behaviour change; ship with tests updated.
 
-## Phase 1 — Wing 1: shared chapters with connections
+## Phase 1 — Wing 1: shared chapters with connections — **shipped**
 
 **The shippable slice: propose → both confirm → scheduled.** Works today with
 real accepted connections (the Fukuoka crew).
+
+The entity, status machine, `sidequest-data` actions, `app/api/together/route.ts`,
+and `lib/togetherGeneration.ts` landed essentially as specified below. Three
+things came out differently, and the code is the authority:
+
+- **Gists were not in this plan and are now what Together leads with.** A gist
+  is the intersection of two shareable graphs, written as one sentence and
+  capped at three threads, cached per thread set for twelve hours
+  (`lib/togetherGists.ts`, `app/api/together/gists/route.ts`). It exists because
+  a Together tab holding only a *plan something* button says nothing until
+  someone spends a research run. A gist says something for free, and it is
+  symmetric by construction — it reveals only labels the reader already holds,
+  so it cannot disclose the partner.
+- **The UI is one card per person, not a chapter rail above a people list.** A
+  person with both a gist and a chapter in motion gets one card, ordered by
+  what's waiting on the reader (`TogetherView.tsx`, `TogetherGistCard.tsx`,
+  `TogetherFriendsCard.tsx`).
+- **Composition is initiator-only, enforced server-side.** The partner polls the
+  same endpoint but cannot see or advance a draft, so they cannot spend a
+  research run they don't know exists. Poll cadence is 8s while a run is in
+  flight, idle otherwise.
+
+Exit criteria below are met except the full two-account live pass, which still
+needs real hardware and a second Google account.
 
 ### Entity: `base44/entities/together-chapter.jsonc`
 
@@ -259,19 +293,23 @@ The BUILD_JOURNAL entry should say exactly that — seeded pool, real flow.
   share memories, offer to convert the stranger into a real connection
   (reuse the existing invite/acceptance machinery) — unknown person becomes
   familiar person, and Wing 2 feeds Wing 1.
-- Intersection reveals ("you both love jazz bars") stay **out** until there's
-  an explicit consent toggle; the "planned from both worlds, revealing
-  neither" story is cleaner.
+- ~~Intersection reveals ("you both love jazz bars") stay **out** until there's
+  an explicit consent toggle.~~ **Superseded — shipped in Phase 1 as gists.**
+  The consent problem dissolved once the reveal was restricted to the strict
+  intersection: a label the reader already holds in their own world is not the
+  partner's to consent to, and the sentence is identically true on both sides.
+  A one-sided fact still never leaves the server, so "planned from both worlds,
+  revealing neither" holds for everything a gist does not cover.
 
 ## Build order and sizing
 
-| Phase | Scope | Size | Ships alone? |
+| Phase | Scope | Size | Status |
 |---|---|---|---|
-| 0 | Schema groundwork | S | yes (invisible) |
-| 1 | Wing 1 shared chapters | L | **yes — first visible ship** |
-| 2 | Memory loop + nudges | M | yes |
-| 3 | Wing 2 introductions | L | yes (behind opt-in) |
-| 4 | Polish + funnel | M | incremental |
+| 0 | Schema groundwork | S | dropped — folded into Phase 1 |
+| 1 | Wing 1 shared chapters + gists | L | **shipped July 27** |
+| 2 | Memory loop + nudges | M | next |
+| 3 | Wing 2 introductions | L | planned (behind opt-in) |
+| 4 | Polish + funnel | M | planned, minus the superseded item |
 
 Sequencing rationale: Phase 1 works with the accounts that exist today and
 reuses ~80% of the Now pipeline. Phase 3 needs Phase 1's chapter machinery,
@@ -280,9 +318,9 @@ matchmaking with nobody to match.
 
 ## Open decisions (decide before the phase that needs them)
 
-1. **Phase 1:** may the partner counter-propose a date, or only
-   accept/decline the initiator's date? (v1 lean: accept/decline only;
-   counter-proposal is a decline-with-reason that triggers a re-send.)
+1. ~~**Phase 1:** may the partner counter-propose a date?~~ **Decided:**
+   accept/decline only. A counter-proposal is a decline-with-reason that
+   triggers a re-send.
 2. **Phase 2:** if Photon can't send proactively, is the in-app nudge
    acceptable for v1?
 3. **Phase 3:** minimum graph depth before someone is matchable (suggest: at

@@ -24,6 +24,12 @@ export type TogetherGist = {
   anchors: TogetherGistAnchor[];
   /** One sentence about the two of them. Contains every anchor verbatim. */
   line: string;
+  /**
+   * A sample, shown only to a demo account so the tab has something to be
+   * looked at before the pool is real. Never counts as a connection, and
+   * never pretends it can start a chapter.
+   */
+  demo?: boolean;
 };
 
 export type TogetherGistsState = {

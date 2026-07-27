@@ -1,5 +1,10 @@
 # The curated places brain
 
+> **Status: parked on purpose, July 28 2026.** This is a finished design, not
+> queued work. Now ships without it and behaves correctly without it — the brain
+> was always specified as strictly additive. Do not start building it, and do
+> not treat its absence as a gap in Now.
+
 ## Product contract
 
 Chapter's Now pipeline finds venues by deep research over the open web. That

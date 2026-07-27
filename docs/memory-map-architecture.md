@@ -69,6 +69,15 @@ running.
 
 ### 3. Multimodal extraction
 
+Extraction runs as a direct OpenRouter call from `lib/memoryExtractor.ts`, not
+through the Eve agent. The first memory a person ever gives is the moment the
+product either works or doesn't, and it should not depend on the agent sandbox
+being healthy. `google/gemini-3.1-flash-lite` runs first and
+`moonshotai/kimi-k2.6` is the fallback, each under its own attempt timeout so a
+stalled provider fails over instead of hanging. Both are overridable with
+`CHAPTER_MEMORY_MODEL` and `CHAPTER_MEMORY_FALLBACK_MODEL`, and calls are pinned
+to zero-data-retention providers.
+
 One structured multimodal call receives:
 
 - The main text.
@@ -131,6 +140,19 @@ Patterns are stricter than other pillars. They are accepted only when:
 One enjoyable memory is never automatically promoted into a preference or
 personality pattern.
 
+### 6. Read-time repair
+
+Extraction sometimes encodes a relationship as prose instead of structure — a
+node labelled "Sharing Tiramisu Cake with Halmoni", sitting unconnected to the
+Halmoni person node. `lib/graphRepair.ts` is a deterministic lint that runs when
+a graph is read: it links nodes that name a person to that person's node, and
+trims the trailing companion clause out of the label so the relationship lives
+in the graph rather than in the words.
+
+It repairs the projection, never the stored rows. Immutable mentions stay
+exactly as extracted, so the repair can be changed or removed without having
+rewritten anyone's history.
+
 ## Resource boundaries
 
 - `ExperienceMemory`: intake, idempotency, processing status, title, and summary.
@@ -142,6 +164,14 @@ personality pattern.
 - Shared memory pipeline: the same extraction rules for web onboarding and the
   existing iMessage onboarding path.
 - `sidequest-data`: complete-memory filtering and conservative graph projection.
+- `lib/memoryExtractor.ts`: the extraction call itself, outside Base44 and
+  outside Eve.
+- `lib/graphRepair.ts`: read-time structural lint over the projection.
+
+The graph produced here is what **Now** and **Together** plan from. Together
+reads it through a shareable cut — places, activities, interests only — so the
+pillars this document treats as private (people, feelings, conditions, patterns)
+are exactly the ones that never cross an account boundary.
 
 ## Operational versioning
 

@@ -352,7 +352,7 @@ export default function TogetherView({
             {reading
               ? "Chapter is reading your worlds."
               : people.some((person) => person.presence === "connected")
-                ? "Nothing yet runs through both your worlds."
+                ? "No gists yet."
                 : "No one you know is here yet."}
           </h1>
         ) : (
