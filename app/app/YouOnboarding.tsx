@@ -55,15 +55,8 @@ function resizeMemoryInput(element: HTMLTextAreaElement) {
 
 export default function YouOnboarding({
   onMemoryCreated,
-  /**
-   * Shown above the question when someone arrives from an invitation they just
-   * accepted. Without it, connecting drops them into a request for a memory
-   * with no sign the connection worked or why they are being asked.
-   */
-  welcome,
 }: {
   onMemoryCreated: () => void;
-  welcome?: string;
 }) {
   const [started, setStarted] = useState(false);
   const [memoryText, setMemoryText] = useState("");
@@ -306,9 +299,6 @@ export default function YouOnboarding({
 
         <div className={styles.stage}>
           <div className={styles.prompt}>
-            {welcome && !started ? (
-              <p className={styles.welcome}>{welcome}</p>
-            ) : null}
             <motion.button
               className={styles.orb}
               type="button"

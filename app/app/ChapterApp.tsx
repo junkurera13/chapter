@@ -11,6 +11,7 @@ import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import { buildWorldGraph } from "./graphData";
 import NowView from "./NowView";
 import TogetherView from "./TogetherView";
+import WelcomeDialog from "../../components/welcome-dialog";
 import YouOnboarding from "./YouOnboarding";
 import YouView from "./YouView";
 import styles from "./page.module.css";
@@ -38,6 +39,7 @@ export default function ChapterApp({
 }) {
   const [activeIndex, setActiveIndex] = useState<ChapterTabIndex>(initialTab);
   const [addingMemory, setAddingMemory] = useState(false);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [graphState, setGraphState] = useState<GraphState>({
     status: "ready",
     graph: initialGraph,
@@ -113,16 +115,7 @@ export default function ChapterApp({
       </div>
     );
   } else if (graphState.graph.memoryCount === 0) {
-    youPanel = (
-      <YouOnboarding
-        onMemoryCreated={queueGraphLoad}
-        welcome={
-          justConnected
-            ? "You’re connected. Share one memory and Chapter can start planning something for the two of you."
-            : undefined
-        }
-      />
-    );
+    youPanel = <YouOnboarding onMemoryCreated={queueGraphLoad} />;
   } else if (addingMemory) {
     youPanel = (
       <YouOnboarding
@@ -172,6 +165,17 @@ export default function ChapterApp({
       >
         {activePanel}
       </section>
+
+      {/*
+        Someone who just accepted an invitation and has no memory yet is sent
+        to write one. This says why, once, before the screen behind it.
+      */}
+      {justConnected && worldLocked && !welcomeDismissed ? (
+        <WelcomeDialog
+          message="You’re connected — add one memory and Chapter can plan something for the two of you."
+          onDismiss={() => setWelcomeDismissed(true)}
+        />
+      ) : null}
 
       <BottomNavigation
         activeIndex={displayedIndex}
