@@ -24,7 +24,7 @@ describe("getBase44AuthBridgeUrl", () => {
     const bridgeUrl = new URL(getBase44AuthBridgeUrl(returnUrl));
 
     expect(bridgeUrl.origin + bridgeUrl.pathname).toBe(
-      "https://sidequest-b44.base44.app/oauth-start",
+      "https://chapter-b44.base44.app/oauth-start",
     );
     expect(bridgeUrl.searchParams.get("return_url")).toBe(returnUrl);
   });

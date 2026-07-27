@@ -3,7 +3,7 @@ import { createClient, type Base44Client } from "@base44/sdk";
 import { BASE44_APP_ID } from "./base44Client";
 
 const BASE44_ORIGIN = "https://base44.app";
-const BASE44_APP_ORIGIN = "https://sidequest-b44.base44.app";
+const BASE44_APP_ORIGIN = "https://chapter-b44.base44.app";
 
 let browserClient: Base44Client | null = null;
 
