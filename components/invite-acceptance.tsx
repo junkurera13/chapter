@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,7 @@ import {
   isBase44AuthError,
 } from "@/lib/base44Auth";
 import { rememberBase44AuthReturnPath } from "@/lib/base44AuthReturn";
+import { rememberJoinIntent, takeJoinIntent } from "@/lib/inviteJoinIntent";
 import {
   acceptConnectionInvite,
   loadConnectionInvite,
@@ -38,47 +39,18 @@ export default function InviteAcceptance({ code }: { code: string }) {
   const router = useRouter();
   const [state, setState] = useState<InviteState>({ status: "loading" });
 
-  useEffect(() => {
-    let active = true;
-
-    async function inspectInvite() {
-      try {
-        const preview = await loadConnectionInvite(code);
-        if (active) {
-          setState({
-            status: "ready",
-            preview,
-            signedIn: hasBase44Session(),
-          });
-        }
-      } catch (error) {
-        console.error("Could not open the Chapter invitation", error);
-        if (active) {
-          setState({
-            status: "error",
-            message: "This invitation could not be opened.",
-          });
-        }
-      }
-    }
-
-    void inspectInvite();
-    return () => {
-      active = false;
-    };
-  }, [code]);
-
   /**
    * Signing up happens on Chapter's own auth card, which offers email as well
    * as Google. The invite path is remembered first, so finishing there lands
    * back on this page with the invitation still open.
    */
   function join() {
+    rememberJoinIntent(code);
     rememberBase44AuthReturnPath(window.location.pathname);
     window.location.assign("/?auth=1");
   }
 
-  async function accept(preview: ConnectionInvitePreview) {
+  const accept = useCallback(async (preview: ConnectionInvitePreview) => {
     setState({ status: "accepting", preview });
     try {
       await acceptConnectionInvite(code);
@@ -100,7 +72,39 @@ export default function InviteAcceptance({ code }: { code: string }) {
         message: "This invitation may have expired or already been used.",
       });
     }
-  }
+  }, [code, router]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function inspectInvite() {
+      try {
+        const preview = await loadConnectionInvite(code);
+        if (!active) return;
+
+        const signedIn = hasBase44Session();
+        setState({ status: "ready", preview, signedIn });
+
+        // Back from signing up, with the yes already given.
+        if (signedIn && preview.status === "pending" && takeJoinIntent(code)) {
+          void accept(preview);
+        }
+      } catch (error) {
+        console.error("Could not open the Chapter invitation", error);
+        if (active) {
+          setState({
+            status: "error",
+            message: "This invitation could not be opened.",
+          });
+        }
+      }
+    }
+
+    void inspectInvite();
+    return () => {
+      active = false;
+    };
+  }, [accept, code]);
 
   if (state.status === "loading") {
     return (
