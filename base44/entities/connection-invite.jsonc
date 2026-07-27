@@ -5,9 +5,13 @@
     "inviter_user_id": { "type": "string" },
     "inviter_node_id": { "type": "string" },
     "invited_name": { "type": "string" },
+    "code": {
+      "type": "string",
+      "description": "Short single-use invite code as written, so the same link can be handed out again"
+    },
     "token_hash": {
       "type": "string",
-      "description": "SHA-256 hash of the bearer token; the raw token is never stored"
+      "description": "SHA-256 hash of the code; also matches long tokens issued before short codes"
     },
     "status": {
       "type": "string",
@@ -19,7 +23,7 @@
     "created_at": { "type": "number" },
     "accepted_at": { "type": "number" }
   },
-  "required": ["inviter_user_id", "inviter_node_id", "invited_name", "token_hash", "status", "expires_at", "created_at"],
+  "required": ["inviter_user_id", "inviter_node_id", "invited_name", "status", "expires_at", "created_at"],
   "rls": {
     "create": { "user_condition": { "role": "admin" } },
     "read": { "user_condition": { "role": "admin" } },

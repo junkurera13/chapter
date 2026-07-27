@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Base44Error } from "@base44/sdk";
 
+import {
+  forgetBase44AuthReturnPath,
+  readBase44AuthReturnPath,
+} from "@/lib/base44AuthReturn";
 import { getBase44BrowserClient } from "@/lib/base44BrowserClient";
 import styles from "./EmailAuthForm.module.css";
 
@@ -53,6 +57,14 @@ export default function EmailAuthForm() {
   }, [phase]);
 
   function goHome() {
+    // An invitation opened before signing up is waiting to be accepted, so it
+    // wins over the app's front door.
+    const invite = readBase44AuthReturnPath();
+    if (invite) {
+      forgetBase44AuthReturnPath();
+      router.replace(invite);
+      return;
+    }
     router.replace("/app");
   }
 

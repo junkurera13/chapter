@@ -1,23 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
-import ChapterLoadingMark from "@/components/chapter-loading-mark";
+import ChapterLoadingMark from "./chapter-loading-mark";
 import {
   clearBase44Session,
   hasBase44Session,
   isBase44AuthError,
 } from "@/lib/base44Auth";
 import { rememberBase44AuthReturnPath } from "@/lib/base44AuthReturn";
-import { getBase44AuthBridgeUrl } from "@/lib/base44BrowserClient";
 import {
   acceptConnectionInvite,
   loadConnectionInvite,
 } from "@/lib/base44Connections";
 import type { ConnectionInvitePreview } from "@/lib/backendTypes";
 
-import styles from "./invite.module.css";
+import styles from "./invite-acceptance.module.css";
 
 type InviteState =
   | { status: "loading" }
@@ -26,7 +26,15 @@ type InviteState =
   | { status: "connected"; friendName: string }
   | { status: "error"; message: string };
 
-export default function InviteAcceptance({ token }: { token: string }) {
+function ChapterMark() {
+  return (
+    <span className={styles.mark} aria-hidden="true">
+      <Image src="/chapter-mark.svg" alt="" width={112} height={112} />
+    </span>
+  );
+}
+
+export default function InviteAcceptance({ code }: { code: string }) {
   const [state, setState] = useState<InviteState>({ status: "loading" });
 
   useEffect(() => {
@@ -34,7 +42,7 @@ export default function InviteAcceptance({ token }: { token: string }) {
 
     async function inspectInvite() {
       try {
-        const preview = await loadConnectionInvite(token);
+        const preview = await loadConnectionInvite(code);
         if (active) {
           setState({
             status: "ready",
@@ -57,22 +65,22 @@ export default function InviteAcceptance({ token }: { token: string }) {
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [code]);
 
-  function signIn() {
-    const returnPath = window.location.pathname;
-    rememberBase44AuthReturnPath(returnPath);
-    window.location.assign(
-      getBase44AuthBridgeUrl(
-        new URL(returnPath, window.location.origin).toString(),
-      ),
-    );
+  /**
+   * Signing up happens on Chapter's own auth card, which offers email as well
+   * as Google. The invite path is remembered first, so finishing there lands
+   * back on this page with the invitation still open.
+   */
+  function join() {
+    rememberBase44AuthReturnPath(window.location.pathname);
+    window.location.assign("/?auth=1");
   }
 
   async function accept(preview: ConnectionInvitePreview) {
     setState({ status: "accepting", preview });
     try {
-      const connection = await acceptConnectionInvite(token);
+      const connection = await acceptConnectionInvite(code);
       setState({
         status: "connected",
         friendName: connection.friendName || preview.inviterName || "your friend",
@@ -104,11 +112,14 @@ export default function InviteAcceptance({ token }: { token: string }) {
     return (
       <main className={styles.page}>
         <section className={styles.card}>
+          <ChapterMark />
           <h1>That link has gone quiet.</h1>
           <p className={styles.copy}>{state.message}</p>
-          <Link className={styles.secondaryAction} href="/">
-            Open Chapter
-          </Link>
+          <div className={styles.actions}>
+            <Link className={styles.exploreAction} href="/">
+              Explore Chapter
+            </Link>
+          </div>
         </section>
       </main>
     );
@@ -118,18 +129,13 @@ export default function InviteAcceptance({ token }: { token: string }) {
     return (
       <main className={styles.page}>
         <section className={styles.card}>
-          <div className={styles.pairedOrbs} aria-hidden="true">
-            <span />
-            <span />
-          </div>
+          <ChapterMark />
           <h1>You and {state.friendName} are together now.</h1>
-          <p className={styles.copy}>
-            You each have a person node for the other. Nothing from either
-            person’s private memories was shared.
-          </p>
-          <Link className={styles.primaryAction} href="/app?view=together">
-            Open Together
-          </Link>
+          <div className={styles.actions}>
+            <Link className={styles.joinAction} href="/app?view=together">
+              Open Together
+            </Link>
+          </div>
         </section>
       </main>
     );
@@ -140,44 +146,63 @@ export default function InviteAcceptance({ token }: { token: string }) {
     return (
       <main className={styles.page}>
         <section className={styles.card}>
+          <ChapterMark />
           <h1>This invitation is no longer open.</h1>
           <p className={styles.copy}>Ask your friend to send a fresh link.</p>
+          <div className={styles.actions}>
+            <Link className={styles.exploreAction} href="/">
+              Explore Chapter
+            </Link>
+          </div>
         </section>
       </main>
     );
   }
 
   const inviterName = preview.inviterName || "A friend";
-  const invitedName = preview.invitedName || "you";
   const isAccepting = state.status === "accepting";
 
   return (
     <main className={styles.page}>
       <section className={styles.card}>
-        <div className={styles.pairedOrbs} aria-hidden="true">
-          <span />
-          <span />
-        </div>
-        <h1>{inviterName} found {invitedName} in their world.</h1>
-        <p className={styles.copy}>
-          Connect and you’ll each appear in the other’s world. Your memories stay
-          private.
-        </p>
+        <ChapterMark />
+        {/*
+          The invitation exists because the reader is already in one of the
+          inviter's memories. That is the reason to open an account, so it is
+          the headline — addressed to the reader, never naming them.
+        */}
+        <h1>{inviterName} kept a memory with you in it.</h1>
         {state.status === "ready" && !state.signedIn ? (
-          <button className={styles.primaryAction} type="button" onClick={signIn}>
-            Continue with Google
-          </button>
+          <div className={styles.actions}>
+            <button className={styles.joinAction} type="button" onClick={join}>
+              Join Chapter
+            </button>
+            {/*
+              A new tab, so looking around Chapter doesn't close the invitation
+              they were sent. The dead-link states below have nothing to keep,
+              so they navigate in place.
+            */}
+            <Link
+              className={styles.exploreAction}
+              href="/"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              Explore
+            </Link>
+          </div>
         ) : (
-          <button
-            className={styles.primaryAction}
-            type="button"
-            disabled={isAccepting}
-            onClick={() => void accept(preview)}
-          >
-            {isAccepting ? "Connecting…" : `Connect with ${inviterName}`}
-          </button>
+          <div className={styles.actions}>
+            <button
+              className={styles.joinAction}
+              type="button"
+              disabled={isAccepting}
+              onClick={() => void accept(preview)}
+            >
+              {isAccepting ? "Connecting…" : `Connect with ${inviterName}`}
+            </button>
+          </div>
         )}
-        <p className={styles.privacy}>The link is single-use and expires.</p>
       </section>
     </main>
   );

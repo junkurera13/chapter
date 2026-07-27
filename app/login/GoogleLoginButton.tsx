@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { readBase44AuthReturnPath } from "@/lib/base44AuthReturn";
 import { startBase44GoogleLogin } from "@/lib/base44BrowserClient";
 import styles from "./GoogleLoginButton.module.css";
 
@@ -15,6 +16,8 @@ export function GoogleLoginButton() {
     setLeaving(true);
 
     const result = await startBase44GoogleLogin({
+      // An invitation opened before sign-in comes back to itself, not to /app.
+      returnUrl: readBase44AuthReturnPath() ?? undefined,
       onStatus: () => {
         // keep button in busy state while popup is open
       },

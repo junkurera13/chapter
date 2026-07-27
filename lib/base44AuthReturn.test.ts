@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  readBase44AuthReturnPath,
   safeBase44AuthReturnOrigin,
   safeBase44AuthReturnPath,
 } from "./base44AuthReturn";
@@ -27,7 +28,11 @@ describe("safeBase44AuthReturnOrigin", () => {
 });
 
 describe("safeBase44AuthReturnPath", () => {
-  it("keeps a connection invitation on this app", () => {
+  it("keeps a short-code invitation on this app", () => {
+    expect(safeBase44AuthReturnPath("/i/K7M2QX9RTP")).toBe("/i/K7M2QX9RTP");
+  });
+
+  it("still keeps a long-token invitation handed out before short codes", () => {
     const path = `/invite/${"a".repeat(43)}`;
     expect(safeBase44AuthReturnPath(path)).toBe(
       path,
@@ -41,8 +46,48 @@ describe("safeBase44AuthReturnPath", () => {
     "/invite\\attacker.example",
     "/invite/short",
     `/invite/${"a".repeat(43)}/../app`,
+    "https://attacker.example/i/K7M2QX9RTP",
+    "//attacker.example/i/K7M2QX9RTP",
+    "/i/K7M2QX9RT",
+    "/i/K7M2QX9RTPX",
+    "/i/k7m2qx9rtp",
+    "/i/K7M2QX9RTI",
+    "/i/K7M2QX9RTP/../app",
     undefined,
   ])("rejects unsafe or unrelated return paths", (path) => {
     expect(safeBase44AuthReturnPath(path)).toBeNull();
+  });
+});
+
+describe("readBase44AuthReturnPath", () => {
+  const token = "a".repeat(48);
+
+  function setCookie(value: string) {
+    Object.defineProperty(globalThis, "document", {
+      value: { cookie: value },
+      configurable: true,
+    });
+  }
+
+  it("returns the invitation saved before sign-in", () => {
+    setCookie(`chapter_auth_return=${encodeURIComponent(`/invite/${token}`)}`);
+    expect(readBase44AuthReturnPath()).toBe(`/invite/${token}`);
+  });
+
+  it("finds the cookie among others", () => {
+    setCookie(
+      `ph_session=abc; chapter_auth_return=${encodeURIComponent(`/invite/${token}`)}; theme=dark`,
+    );
+    expect(readBase44AuthReturnPath()).toBe(`/invite/${token}`);
+  });
+
+  it("refuses a path that isn't an invitation", () => {
+    setCookie(`chapter_auth_return=${encodeURIComponent("https://evil.example")}`);
+    expect(readBase44AuthReturnPath()).toBeNull();
+  });
+
+  it("is null when nothing is pending", () => {
+    setCookie("theme=dark");
+    expect(readBase44AuthReturnPath()).toBeNull();
   });
 });

@@ -7,12 +7,11 @@ export const metadata: Metadata = {
   description: "Connect with someone you know on Chapter.",
 };
 
-/** The long-form link Chapter used to hand out. Kept so old ones still open. */
-export default async function LegacyConnectionInvitePage({
+export default async function ConnectionInvitePage({
   params,
 }: {
-  params: Promise<{ token: string }>;
+  params: Promise<{ code: string }>;
 }) {
-  const { token } = await params;
-  return <InviteAcceptance code={token} />;
+  const { code } = await params;
+  return <InviteAcceptance code={code} />;
 }

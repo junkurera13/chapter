@@ -33,7 +33,7 @@ as an Eve agent on Vercel, calling two 2026 models directly through OpenRouter:
 preserves sources before model work and validates the structured graph before
 persistence; `sidequest-message` provides idempotent web and iMessage
 processing and stores the opaque Eve continuation cursor; `sidequest-data`
-provides authenticated ownership, graph retrieval, hashed invite handling,
+provides authenticated ownership, graph retrieval, single-use invite handling,
 and reciprocal nodes. Direct entity access is restricted by access rules.
 
 Photon is deliberately narrow: it connects Apple Messages to the signed
