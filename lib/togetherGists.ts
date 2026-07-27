@@ -83,7 +83,7 @@ export function isDemoAccount(email: string | undefined) {
 }
 
 /**
- * Three sample gists from the Fukuoka crew, written the way the model writes
+ * Four sample gists from the Fukuoka crew, written the way the model writes
  * them. The anchors carry ids so they render as orbs — the point of a sample
  * is to show what a real one looks like — but the connection ids are marked,
  * so nothing downstream can mistake one for a person you can actually plan with.
@@ -120,6 +120,15 @@ export function demoGists(): TogetherGist[] {
           category: "interest",
           nodeId: "demo:film",
         },
+      ],
+      demo: true,
+    },
+    {
+      connectionId: "demo:mina",
+      partnerName: "Mina",
+      line: "You and Mina both go quiet in the same way on a long train ride.",
+      anchors: [
+        { label: "train ride", category: "activity", nodeId: "demo:train" },
       ],
       demo: true,
     },

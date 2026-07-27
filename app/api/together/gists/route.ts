@@ -2,12 +2,15 @@ import {
   Base44FunctionError,
   fetchMyConnections,
   fetchMyGraph,
+  fetchMySession,
   fetchPartnerPlanningGraph,
 } from "@/lib/base44Functions";
 import { planningGraphFrom } from "@/lib/togetherGeneration";
 import {
+  demoGists,
   findGistAnchors,
   generateGistLines,
+  isDemoAccount,
   type TogetherGistThread,
 } from "@/lib/togetherGists";
 import type { TogetherGist } from "@/lib/togetherGistSchema";
@@ -76,14 +79,18 @@ export async function GET(request: Request) {
   if (!accessToken) return unauthenticated();
 
   try {
-    const [connections, graph] = await Promise.all([
+    const [connections, graph, session] = await Promise.all([
       fetchMyConnections(accessToken),
       fetchMyGraph(accessToken),
+      fetchMySession(accessToken).catch(() => undefined),
     ]);
+    // Samples sit behind whatever is real, so a genuine gist is never demoted
+    // by one — and an account that isn't the demo account never sees them.
+    const samples = isDemoAccount(session?.viewer.email) ? demoGists() : [];
 
     const people = connections.accepted.slice(0, MAX_PEOPLE);
     if (people.length === 0) {
-      return Response.json({ value: { gists: [] } });
+      return Response.json({ value: { gists: samples } });
     }
 
     const mine = planningGraphFrom(graph);
@@ -156,7 +163,7 @@ export async function GET(request: Request) {
       .map((thread) => remembered.get(thread.connectionId))
       .filter((gist): gist is TogetherGist => Boolean(gist));
 
-    return Response.json({ value: { gists } });
+    return Response.json({ value: { gists: [...gists, ...samples] } });
   } catch (error) {
     console.error("[together:gists] request failed", {
       requestId,

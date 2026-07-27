@@ -13,9 +13,11 @@ vi.mock("./nowGeneration", async () => {
 
 const {
   buildGistPrompt,
+  demoGists,
   fallbackGistLine,
   findGistAnchors,
   generateGistLines,
+  isDemoAccount,
 } = await import("./togetherGists");
 
 function graph(
@@ -247,5 +249,34 @@ describe("generateGistLines", () => {
 
     expect(gists).toEqual([]);
     expect(generateStructured).not.toHaveBeenCalled();
+  });
+});
+
+describe("demo gists", () => {
+  it("recognises only the configured account", () => {
+    expect(isDemoAccount("parkjundk@gmail.com")).toBe(true);
+    expect(isDemoAccount("  ParkJunDK@Gmail.com ")).toBe(true);
+    expect(isDemoAccount("someone-else@gmail.com")).toBe(false);
+    expect(isDemoAccount(undefined)).toBe(false);
+  });
+
+  it("marks every sample, so nothing downstream mistakes one for real", () => {
+    const samples = demoGists();
+
+    expect(samples).toHaveLength(4);
+    expect(samples.every((gist) => gist.demo)).toBe(true);
+    expect(
+      samples.every((gist) => gist.connectionId.startsWith("demo:")),
+    ).toBe(true);
+  });
+
+  it("names each anchor verbatim, so the orbs land on real words", () => {
+    for (const gist of demoGists()) {
+      expect(gist.anchors.length).toBeGreaterThan(0);
+      for (const anchor of gist.anchors) {
+        expect(gist.line).toContain(anchor.label);
+        expect(anchor.nodeId).toBeTruthy();
+      }
+    }
   });
 });

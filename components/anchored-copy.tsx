@@ -16,6 +16,11 @@ export type CopyAnchor = {
   label: string;
   category: string;
   nodeId?: string;
+  /**
+   * Draw the orb even without a node id. For the person a card is about: they
+   * are not a memory in the reader's world, they are the other half of it.
+   */
+  lit?: boolean;
 };
 
 const KNOWN_CATEGORIES: readonly WorldNodeCategory[] = [
@@ -94,7 +99,7 @@ export default function AnchoredCopy({
   return (
     <>
       {parts.map((part, index) =>
-        part.anchor?.nodeId ? (
+        part.anchor && (part.anchor.nodeId || part.anchor.lit) ? (
           <span className={styles.anchor} key={`${part.text}-${index}`}>
             <span
               className={styles.anchorOrb}

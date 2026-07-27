@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 
-import AnchoredCopy from "../../components/anchored-copy";
+import AnchoredCopy, { type CopyAnchor } from "../../components/anchored-copy";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import { nextSaturdayIso } from "../../lib/nowClient";
 import type { TogetherChapterRecord } from "../../lib/togetherChapterSchema";
 import type { TogetherGist } from "../../lib/togetherGistSchema";
-import { categoryOrbGradient } from "./categoryAppearance";
 import styles from "./TogetherView.module.css";
 
 function todayIso() {
@@ -53,28 +52,19 @@ function statusLine(chapter: TogetherChapterRecord) {
 }
 
 /**
- * The two of you, drawn the way the landing page draws you: one orb each, a
- * thread between them. The self orb is the same material as the centre of the
- * You world, and the person orb the same rose people wear everywhere.
+ * The person the card is about, lit inside the sentence rather than drawn
+ * above it. Every gist line names them by contract with the composer, so the
+ * name becomes an orb chip in the same material people wear everywhere else —
+ * one object, read once, instead of a header repeating what the line says.
  */
-function Thread({ partnerName }: { partnerName: string }) {
-  return (
-    <p className={styles.thread}>
-      <span
-        className={styles.threadOrb}
-        style={{ background: categoryOrbGradient("self") }}
-        aria-hidden="true"
-      />
-      <span className={styles.threadName}>You</span>
-      <span className={styles.threadLine} aria-hidden="true" />
-      <span
-        className={styles.threadOrb}
-        style={{ background: categoryOrbGradient("people") }}
-        aria-hidden="true"
-      />
-      <span className={styles.threadName}>{partnerName}</span>
-    </p>
-  );
+function withPartner(
+  partnerName: string,
+  anchors: readonly CopyAnchor[],
+): CopyAnchor[] {
+  return [
+    ...anchors,
+    { label: partnerName, category: "people", lit: true },
+  ];
 }
 
 /**
@@ -122,18 +112,23 @@ export default function TogetherGistCard({
   const livable = chapter?.status === "accepted" && !chapter.youLived;
   const researching = chapter?.status === "researching";
 
+  const wide = Boolean(content || researching);
+
   return (
     <article
-      className={`${styles.card} ${content ? "" : styles.cardWide}`}
+      className={`${styles.card} ${wide ? styles.cardTall : ""}`}
       aria-busy={researching || undefined}
       aria-live={researching ? "polite" : undefined}
     >
-      <Thread partnerName={partnerName} />
+      {status ? <p className={styles.cardStatus}>{status}</p> : null}
 
       <div className={styles.cardBody}>
         {gist ? (
           <p className={content ? styles.gistLineQuiet : styles.gistLine}>
-            <AnchoredCopy text={gist.line} anchors={gist.anchors} />
+            <AnchoredCopy
+              text={gist.line}
+              anchors={withPartner(partnerName, gist.anchors)}
+            />
           </p>
         ) : null}
 
@@ -144,9 +139,8 @@ export default function TogetherGistCard({
         ) : null}
 
         {content ? (
-          <>
+          <div className={styles.chapterPanel}>
             <h2 className={styles.cardTitle}>{content.title}</h2>
-            {status ? <p className={styles.cardStatus}>{status}</p> : null}
 
             <p className={styles.invitation}>
               <AnchoredCopy
@@ -191,9 +185,7 @@ export default function TogetherGistCard({
                 </p>
               ) : null}
             </div>
-          </>
-        ) : chapter && !researching && status ? (
-          <p className={styles.cardStatus}>{status}</p>
+          </div>
         ) : null}
       </div>
 

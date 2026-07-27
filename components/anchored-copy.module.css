@@ -8,6 +8,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: var(--anchor-orb-gap, 4px);
+  color: var(--anchor-color, inherit);
   font-weight: 620;
   white-space: nowrap;
 }

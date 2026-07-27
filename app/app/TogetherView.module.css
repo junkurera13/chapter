@@ -17,16 +17,18 @@
 }
 
 /*
- * Edge to edge, the way the You world is. Nothing is centred in a column: the
- * gists run out to the left rim and the people card sits against the right one,
- * on the same 22px inset the You legend and Now's location card already use.
+ * A column, not a canvas. The You world runs edge to edge because a graph
+ * wants the room; Together is reading, and reading wants a measure. Everything
+ * sits in one centred band with the people card as its right-hand margin.
  */
 .together {
   display: grid;
   width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
   padding: 22px 22px 132px;
   gap: 22px;
-  grid-template-columns: minmax(0, 1fr) 19rem;
+  grid-template-columns: minmax(0, 1fr) 17rem;
   align-items: start;
 }
 
@@ -38,45 +40,57 @@
 .main {
   display: grid;
   min-width: 0;
-  gap: 26px;
+  gap: 18px;
   align-content: start;
 }
 
+/*
+ * Gists tile. One sentence doesn't want a whole page width, so cards sit side
+ * by side wherever there is room and fall into a column when there isn't.
+ */
 .gists {
   display: grid;
-  gap: 16px;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  align-items: start;
 }
 
 /*
- * The gist card. Rectangular on purpose: a wide, low card that holds one
- * sentence the way a plate holds one thing, with the thread across the top and
- * whatever there is to do pinned along the bottom.
+ * The gist card: a soft grey plate, no rim and no lift. Everything that was
+ * furniture — the thread drawn across the top, the field of white under the
+ * line — is gone, so a card is the size of the thing it has to say.
  */
 .card {
   display: grid;
-  min-height: 15rem;
-  padding: 24px 26px 22px;
-  border-radius: 18px;
-  grid-template-rows: auto 1fr auto;
-  gap: 16px;
-  background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.075),
-    0 12px 28px -16px rgba(0, 0, 0, 0.45),
-    0 3px 8px -4px rgba(0, 0, 0, 0.14);
+  padding: 18px 20px 16px;
+  border-radius: 20px;
+  gap: 14px;
+  align-content: start;
+  background: #f4f3f1;
   animation: rise 460ms cubic-bezier(0.16, 0.84, 0.28, 1) both;
+}
+
+/*
+ * A chapter is not one sentence. It takes the row and reads down it — but only
+ * as wide as prose wants to be, so it never becomes a field of white with
+ * writing stranded down one side of it.
+ */
+.cardTall {
+  max-width: 48rem;
+  grid-column: 1 / -1;
 }
 
 .cardBody {
   display: grid;
-  align-content: center;
-  gap: 11px;
+  align-content: start;
+  gap: 12px;
   min-width: 0;
 }
 
 .cardFoot {
   display: grid;
   gap: 10px;
+  justify-items: end;
   align-content: end;
 }
 
@@ -91,70 +105,38 @@
   }
 }
 
-/* You, them, and the line that turned out to run between you. */
-.thread {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-}
-
-.threadOrb {
-  width: 17px;
-  height: 17px;
-  flex: 0 0 auto;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 50%;
-  box-shadow:
-    inset 3px 3px 5px rgba(255, 255, 255, 0.34),
-    inset -2px -3px 5px rgba(56, 25, 34, 0.2),
-    0 2px 7px rgba(96, 56, 70, 0.18);
-}
-
-.threadName {
-  color: rgba(45, 39, 34, 0.62);
-  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 620;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-}
-
-.threadLine {
-  height: 1px;
-  min-width: 18px;
-  flex: 1 1 auto;
-  margin: 0 3px;
-  background: linear-gradient(
-    90deg,
-    rgba(96, 56, 70, 0.28),
-    rgba(57, 48, 43, 0.1) 50%,
-    rgba(96, 56, 70, 0.28)
-  );
-}
-
-/* The gist itself. This is the largest thing on the page for a reason. */
+/*
+ * The gist itself. Set at reading size, in grey, so the two things that carry
+ * meaning — the person and the threads you share — are the only dark words in
+ * it, each wearing the orb it wears everywhere else in Chapter.
+ */
 .gistLine {
-  --anchor-orb-size: 0.42em;
-  --anchor-orb-gap: 0.14em;
+  --anchor-orb-size: 0.74em;
+  --anchor-orb-gap: 0.22em;
+  --anchor-color: #1c1c19;
 
-  max-width: 24ch;
   margin: 0;
-  color: #1c1c19;
+  color: rgba(45, 39, 34, 0.62);
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: clamp(25px, 2.9vw, 46px);
+  font-size: 18px;
   font-weight: 500;
-  letter-spacing: -0.05em;
-  line-height: 1.06;
-  text-wrap: balance;
+  letter-spacing: -0.022em;
+  line-height: 1.42;
+  text-wrap: pretty;
 }
 
 /* Once a chapter grew from it, the gist becomes the reason, not the news. */
 .gistLineQuiet {
-  max-width: 44ch;
+  --anchor-orb-size: 0.7em;
+  --anchor-orb-gap: 0.2em;
+  --anchor-color: rgba(28, 28, 25, 0.72);
+
+  max-width: 60ch;
   margin: 0;
-  color: rgba(45, 39, 34, 0.58);
+  color: rgba(45, 39, 34, 0.5);
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
   font-size: 13px;
+  font-weight: 500;
   line-height: 1.5;
 }
 
@@ -164,25 +146,39 @@
   padding: 6px 0;
 }
 
-.cardTitle {
-  margin: 6px 0 0;
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: clamp(25px, 3vw, 32px);
-  font-weight: 500;
-  letter-spacing: -0.042em;
-  line-height: 1.03;
+/* What grew out of the gist, on its own white ground inside the grey card. */
+.chapterPanel {
+  display: grid;
+  gap: 10px;
+  padding: 20px 22px 22px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(28, 22, 16, 0.04),
+    0 1px 3px rgba(28, 22, 16, 0.05);
 }
 
+.cardTitle {
+  margin: 0;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(22px, 2.4vw, 28px);
+  font-weight: 500;
+  letter-spacing: -0.042em;
+  line-height: 1.05;
+}
+
+/* The line the reference card keeps for its timestamp: where this one stands. */
 .cardStatus {
   margin: 0;
-  color: rgba(45, 39, 34, 0.44);
+  color: rgba(45, 39, 34, 0.4);
   font-size: 12px;
+  letter-spacing: -0.005em;
 }
 
 /* Chapter's own voice, in the face it already speaks with in Chat and You. */
 .invitation {
   max-width: 46ch;
-  margin: 6px 0 0;
+  margin: 0;
   color: rgba(37, 33, 29, 0.88);
   font-family: var(--font-chapter-serif), Georgia, serif;
   font-size: 18px;
@@ -192,8 +188,7 @@
 .knownUnknown {
   display: grid;
   gap: 6px;
-  margin-top: 4px;
-  padding: 12px 0 12px 15px;
+  padding: 4px 0 4px 15px;
   border-left: 2px solid rgba(160, 108, 66, 0.32);
 }
 
@@ -259,8 +254,10 @@
 .handoff {
   display: flex;
   flex-wrap: wrap;
+  width: 100%;
   gap: 10px;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .proposedFor {
@@ -272,17 +269,19 @@
 
 .dateField,
 .declineForm input {
-  min-height: 42px;
-  padding: 9px 13px;
-  border: 1px solid rgba(57, 48, 43, 0.14);
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 0;
   border-radius: 999px;
   background: #fff;
+  box-shadow: 0 0 0 1px rgba(28, 22, 16, 0.06);
   color: #25211d;
   font-family: inherit;
   font-size: 13px;
 }
 
 .declineForm input {
+  width: 100%;
   border-radius: 14px;
 }
 
@@ -294,27 +293,38 @@
 
 .declineForm {
   display: grid;
+  width: 100%;
   gap: 10px;
+  justify-items: end;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
 }
 
+/*
+ * White on the grey plate. The card is the quiet thing and the one action is
+ * the lit one, which is the opposite of the way it read before.
+ */
 .actions button {
-  min-height: 42px;
-  padding: 11px 21px;
+  min-height: 40px;
+  padding: 11px 20px;
   appearance: none;
   border: 0;
   border-radius: 999px;
-  background: #25211d;
-  color: #fff;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(28, 22, 16, 0.03),
+    0 1px 2px rgba(28, 22, 16, 0.09);
+  color: #1c1c19;
   cursor: pointer;
   font-family: var(--font-chapter-instrument), system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 620;
+  font-size: 13px;
+  font-weight: 640;
+  letter-spacing: -0.01em;
   transition: transform 160ms ease, opacity 160ms ease;
 }
 
@@ -328,9 +338,9 @@
 }
 
 .actions .quiet {
-  border: 1px solid rgba(57, 48, 43, 0.16);
   background: transparent;
-  color: rgba(45, 39, 34, 0.66);
+  box-shadow: none;
+  color: rgba(45, 39, 34, 0.55);
 }
 
 .actions button:focus-visible,
@@ -342,18 +352,23 @@
 
 .notice {
   margin: 0;
+  justify-self: stretch;
   color: rgba(150, 74, 74, 0.82);
   font-size: 12px;
 }
 
-.quietHeading {
-  max-width: 15ch;
-  margin: 0;
-  color: #25211d;
+/*
+ * Chapter saying what it has, in the voice the You world opens with: the same
+ * face, weight and size as the question above the orb, so arriving in Together
+ * feels like the same app speaking rather than a different one labelling.
+ */
+.title {
+  margin: 6px 0 4px;
+  color: #1c1c19;
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: clamp(30px, 4vw, 42px);
+  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
   font-weight: 500;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.045em;
   line-height: 1.02;
   text-wrap: balance;
 }
@@ -363,6 +378,68 @@
  * title across the top, elevated off the page — and sticky, so it stays with
  * you while the gists scroll past it.
  */
+/*
+ * The orb for someone you have not met. Drawn as a rim with nothing inside it:
+ * every other person in Chapter wears a filled orb in their category's colour,
+ * and this one is deliberately the same object with the colour withheld.
+ */
+.strangerOrb {
+  width: 0.74em;
+  height: 0.74em;
+  flex: none;
+  border: 1.5px solid rgba(28, 28, 25, 0.32);
+  border-radius: 50%;
+}
+
+.strangerWaiting {
+  margin: 0;
+  color: rgba(45, 39, 34, 0.5);
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 13px;
+  letter-spacing: -0.015em;
+  text-align: right;
+}
+
+/* The standing decision, kept in the rail beside the people it concerns. */
+.openTo {
+  display: grid;
+  gap: 10px;
+  padding: 14px 14px 13px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 12px 28px rgba(0, 0, 0, 0.11),
+    0 4px 8px rgba(0, 0, 0, 0.07);
+}
+
+.openToHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #1c1c19;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.openToCopy {
+  margin: 0;
+  color: rgba(45, 39, 34, 0.58);
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 13px;
+  letter-spacing: -0.012em;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.openToActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .rail {
   position: sticky;
   top: 22px;
@@ -608,25 +685,10 @@
   place-items: center;
 }
 
-/*
- * Once a card is wider than a sentence wants to be, the action moves off the
- * bottom and onto the right, so a gist reads across the rectangle instead of
- * stranding one line in a field of white. Only gists do this — a card holding
- * a whole chapter has enough to say to fill its own width.
- */
-@media (min-width: 1080px) {
-  .cardWide {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto 1fr;
-    column-gap: 40px;
-  }
-
-  .cardWide .thread {
-    grid-column: 1 / -1;
-  }
-
-  .cardWide .cardFoot {
-    align-content: center;
+/* The same step down, at the same width, the onboarding question takes. */
+@media (max-width: 42rem) {
+  .title {
+    font-size: clamp(1.55rem, 7vw, 2rem);
   }
 }
 
@@ -657,13 +719,11 @@
   }
 
   .card {
-    min-height: 0;
-    padding: 22px 20px 20px;
+    padding: 16px 17px 14px;
   }
 
-  .gistLine {
-    max-width: none;
-    font-size: clamp(25px, 7.4vw, 33px);
+  .chapterPanel {
+    padding: 17px 17px 19px;
   }
 
   .invitation {
