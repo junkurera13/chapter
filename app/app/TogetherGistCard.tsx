@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import AnchoredCopy, { type CopyAnchor } from "../../components/anchored-copy";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
+import type { IntroductionRecord } from "../../lib/introductionSchema";
 import { nextSaturdayIso } from "../../lib/nowClient";
 import type { TogetherChapterRecord } from "../../lib/togetherChapterSchema";
 import type { TogetherGist } from "../../lib/togetherGistSchema";
@@ -56,11 +57,16 @@ function statusLine(chapter: TogetherChapterRecord) {
  * above it. Every gist line names them by contract with the composer, so the
  * name becomes an orb chip in the same material people wear everywhere else —
  * one object, read once, instead of a header repeating what the line says.
+ *
+ * Someone you have not met has no name to light, so the sentence carries only
+ * the threads. The hollow orb in the status line stands in for them until the
+ * second yes gives them one.
  */
 function withPartner(
-  partnerName: string,
+  partnerName: string | undefined,
   anchors: readonly CopyAnchor[],
 ): CopyAnchor[] {
+  if (!partnerName) return [...anchors];
   return [
     ...anchors,
     { label: partnerName, category: "people", lit: true },
@@ -71,29 +77,36 @@ function withPartner(
  * One person, and whatever Chapter currently has to say about the two of you.
  *
  * A gist is the resting state: something Chapter noticed without being asked.
- * A chapter, once one exists, grows out of the same card — so the reason and
- * the thing it became are never two separate objects on screen.
+ * Before you have met, that gist names nobody and asks a question instead of
+ * offering a plan. After you have, it carries their name. Once a chapter grows
+ * from it, the chapter grows out of this same card — so the reason and the
+ * thing it became are never two separate objects on screen, and saying yes to
+ * a stranger does not swap one card for another.
  */
 export default function TogetherGistCard({
   partnerName,
   gist,
+  introduction,
   chapter,
   busy,
   notice,
   stageLabel,
   onGo,
+  onAnswer,
   onSend,
   onAccept,
   onDecline,
   onLived,
 }: {
-  partnerName: string;
+  partnerName?: string;
   gist?: TogetherGist;
+  introduction?: IntroductionRecord;
   chapter?: TogetherChapterRecord;
   busy: boolean;
   notice: string;
   stageLabel: string;
   onGo: () => void;
+  onAnswer: (answer: "yes" | "no") => void;
   onSend: (proposedFor: string) => void;
   onAccept: (scheduledFor: string) => void;
   onDecline: (reason: string) => void;
@@ -106,11 +119,20 @@ export default function TogetherGistCard({
   const [declineDraft, setDeclineDraft] = useState("");
 
   const content = chapter?.content;
-  const status = chapter ? statusLine(chapter) : "";
   const answerable = chapter?.status === "proposed" && chapter.role === "partner";
   const sendable = chapter?.status === "draft" && chapter.role === "initiator";
   const livable = chapter?.status === "accepted" && !chapter.youLived;
   const researching = chapter?.status === "researching";
+  const unanswered = introduction?.state === "offered";
+  const waiting = introduction?.state === "waiting";
+
+  const status = chapter
+    ? statusLine(chapter)
+    : introduction
+      ? (waiting ? "You said yes" : "Someone you haven’t met")
+      : "";
+  const line = gist?.line ?? introduction?.line ?? "";
+  const anchors = gist?.anchors ?? introduction?.anchors ?? [];
 
   const wide = Boolean(content || researching);
 
@@ -120,14 +142,25 @@ export default function TogetherGistCard({
       aria-busy={researching || undefined}
       aria-live={researching ? "polite" : undefined}
     >
-      {status ? <p className={styles.cardStatus}>{status}</p> : null}
+      {status ? (
+        <p className={styles.cardStatus}>
+          {introduction ? (
+            <span className={styles.strangerOrb} aria-hidden="true" />
+          ) : null}
+          {status}
+        </p>
+      ) : null}
 
       <div className={styles.cardBody}>
-        {gist ? (
-          <p className={content ? styles.gistLineQuiet : styles.gistLine}>
+        {line ? (
+          <p
+            className={content || waiting
+              ? styles.gistLineQuiet
+              : styles.gistLine}
+          >
             <AnchoredCopy
-              text={gist.line}
-              anchors={withPartner(partnerName, gist.anchors)}
+              text={line}
+              anchors={withPartner(partnerName, anchors)}
             />
           </p>
         ) : null}
@@ -190,7 +223,34 @@ export default function TogetherGistCard({
       </div>
 
       <div className={styles.cardFoot}>
-        {!chapter ? (
+        {/*
+          Before you have met, the card asks rather than plans. There is no
+          "Go together" here on purpose: there is no one to go with until
+          they have said yes too.
+        */}
+        {unanswered ? (
+          <div className={styles.actions}>
+            <button type="button" disabled={busy} onClick={() => onAnswer("yes")}>
+              I’d go
+            </button>
+            <button
+              type="button"
+              className={styles.quiet}
+              disabled={busy}
+              onClick={() => onAnswer("no")}
+            >
+              Not this one
+            </button>
+          </div>
+        ) : null}
+
+        {waiting ? (
+          <p className={styles.strangerWaiting}>
+            If they say yes too, you’ll both know.
+          </p>
+        ) : null}
+
+        {!chapter && !introduction ? (
           <div className={styles.actions}>
             <button type="button" disabled={busy} onClick={onGo}>
               Go together

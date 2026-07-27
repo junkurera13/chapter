@@ -18,12 +18,11 @@ import {
   TogetherRequestError,
 } from "../../lib/togetherClient";
 import type { IntroductionRecord } from "../../lib/introductionSchema";
-import type { TogetherChapterRecord } from "../../lib/togetherChapterSchema";
+import { buildEntries, isOpen } from "../../lib/togetherEntries";
 import type { TogetherGist } from "../../lib/togetherGistSchema";
 import { categoryOrbGradient } from "./categoryAppearance";
 import type { WorldNode } from "./graphData";
 import TogetherGistCard from "./TogetherGistCard";
-import TogetherIntroductionCard from "./TogetherIntroductionCard";
 import TogetherOpenToCard from "./TogetherOpenToCard";
 import TogetherFriendsCard, {
   type TogetherPerson,
@@ -40,67 +39,6 @@ const RESEARCH_STAGES = [
   "Checking it’s really there",
   "Writing your chapter",
 ] as const;
-
-const OPEN_STATUSES = ["researching", "draft", "proposed", "accepted"] as const;
-
-function isOpen(chapter: TogetherChapterRecord) {
-  return (OPEN_STATUSES as readonly string[]).includes(chapter.status);
-}
-
-/**
- * What Chapter leads with. Anything waiting on this person comes first, then
- * anything it is still working on, then the gists it simply noticed.
- */
-function priorityOf(chapter?: TogetherChapterRecord) {
-  if (!chapter) return 5;
-  if (chapter.status === "proposed") {
-    return chapter.role === "partner" ? 0 : 4;
-  }
-  if (chapter.status === "draft") return 1;
-  if (chapter.status === "researching") return 2;
-  if (chapter.status === "accepted") return 3;
-  return 5;
-}
-
-type TogetherEntry = {
-  connectionId: string;
-  partnerName: string;
-  gist?: TogetherGist;
-  chapter?: TogetherChapterRecord;
-};
-
-/**
- * One card per person Chapter has something to say about, whether that is a
- * gist it found on its own or a chapter already in motion. A person with both
- * gets one card, not two.
- */
-function buildEntries(
-  chapters: readonly TogetherChapterRecord[],
-  gists: readonly TogetherGist[],
-): TogetherEntry[] {
-  const byConnection = new Map<string, TogetherEntry>();
-  for (const gist of gists) {
-    byConnection.set(gist.connectionId, {
-      connectionId: gist.connectionId,
-      partnerName: gist.partnerName,
-      gist,
-    });
-  }
-  for (const chapter of chapters.filter(isOpen)) {
-    const existing = byConnection.get(chapter.connectionId);
-    byConnection.set(chapter.connectionId, {
-      connectionId: chapter.connectionId,
-      partnerName: existing?.partnerName || chapter.partnerName,
-      gist: existing?.gist,
-      chapter,
-    });
-  }
-  return [...byConnection.values()].sort(
-    (first, second) =>
-      priorityOf(first.chapter) - priorityOf(second.chapter) ||
-      first.partnerName.localeCompare(second.partnerName),
-  );
-}
 
 /**
  * Everyone in your world, sorted so the people Chapter can already work with
@@ -381,8 +319,8 @@ export default function TogetherView({
   );
 
   const entries = useMemo(
-    () => buildEntries(chapters, gists),
-    [chapters, gists],
+    () => buildEntries(chapters, gists, introductions),
+    [chapters, gists, introductions],
   );
   /**
    * A safety net for the people rail. A person's node normally carries the
@@ -458,8 +396,7 @@ export default function TogetherView({
   const noticeOrphaned = Boolean(
     notice &&
       noticeFor !== "open-to" &&
-      !entries.some((entry) => entry.connectionId === noticeFor) &&
-      !introductions.some((introduction) => introduction.id === noticeFor),
+      !entries.some((entry) => entry.id === noticeFor),
   );
 
   return (
@@ -470,34 +407,17 @@ export default function TogetherView({
           of an empty page, and a page that already has gists on it must never
           flash it on the way to filling up.
         */}
-        {entries.length + introductions.length > 0 ? (
+        {entries.length > 0 ? (
           <h1 className={styles.title}>
-            Chapter found {entries.length + introductions.length}{" "}
-            {entries.length + introductions.length === 1 ? "gist" : "gists"} for
-            you
+            Chapter found {entries.length}{" "}
+            {entries.length === 1 ? "gist" : "gists"} for you
           </h1>
         ) : reading ? null : (
           <h1 className={styles.title}>Chapter is looking for gists</h1>
         )}
 
-        {entries.length + introductions.length > 0 ? (
+        {entries.length > 0 ? (
           <div className={styles.gists}>
-            {/*
-              Strangers lead. A gist about a friend keeps until tomorrow; an
-              introduction is the one thing on this page that expires.
-            */}
-            {introductions.map((introduction) => (
-              <TogetherIntroductionCard
-                key={introduction.id}
-                introduction={introduction}
-                busy={busy}
-                notice={noticeFor === introduction.id ? notice : ""}
-                onAnswer={(answer) =>
-                  void onAnswerIntroduction(introduction.id, answer)
-                }
-              />
-            ))}
-
             {entries.map((entry) => {
               /**
                * Every chapter action is rendered by a card state that only exists
@@ -505,74 +425,77 @@ export default function TogetherView({
                * asserting it, so a stale render can't reach for a missing id.
                */
               const onChapter = (
-                act: (chapterId: string) => Promise<unknown>,
+                act: (chapterId: string, partnerName: string) => Promise<unknown>,
                 failureNotice: string,
               ) => {
-                const chapterId = entry.chapter?.id;
-                if (!chapterId) return;
+                const chapter = entry.chapter;
+                if (!chapter) return;
+                // A chapter carries the name it was planned with, so the one
+                // place a name is required is the one place it always exists.
                 void runAction(
-                  entry.connectionId,
-                  () => act(chapterId),
+                  entry.id,
+                  () =>
+                    act(chapter.id, entry.partnerName || chapter.partnerName),
                   failureNotice,
                 );
               };
 
               return (
               <TogetherGistCard
-                key={entry.connectionId}
+                key={entry.id}
                 partnerName={entry.partnerName}
                 gist={entry.gist}
+                introduction={entry.introduction}
                 chapter={entry.chapter}
                 busy={busy}
-                notice={noticeFor === entry.connectionId ? notice : ""}
+                notice={noticeFor === entry.id ? notice : ""}
                 stageLabel={RESEARCH_STAGES[stageIndex]}
+                onAnswer={(answer) =>
+                  void onAnswerIntroduction(entry.id, answer)
+                }
                 onGo={() => {
                   // Deep research costs real money, and a sample has no real
                   // person behind it. It says so rather than spending anything.
                   if (entry.gist?.demo) {
-                    setNoticeFor(entry.connectionId);
+                    setNoticeFor(entry.id);
                     setNotice("A sample, for now.");
                     return;
                   }
                   void runAction(
-                    entry.connectionId,
-                    () => startTogetherChapter(entry.connectionId),
+                    entry.id,
+                    () => startTogetherChapter(entry.id),
                     "Chapter couldn’t start writing.",
                   );
                 }}
                 onSend={(proposedFor) =>
                   onChapter(
-                    (chapterId) =>
-                      sendTogetherChapter(
-                        chapterId,
-                        proposedFor,
-                        entry.partnerName,
-                      ),
+                    (chapterId, partnerName) =>
+                      sendTogetherChapter(chapterId, proposedFor, partnerName),
                     "Chapter couldn’t send that.",
                   )
                 }
                 onAccept={(scheduledFor) =>
                   onChapter(
-                    (chapterId) =>
+                    (chapterId, partnerName) =>
                       acceptTogetherChapter(
                         chapterId,
                         scheduledFor,
-                        entry.partnerName,
+                        partnerName,
                       ),
                     "Chapter couldn’t save that.",
                   )
                 }
                 onDecline={(reason) =>
                   onChapter(
-                    (chapterId) =>
-                      declineTogetherChapter(chapterId, reason, entry.partnerName),
+                    (chapterId, partnerName) =>
+                      declineTogetherChapter(chapterId, reason, partnerName),
                     "Chapter couldn’t record that.",
                   )
                 }
                 onLived={() =>
                   onChapter(
-                    (chapterId) =>
-                      markTogetherChapterLived(chapterId, entry.partnerName),
+                    (chapterId, partnerName) =>
+                      markTogetherChapterLived(chapterId, partnerName),
                     "Chapter couldn’t record that.",
                   )
                 }
