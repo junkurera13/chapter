@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import ChapterLoadingMark from "./chapter-loading-mark";
 import {
@@ -23,7 +24,6 @@ type InviteState =
   | { status: "loading" }
   | { status: "ready"; preview: ConnectionInvitePreview; signedIn: boolean }
   | { status: "accepting"; preview: ConnectionInvitePreview }
-  | { status: "connected"; friendName: string }
   | { status: "error"; message: string };
 
 function ChapterMark() {
@@ -35,6 +35,7 @@ function ChapterMark() {
 }
 
 export default function InviteAcceptance({ code }: { code: string }) {
+  const router = useRouter();
   const [state, setState] = useState<InviteState>({ status: "loading" });
 
   useEffect(() => {
@@ -80,11 +81,10 @@ export default function InviteAcceptance({ code }: { code: string }) {
   async function accept(preview: ConnectionInvitePreview) {
     setState({ status: "accepting", preview });
     try {
-      const connection = await acceptConnectionInvite(code);
-      setState({
-        status: "connected",
-        friendName: connection.friendName || preview.inviterName || "your friend",
-      });
+      await acceptConnectionInvite(code);
+      // Straight into Together. A screen announcing the connection is one more
+      // tap between someone and the thing they came here to do.
+      router.replace("/app?view=together");
     } catch (error) {
       if (isBase44AuthError(error)) {
         clearBase44Session();
@@ -118,22 +118,6 @@ export default function InviteAcceptance({ code }: { code: string }) {
           <div className={styles.actions}>
             <Link className={styles.exploreAction} href="/">
               Explore Chapter
-            </Link>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
-  if (state.status === "connected") {
-    return (
-      <main className={styles.page}>
-        <section className={styles.card}>
-          <ChapterMark />
-          <h1>You and {state.friendName} are together now.</h1>
-          <div className={styles.actions}>
-            <Link className={styles.joinAction} href="/app?view=together">
-              Open Together
             </Link>
           </div>
         </section>
