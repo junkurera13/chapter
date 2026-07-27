@@ -1,97 +1,180 @@
 /**
- * Pure white background, no tints. Colour appears only where it carries
- * meaning: people are rose everywhere in Chapter's world
- * (categoryAppearance.ts), and the one unfamiliar thing speaks in Now's amber,
- * so a stretch reads the same on whichever tab you meet it.
+ * Together is a board of cards: gists filling the page, and one standing card
+ * of people off to the side, built from the same white-and-elevated material
+ * as Now's location card so the two tabs feel like one app.
+ *
+ * Pure white ground, no tints. Colour appears only where it carries meaning —
+ * rose is people everywhere in Chapter's world (categoryAppearance.ts), and
+ * the one unfamiliar thing speaks in the same amber it speaks in on Now.
  */
 
 .together,
 .state,
 .loading {
   min-height: 100svh;
-  padding: 84px 24px 132px;
   background: #fff;
   color: #25211d;
 }
 
+/*
+ * Edge to edge, the way the You world is. Nothing is centred in a column: the
+ * gists run out to the left rim and the people card sits against the right one,
+ * on the same 22px inset the You legend and Now's location card already use.
+ */
 .together {
-  width: min(680px, 100%);
-  margin: 0 auto;
-}
-
-.header {
-  max-width: 520px;
-}
-
-.header h1,
-.state h1 {
-  margin: 0;
-  color: #25211d;
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: clamp(36px, 6vw, 58px);
-  font-weight: 500;
-  letter-spacing: -0.045em;
-  line-height: 0.98;
-}
-
-.header > p:last-child {
-  max-width: 400px;
-  margin: 17px 0 0;
-  color: rgba(45, 39, 34, 0.5);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-/* A chapter is a letter, not a form: hairlines and air, no nested boxes. */
-.cards {
   display: grid;
-  gap: 14px;
-  margin-top: 40px;
+  width: 100%;
+  padding: 22px 22px 132px;
+  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  align-items: start;
 }
 
+.state,
+.loading {
+  padding: 32px 24px 132px;
+}
+
+.main {
+  display: grid;
+  min-width: 0;
+  gap: 26px;
+  align-content: start;
+}
+
+.gists {
+  display: grid;
+  gap: 16px;
+}
+
+/*
+ * The gist card. Rectangular on purpose: a wide, low card that holds one
+ * sentence the way a plate holds one thing, with the thread across the top and
+ * whatever there is to do pinned along the bottom.
+ */
 .card {
   display: grid;
-  gap: 11px;
-  padding: 26px 24px 22px;
-  border: 1px solid rgba(57, 48, 43, 0.09);
-  border-radius: 20px;
+  min-height: 15rem;
+  padding: 24px 26px 22px;
+  border-radius: 18px;
+  grid-template-rows: auto 1fr auto;
+  gap: 16px;
   background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.075),
+    0 12px 28px -16px rgba(0, 0, 0, 0.45),
+    0 3px 8px -4px rgba(0, 0, 0, 0.14);
+  animation: rise 460ms cubic-bezier(0.16, 0.84, 0.28, 1) both;
 }
 
-.cardResearching {
-  justify-items: center;
-  padding: 34px 24px 30px;
-  text-align: center;
+.cardBody {
+  display: grid;
+  align-content: center;
+  gap: 11px;
+  min-width: 0;
 }
 
-.researchNote {
-  max-width: 320px;
+.cardFoot {
+  display: grid;
+  gap: 10px;
+  align-content: end;
+}
+
+.cardFoot:empty {
+  display: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* You, them, and the line that turned out to run between you. */
+.thread {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
-  color: rgba(45, 39, 34, 0.45);
+}
+
+.threadOrb {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  box-shadow:
+    inset 3px 3px 5px rgba(255, 255, 255, 0.34),
+    inset -2px -3px 5px rgba(56, 25, 34, 0.2),
+    0 2px 7px rgba(96, 56, 70, 0.18);
+}
+
+.threadName {
+  color: rgba(45, 39, 34, 0.62);
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.threadLine {
+  height: 1px;
+  min-width: 18px;
+  flex: 1 1 auto;
+  margin: 0 3px;
+  background: linear-gradient(
+    90deg,
+    rgba(96, 56, 70, 0.28),
+    rgba(57, 48, 43, 0.1) 50%,
+    rgba(96, 56, 70, 0.28)
+  );
+}
+
+/* The gist itself. This is the largest thing on the page for a reason. */
+.gistLine {
+  --anchor-orb-size: 0.42em;
+  --anchor-orb-gap: 0.14em;
+
+  max-width: 24ch;
+  margin: 0;
+  color: #1c1c19;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(25px, 2.9vw, 46px);
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 1.06;
+  text-wrap: balance;
+}
+
+/* Once a chapter grew from it, the gist becomes the reason, not the news. */
+.gistLineQuiet {
+  max-width: 44ch;
+  margin: 0;
+  color: rgba(45, 39, 34, 0.58);
   font-size: 13px;
   line-height: 1.5;
 }
 
-.kicker {
-  margin: 0;
-  color: rgba(96, 56, 70, 0.62);
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.researching {
+  display: grid;
+  justify-items: center;
+  padding: 6px 0;
 }
 
 .cardTitle {
-  margin: 0;
+  margin: 6px 0 0;
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: clamp(27px, 4.6vw, 35px);
+  font-size: clamp(25px, 3vw, 32px);
   font-weight: 500;
   letter-spacing: -0.042em;
-  line-height: 1.02;
+  line-height: 1.03;
 }
 
 .cardStatus {
-  margin: -4px 0 0;
+  margin: 0;
   color: rgba(45, 39, 34, 0.44);
   font-size: 12px;
 }
@@ -99,7 +182,7 @@
 /* Chapter's own voice, in the face it already speaks with in Chat and You. */
 .invitation {
   max-width: 46ch;
-  margin: 7px 0 0;
+  margin: 6px 0 0;
   color: rgba(37, 33, 29, 0.88);
   font-family: var(--font-chapter-serif), Georgia, serif;
   font-size: 18px;
@@ -172,44 +255,38 @@
   text-underline-offset: 3px;
 }
 
-.acceptRow {
+/* Choosing a day is the small half of this, so it is sized like the small half. */
+.handoff {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-top: 8px;
+  gap: 10px;
+  align-items: center;
 }
 
 .proposedFor {
-  margin: 0 0 12px;
+  margin: 0;
   color: rgba(45, 39, 34, 0.62);
   font-size: 13px;
+  font-weight: 590;
 }
 
-.dateField {
-  display: grid;
-  gap: 5px;
-  color: rgba(49, 44, 38, 0.4);
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.dateField input,
+.dateField,
 .declineForm input {
   min-height: 42px;
-  padding: 9px 12px;
+  padding: 9px 13px;
   border: 1px solid rgba(57, 48, 43, 0.14);
-  border-radius: 12px;
+  border-radius: 999px;
   background: #fff;
   color: #25211d;
   font-family: inherit;
   font-size: 13px;
 }
 
-.dateField input:focus-visible,
+.declineForm input {
+  border-radius: 14px;
+}
+
+.dateField:focus-visible,
 .declineForm input:focus-visible {
   outline: 2px solid rgba(201, 118, 135, 0.85);
   outline-offset: 1px;
@@ -218,7 +295,6 @@
 .declineForm {
   display: grid;
   gap: 10px;
-  margin-top: 8px;
 }
 
 .actions {
@@ -228,8 +304,8 @@
 }
 
 .actions button {
-  min-height: 44px;
-  padding: 11px 19px;
+  min-height: 42px;
+  padding: 11px 21px;
   appearance: none;
   border: 0;
   border-radius: 999px;
@@ -239,6 +315,11 @@
   font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 12px;
   font-weight: 620;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
 }
 
 .actions button:disabled {
@@ -253,66 +334,164 @@
 }
 
 .actions button:focus-visible,
-.planButton:focus-visible,
-.addButton:focus-visible,
+.inviteButton:focus-visible,
 .state button:focus-visible {
   outline: 2px solid rgba(201, 118, 135, 0.85);
   outline-offset: 3px;
 }
 
 .notice {
-  margin: 4px 0 0;
+  margin: 0;
   color: rgba(150, 74, 74, 0.82);
   font-size: 12px;
 }
 
-.people {
-  display: grid;
-  gap: 2px;
-  margin-top: 48px;
-  border-top: 1px solid rgba(57, 48, 43, 0.08);
+.quietHeading {
+  max-width: 15ch;
+  margin: 0;
+  color: #25211d;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(30px, 4vw, 42px);
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 1.02;
+  text-wrap: balance;
 }
 
-.person {
+/*
+ * The people card. Same material as Now's location card — white, an orb and a
+ * title across the top, elevated off the page — and sticky, so it stays with
+ * you while the gists scroll past it.
+ */
+.rail {
+  position: sticky;
+  top: 22px;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
-  gap: 13px;
-  min-height: 68px;
-  padding: 12px 2px;
+  gap: 24px;
+  align-content: start;
+}
+
+.friends {
+  padding: 12px 12px 6px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 12px 28px rgba(0, 0, 0, 0.11),
+    0 4px 8px rgba(0, 0, 0, 0.07);
+}
+
+.friendsHeader {
+  display: flex;
   align-items: center;
-  border-bottom: 1px solid rgba(57, 48, 43, 0.08);
+  min-width: 0;
+  gap: 8px;
+  margin: 0;
+  padding: 3px 3px 10px;
 }
 
-/* The people orb, in the colour people already have everywhere else. */
-.personOrb {
+.friendsOrb {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  box-shadow:
+    inset 3px 4px 5px rgba(255, 255, 255, 0.24),
+    inset -2px -3px 5px rgba(24, 17, 13, 0.18),
+    0 2px 5px rgba(47, 34, 24, 0.13);
+}
+
+.friendsTitle {
+  flex: 1;
+  min-width: 0;
+  color: #1c1c19;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.friendsCount {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(28, 28, 25, 0.05);
+  color: rgba(28, 28, 25, 0.5);
+  font-size: 11px;
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+}
+
+.friendsList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.friend {
   display: grid;
-  width: 42px;
-  height: 42px;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 9px;
+  min-height: 46px;
+  padding: 5px 3px;
+  align-items: center;
+  border-top: 1px solid rgba(57, 48, 43, 0.07);
+}
+
+/* Here, and lit. */
+.friendOrb {
+  display: grid;
+  width: 27px;
+  height: 27px;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 24%, #ffe9ed, #c97687 48%, #603846 100%);
   box-shadow:
-    inset 6px 7px 12px rgba(255, 255, 255, 0.3),
-    inset -5px -6px 10px rgba(56, 25, 34, 0.22),
-    0 5px 14px rgba(96, 56, 70, 0.14);
+    inset 4px 5px 8px rgba(255, 255, 255, 0.3),
+    inset -3px -4px 7px rgba(56, 25, 34, 0.22),
+    0 3px 9px rgba(96, 56, 70, 0.14);
   color: rgba(255, 240, 243, 0.92);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 680;
 }
 
-.personName {
+/* A link is out. Still them, held at the edge of the world. */
+.friendOrbWaiting {
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(96, 56, 70, 0.28);
+  opacity: 0.4;
+}
+
+/* Only a memory so far — an outline where an orb would be. */
+.friendOrbHollow {
+  border: 1px dashed rgba(96, 56, 70, 0.34);
+  background: transparent;
+  box-shadow: none;
+}
+
+.friendName {
   overflow: hidden;
   color: rgba(37, 33, 29, 0.84);
-  font-size: 15px;
-  font-weight: 590;
+  font-size: 14px;
+  font-weight: 570;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.planButton {
-  min-height: 38px;
-  padding: 9px 15px;
+.friendTag {
+  color: rgba(49, 44, 38, 0.32);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.inviteButton {
+  min-height: 30px;
+  padding: 6px 12px;
   appearance: none;
   border: 1px solid rgba(57, 48, 43, 0.16);
   border-radius: 999px;
@@ -323,59 +502,70 @@
   font-size: 11px;
   font-weight: 620;
   white-space: nowrap;
+  transition: background 150ms ease;
 }
 
-.planButton:disabled {
+.inviteButton:hover:not(:disabled) {
+  background: rgba(28, 28, 25, 0.05);
+}
+
+.inviteButton:disabled {
   cursor: default;
   opacity: 0.4;
 }
 
-.past,
-.pending {
-  margin-top: 36px;
-}
-
-.past > p,
-.pending > p {
+.railLabel {
   margin: 0;
-  color: rgba(49, 44, 38, 0.36);
+  color: rgba(49, 44, 38, 0.34);
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.past > div {
+.past ul {
+  margin: 11px 0 0;
+  padding: 0;
   display: grid;
-  gap: 7px;
-  margin-top: 11px;
+  gap: 8px;
+  list-style: none;
 }
 
-.past span {
+.past li {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
   color: rgba(52, 41, 58, 0.55);
   font-size: 12px;
 }
 
-.pending > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 10px;
+.past li span:last-child {
+  color: rgba(52, 41, 58, 0.36);
 }
 
-.pending span {
-  padding: 7px 11px;
-  border: 1px solid rgba(96, 56, 70, 0.11);
-  border-radius: 999px;
-  background: #fff;
-  color: rgba(52, 41, 45, 0.6);
-  font-size: 11px;
+.state {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
 }
 
-.addButton,
+.state h1 {
+  max-width: 14ch;
+  margin: 0;
+  color: #25211d;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(34px, 6vw, 50px);
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
 .state button {
   min-height: 44px;
-  padding: 11px 19px;
+  margin-top: 26px;
+  padding: 11px 21px;
   appearance: none;
   border: 0;
   border-radius: 999px;
@@ -387,39 +577,12 @@
   font-weight: 620;
 }
 
-.addButton {
-  margin-top: 44px;
-}
-
-.state {
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  text-align: center;
-}
-
-.state h1 {
-  max-width: 560px;
-}
-
-.stateCopy {
-  max-width: 430px;
-  margin: 18px 0 0;
-  color: rgba(45, 39, 34, 0.54);
-  font-size: 14px;
-  line-height: 1.55;
-}
-
-.state button {
-  margin-top: 24px;
-}
-
 /* Two people, overlapping. The same orb material, one in each warmth. */
 .emptyOrbs {
   position: relative;
   width: 74px;
   height: 48px;
-  margin-bottom: 24px;
+  margin-bottom: 26px;
 }
 
 .emptyOrbs span {
@@ -434,12 +597,10 @@
 
 .emptyOrbs span:first-child {
   left: 0;
-  background: radial-gradient(circle at 34% 24%, #ffe9ed, #c97687 48%, #603846 100%);
 }
 
 .emptyOrbs span:last-child {
   right: 0;
-  background: radial-gradient(circle at 34% 24%, #fff1e8, #c7795f 48%, #442422 100%);
 }
 
 .loading {
@@ -447,33 +608,85 @@
   place-items: center;
 }
 
+/*
+ * Once a card is wider than a sentence wants to be, the action moves off the
+ * bottom and onto the right, so a gist reads across the rectangle instead of
+ * stranding one line in a field of white. Only gists do this — a card holding
+ * a whole chapter has enough to say to fill its own width.
+ */
+@media (min-width: 1080px) {
+  .cardWide {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr;
+    column-gap: 40px;
+  }
+
+  .cardWide .thread {
+    grid-column: 1 / -1;
+  }
+
+  .cardWide .cardFoot {
+    align-content: center;
+  }
+}
+
+/* No side to sit on: the rail falls in under the gists it served. */
+@media (max-width: 900px) {
+  .together {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 34px;
+  }
+
+  .rail {
+    position: static;
+    width: min(22rem, 100%);
+    margin: 0 auto;
+  }
+}
+
 @media (max-width: 620px) {
-  .together,
+  .together {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
   .state,
   .loading {
     padding-right: 20px;
     padding-left: 20px;
   }
 
-  .header h1,
-  .state h1 {
-    font-size: 40px;
+  .card {
+    min-height: 0;
+    padding: 22px 20px 20px;
   }
 
-  .card {
-    padding: 22px 18px 20px;
+  .gistLine {
+    max-width: none;
+    font-size: clamp(25px, 7.4vw, 33px);
   }
 
   .invitation {
     font-size: 17px;
   }
 
-  .acceptRow {
+  .handoff {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .acceptRow .actions button {
-    flex: 1;
+  .handoff .actions,
+  .handoff .actions button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+
+  .actions button:hover:not(:disabled) {
+    transform: none;
   }
 }

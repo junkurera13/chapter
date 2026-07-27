@@ -5,19 +5,17 @@ It meets them in iMessage, turns that experience into a private graph of
 people, places, activities, feelings, and patterns, and lets them explore that
 growing picture in the authenticated **You** view.
 
+That private world is then used for something. **Now** writes a single
+real chapter to live this weekend in the person's own city, researched
+against the live web rather than generated from a list. **Together** does the
+same thing for two people who have connected, planning only from what their
+two worlds turn out to share.
+
 This is the Base44 Backend Build-Off edition. Base44 owns authentication,
 private file storage, account-to-phone linking, conversations, autobiographical
-memory sources, graph validation, and persistence. Chapter itself is an Eve
-agent using 2026 models directly through OpenRouter:
-`moonshotai/kimi-k2.6` for multimodal memory extraction and
-`deepseek/deepseek-v4-flash` for text conversations. Photon is used only as the
-bridge to iMessage. Named people become distinct nodes, and a private
-connection invite can link two authenticated accounts without exposing either
-person’s memories.
-
-The new **Now** experience has not been built yet. There is deliberately no
-generated invitation, itinerary, or public experience page in the current
-product.
+memory sources, graph validation, connection invites, and persistence. Named
+people become distinct nodes, and a private connection invite can link two
+authenticated accounts without exposing either person's memories.
 
 ## Live app
 
@@ -36,37 +34,78 @@ web / iMessage <-> Next.js <-> Eve <-> OpenRouter
                          |
                          v
               Base44 conversation + memory graph
-
-People node -> hashed private invite -> verified friend -> reciprocal nodes
-                                                     |
-                                                     v
-                                                  Together
+                         |
+          +--------------+---------------+
+          v                              v
+        Now                          Together
+  home city + graph            People node -> hashed private invite
+          |                    -> verified friend -> reciprocal nodes
+          v                              |
+  deep research (Parallel)               v
+          |                    shared threads -> gist
+          v                              |
+   one chapter to live                   v
+                              deep research -> chapter -> propose
+                                             -> accept -> lived
 ```
 
+## Models
+
+Chapter calls 2026 models directly through OpenRouter, and Parallel AI for
+web research. Every model choice is overridable by environment variable.
+
+| Path | Model | Override |
+| --- | --- | --- |
+| Onboarding memory extraction (multimodal) | `google/gemini-3.1-flash-lite`, falling back to `moonshotai/kimi-k2.6` | `CHAPTER_MEMORY_MODEL`, `CHAPTER_MEMORY_FALLBACK_MODEL` |
+| Eve conversation (web + iMessage) | `deepseek/deepseek-v4-flash` for text, `moonshotai/kimi-k2.6` for image-bearing turns | — |
+| Now / Together briefs, chapters, gists | `moonshotai/kimi-k2.6`, falling back to `deepseek/deepseek-v4-flash` | `CHAPTER_NOW_MODEL`, `CHAPTER_NOW_FALLBACK_MODEL` |
+| Now / Together web research | Parallel AI `core` processor | `CHAPTER_NOW_PROCESSOR` |
+
+OpenRouter calls are pinned to zero-data-retention providers with
+`data_collection: "deny"`.
+
+## How the pieces fit
+
 - `sidequest-data` handles authenticated session ownership, phone-account
-  linking, private graph retrieval, connection invites, and reciprocal nodes.
-- Eve owns the durable Chapter conversation and structured multimodal memory
-  extraction. It routes image-bearing extraction sessions to Kimi K2.6 and
-  text conversation sessions to DeepSeek V4 Flash through OpenRouter. The same
-  Eve conversation session continues across the web and iMessage.
+  linking, private graph retrieval, connection invites, reciprocal nodes, home
+  city, and Now/Together chapter records.
+- Eve owns the durable Chapter conversation. The same Eve session continues
+  across the web and iMessage. Onboarding extraction does **not** go through
+  Eve — it calls OpenRouter directly so the first memory never depends on the
+  agent sandbox.
 - `sidequest-memory` preserves text and private-image sources before extraction,
-  signs short-lived image URLs, then validates and persists Eve’s result.
-- `sidequest-message` deduplicates inbound messages, stores Eve’s opaque session
+  signs short-lived image URLs, then validates and persists the result.
+- `sidequest-message` deduplicates inbound messages, stores Eve's opaque session
   cursor, and records reply delivery.
+- Photon is used only as the bridge between Apple Messages and the signed
+  Next.js webhook. Base44 remains the source of truth.
 - The deployed Base44 resource IDs retain their pre-rebrand `sidequest-*`
   slugs as compatibility contracts. They are internal identifiers, not product
   branding.
-- Seven Base44 entities hold accounts, messages, source memories, graph nodes,
-  graph edges, connection invites, and accepted connections.
+- Ten Base44 entities hold accounts, messages, memories, source memories, graph
+  nodes, graph edges, connection invites, accepted connections, Now chapters,
+  and Together chapters.
 - Raw invite tokens are never persisted. Base44 stores only a SHA-256 hash,
   and an accepted token links exact user IDs rather than guessing from names.
 
+### What Together is allowed to say
+
+Together reduces each private graph to a shareable cut — places, activities,
+and interests only. Feelings, people, conditions, patterns, and the memories
+themselves never leave the server.
+
+A **gist** is narrower still: it reveals only the intersection of the two
+worlds, so every sentence is already true on both sides. Composition is the
+initiator's job alone; the partner polls the same endpoint but cannot see or
+advance a draft, and so cannot spend a research run they don't know exists.
+
 ## Local development
 
-Requires Node.js 24, a Base44 account, an OpenRouter API key, and a
-`SIDEQUEST_INTERNAL_SECRET` for Eve’s internal channel. Authenticated web memory
-requests use the signed-in Base44 session; production-only phone and internal
-requests still require the deployed backend’s matching compatibility secret.
+Requires Node.js 24, a Base44 account, an OpenRouter API key, a Parallel AI key
+for Now/Together research, and a `SIDEQUEST_INTERNAL_SECRET` for Eve's internal
+channel. Authenticated web memory requests use the signed-in Base44 session;
+production-only phone and internal requests still require the deployed
+backend's matching compatibility secret.
 
 ```bash
 npm install
@@ -81,10 +120,10 @@ only be enabled explicitly while diagnosing or testing its sandbox runtime:
 CHAPTER_ENABLE_LOCAL_EVE=1 npm run dev
 ```
 
-Production builds continue to include Eve for experience planning and
-messaging. For local release verification without Eve or its sandbox runtime,
-use `npm run build:safe`. The local dev command uses webpack because the
-Turbopack compiler is not stable with Chapter's current landing bundle.
+Production builds continue to include Eve for messaging. For local release
+verification without Eve or its sandbox runtime, use `npm run build:safe`. The
+local dev command uses webpack because the Turbopack compiler is not stable
+with Chapter's current landing bundle.
 
 The app defaults to the deployed competition backend. To point it at another
 Base44 app:
@@ -93,9 +132,9 @@ Base44 app:
 NEXT_PUBLIC_BASE44_APP_ID=your_app_id npm run dev
 ```
 
-The Photon bridge also needs its project credentials and webhook secret. Eve
-reads `OPENROUTER_API_KEY` at runtime and calls OpenRouter directly. Never
-commit that value.
+Runtime secrets: `OPENROUTER_API_KEY`, `PARALLEL_API_KEY`,
+`SIDEQUEST_INTERNAL_SECRET`, `IMESSAGE_WEBHOOK_SECRET`, and the Photon /
+iMessage project credentials. Never commit these values.
 
 ## Verification
 
@@ -107,9 +146,13 @@ npx eve info --json
 npx eve channels list --json
 ```
 
+`npm test` currently runs 178 tests across 28 files.
+
 The production pass should additionally verify Google sign-in, phone linking,
 the iMessage webhook health route, one real memory turn, private graph
-retrieval, a two-account connection acceptance, and mobile overflow.
+retrieval, a two-account connection acceptance, a Now chapter from home city
+through research to accepted, a Together gist and chapter across two accounts,
+and mobile overflow.
 
-See [`BUILD_JOURNAL.md`](./BUILD_JOURNAL.md) for the current build state and
+See [`BUILD_JOURNAL.md`](./BUILD_JOURNAL.md) for the build history and
 [`SUBMISSION.md`](./SUBMISSION.md) for the competition draft.

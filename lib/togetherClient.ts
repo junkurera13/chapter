@@ -1,6 +1,7 @@
 import { getAccessToken } from "@base44/sdk";
 
 import type { TogetherChapterRecord } from "./togetherChapterSchema";
+import type { TogetherGistsState } from "./togetherGistSchema";
 
 export type TogetherState = {
   homeCity: string;
@@ -20,6 +21,7 @@ export class TogetherRequestError extends Error {
 }
 
 async function togetherFetch<T>(init?: {
+  path?: string;
   method?: "POST";
   body?: Record<string, unknown>;
 }): Promise<T> {
@@ -32,7 +34,7 @@ async function togetherFetch<T>(init?: {
     );
   }
 
-  const response = await fetch("/api/together", {
+  const response = await fetch(`/api/together${init?.path ?? ""}`, {
     method: init?.method ?? "GET",
     headers: {
       Accept: "application/json",
@@ -58,6 +60,11 @@ async function togetherFetch<T>(init?: {
 
 export function loadTogether() {
   return togetherFetch<TogetherState>();
+}
+
+/** Read once when Together opens: what each of your worlds turns out to share. */
+export function loadTogetherGists() {
+  return togetherFetch<TogetherGistsState>({ path: "/gists" });
 }
 
 export function startTogetherChapter(connectionId: string) {

@@ -150,7 +150,11 @@ export default function ChapterApp({
     displayedIndex === 1 ? (
       <NowView onGraphAdvanced={queueGraphLoad} />
     ) : displayedIndex === 2 ? (
-      <TogetherView onOpenYou={() => changeTab(0)} />
+      <TogetherView
+        nodes={worldGraph?.nodes ?? []}
+        onOpenYou={() => changeTab(0)}
+        onGraphAdvanced={queueGraphLoad}
+      />
     ) : (
       youPanel
     );

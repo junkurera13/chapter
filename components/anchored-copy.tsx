@@ -67,7 +67,28 @@ export default function AnchoredCopy({
         return next;
       });
     }
-    return segments;
+
+    // An anchor chip is a nowrap island, so punctuation that follows it is free
+    // to fall onto the next line by itself. Pull it inside the island: a full
+    // stop belongs to the sentence it ends, not to the line after it.
+    const joined: Array<{ text: string; anchor?: CopyAnchor }> = [];
+    for (const segment of segments) {
+      const previous = joined[joined.length - 1];
+      const trailing = segment.anchor
+        ? undefined
+        : /^[.,;:!?'’")\]]+/.exec(segment.text)?.[0];
+      if (previous?.anchor && trailing) {
+        joined[joined.length - 1] = {
+          ...previous,
+          text: previous.text + trailing,
+        };
+        const rest = segment.text.slice(trailing.length);
+        if (rest) joined.push({ text: rest });
+        continue;
+      }
+      joined.push(segment);
+    }
+    return joined;
   }, [text, anchors]);
 
   return (

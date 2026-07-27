@@ -1,15 +1,21 @@
+/*
+ * The orb is sized in absolute pixels because most copy that carries anchors
+ * is body copy. Where the copy is set large — Together's parallel line — the
+ * surrounding rule raises these two variables so the orb keeps its proportion
+ * instead of shrinking into a speck beside 34px type.
+ */
 .anchor {
   display: inline-flex;
   align-items: baseline;
-  gap: 4px;
+  gap: var(--anchor-orb-gap, 4px);
   font-weight: 620;
   white-space: nowrap;
 }
 
 .anchorOrb {
   display: inline-block;
-  width: 11px;
-  height: 11px;
+  width: var(--anchor-orb-size, 11px);
+  height: var(--anchor-orb-size, 11px);
   align-self: center;
   border-radius: 50%;
   box-shadow:

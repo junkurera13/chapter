@@ -81,7 +81,7 @@ export function buildPlanningDigest(
 }
 
 /** Node ids for shareable labels, so an anchor can be resolved back to orbs. */
-function shareableNodeIdsByLabel(graph: TogetherPlanningGraph) {
+export function shareableNodeIdsByLabel(graph: TogetherPlanningGraph) {
   const byLabel = new Map<string, string>();
   for (const node of [...graph.nodes].sort(
     (first, second) => second.salience - first.salience,

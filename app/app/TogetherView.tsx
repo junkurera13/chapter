@@ -1,16 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import AnchoredCopy from "../../components/anchored-copy";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
-import { loadMyConnections } from "../../lib/base44Connections";
-import type { MyConnectionsRecord } from "../../lib/backendTypes";
-import { nextSaturdayIso } from "../../lib/nowClient";
 import {
   acceptTogetherChapter,
   declineTogetherChapter,
   loadTogether,
+  loadTogetherGists,
   markTogetherChapterLived,
   sendTogetherChapter,
   startTogetherChapter,
@@ -18,6 +15,13 @@ import {
   TogetherRequestError,
 } from "../../lib/togetherClient";
 import type { TogetherChapterRecord } from "../../lib/togetherChapterSchema";
+import type { TogetherGist } from "../../lib/togetherGistSchema";
+import { categoryOrbGradient } from "./categoryAppearance";
+import type { WorldNode } from "./graphData";
+import TogetherGistCard from "./TogetherGistCard";
+import TogetherFriendsCard, {
+  type TogetherPerson,
+} from "./TogetherFriendsCard";
 import styles from "./TogetherView.module.css";
 
 /** Fast only while a chapter is actually being written; idle otherwise. */
@@ -25,42 +29,11 @@ const RESEARCH_POLL_MS = 8_000;
 
 const RESEARCH_STAGES = [
   "Reading both your worlds",
-  "Finding the thread you share",
+  "Following the thread you share",
   "Searching where lists don’t reach",
   "Checking it’s really there",
   "Writing your chapter",
 ] as const;
-
-type ViewState =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | {
-      status: "ready";
-      together: TogetherState;
-      connections: MyConnectionsRecord;
-    };
-
-function initialFor(name: string) {
-  return name.trim().charAt(0).toUpperCase() || "·";
-}
-
-function todayIso() {
-  const date = new Date();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function friendlyDate(iso?: string) {
-  if (!iso) return "";
-  const parsed = new Date(`${iso}T12:00:00`);
-  if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 const OPEN_STATUSES = ["researching", "draft", "proposed", "accepted"] as const;
 
@@ -68,225 +41,111 @@ function isOpen(chapter: TogetherChapterRecord) {
   return (OPEN_STATUSES as readonly string[]).includes(chapter.status);
 }
 
-/** The one-line state of a card, in the second person. */
-function statusLine(chapter: TogetherChapterRecord) {
-  const { role, status, partnerName } = chapter;
-  if (status === "researching") return `Chapter is writing this for you and ${partnerName}`;
-  if (status === "draft") return "Only you can see this";
-  if (status === "proposed") {
-    return role === "initiator"
-      ? `Waiting on ${partnerName}`
-      : `${partnerName} planned this for you`;
+/**
+ * What Chapter leads with. Anything waiting on this person comes first, then
+ * anything it is still working on, then the gists it simply noticed.
+ */
+function priorityOf(chapter?: TogetherChapterRecord) {
+  if (!chapter) return 5;
+  if (chapter.status === "proposed") {
+    return chapter.role === "partner" ? 0 : 4;
   }
-  if (status === "accepted") {
-    return chapter.youLived
-      ? `Waiting for ${partnerName} to say how it went`
-      : `On for ${friendlyDate(chapter.scheduledFor)}`;
-  }
-  if (status === "lived") return `You and ${partnerName} lived this`;
-  if (status === "declined") {
-    return chapter.declinedByRole === role
-      ? "You passed on this one"
-      : `${partnerName} couldn’t make that one`;
-  }
-  return "That search came home empty-handed";
+  if (chapter.status === "draft") return 1;
+  if (chapter.status === "researching") return 2;
+  if (chapter.status === "accepted") return 3;
+  return 5;
 }
 
-function ChapterCard({
-  chapter,
-  busy,
-  notice,
-  stageLabel,
-  onSend,
-  onAccept,
-  onDecline,
-  onLived,
+type TogetherEntry = {
+  connectionId: string;
+  partnerName: string;
+  gist?: TogetherGist;
+  chapter?: TogetherChapterRecord;
+};
+
+/**
+ * One card per person Chapter has something to say about, whether that is a
+ * gist it found on its own or a chapter already in motion. A person with both
+ * gets one card, not two.
+ */
+function buildEntries(
+  chapters: readonly TogetherChapterRecord[],
+  gists: readonly TogetherGist[],
+): TogetherEntry[] {
+  const byConnection = new Map<string, TogetherEntry>();
+  for (const gist of gists) {
+    byConnection.set(gist.connectionId, {
+      connectionId: gist.connectionId,
+      partnerName: gist.partnerName,
+      gist,
+    });
+  }
+  for (const chapter of chapters.filter(isOpen)) {
+    const existing = byConnection.get(chapter.connectionId);
+    byConnection.set(chapter.connectionId, {
+      connectionId: chapter.connectionId,
+      partnerName: existing?.partnerName || chapter.partnerName,
+      gist: existing?.gist,
+      chapter,
+    });
+  }
+  return [...byConnection.values()].sort(
+    (first, second) =>
+      priorityOf(first.chapter) - priorityOf(second.chapter) ||
+      first.partnerName.localeCompare(second.partnerName),
+  );
+}
+
+/**
+ * Everyone in your world, sorted so the people Chapter can already work with
+ * come first and the ones still only in your memories sit below them.
+ */
+function buildPeople(
+  nodes: readonly WorldNode[],
+  connectedNames: ReadonlySet<string>,
+): TogetherPerson[] {
+  const order: Record<TogetherPerson["presence"], number> = {
+    connected: 0,
+    invited: 1,
+    remembered: 2,
+  };
+  return nodes
+    .filter((node) => node.category === "people")
+    .map((node) => ({
+      nodeId: node.key,
+      name: node.label,
+      presence: (node.linkedUserId ||
+        node.connectionId ||
+        connectedNames.has(node.label.trim().toLowerCase())
+        ? "connected"
+        : node.inviteStatus === "pending"
+          ? "invited"
+          : "remembered") as TogetherPerson["presence"],
+    }))
+    .sort(
+      (first, second) =>
+        order[first.presence] - order[second.presence] ||
+        first.name.localeCompare(second.name),
+    );
+}
+
+type ViewState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ready"; together: TogetherState };
+
+export default function TogetherView({
+  nodes,
+  onOpenYou,
+  onGraphAdvanced,
 }: {
-  chapter: TogetherChapterRecord;
-  busy: boolean;
-  notice: string;
-  stageLabel: string;
-  onSend: (proposedFor: string) => void;
-  onAccept: (scheduledFor: string) => void;
-  onDecline: (reason: string) => void;
-  onLived: () => void;
+  nodes: readonly WorldNode[];
+  onOpenYou: () => void;
+  onGraphAdvanced?: () => void;
 }) {
-  const [dateDraft, setDateDraft] = useState(
-    chapter.proposedFor || nextSaturdayIso(),
-  );
-  const [declining, setDeclining] = useState(false);
-  const [declineDraft, setDeclineDraft] = useState("");
-
-  const content = chapter.content;
-  const anchors = chapter.brief?.anchors ?? [];
-
-  if (chapter.status === "researching") {
-    return (
-      <article
-        className={`${styles.card} ${styles.cardResearching}`}
-        aria-busy="true"
-        aria-live="polite"
-      >
-        <p className={styles.kicker}>With {chapter.partnerName}</p>
-        <ChapterLoadingMark label={stageLabel} />
-        <p className={styles.researchNote}>
-          Deep research takes a few minutes. It’s looking past the obvious.
-        </p>
-      </article>
-    );
-  }
-
-  if (!content) {
-    return (
-      <article className={styles.card}>
-        <p className={styles.kicker}>With {chapter.partnerName}</p>
-        <p className={styles.cardStatus}>{statusLine(chapter)}</p>
-      </article>
-    );
-  }
-
-  const answerable = chapter.status === "proposed" && chapter.role === "partner";
-  const sendable = chapter.status === "draft" && chapter.role === "initiator";
-  const livable = chapter.status === "accepted" && !chapter.youLived;
-
-  return (
-    <article className={styles.card}>
-      <p className={styles.kicker}>With {chapter.partnerName}</p>
-      <h2 className={styles.cardTitle}>{content.title}</h2>
-      <p className={styles.cardStatus}>{statusLine(chapter)}</p>
-
-      <p className={styles.invitation}>
-        <AnchoredCopy text={content.invitation} anchors={anchors} />
-      </p>
-
-      <div className={styles.knownUnknown}>
-        <p className={styles.knownLine}>
-          <AnchoredCopy text={content.knownLine} anchors={anchors} />
-        </p>
-        <p className={styles.unknownLine}>{content.unknownLine}</p>
-      </div>
-
-      <div className={styles.venue}>
-        <p className={styles.venueName}>{content.venueName}</p>
-        <p className={styles.venueMeta}>
-          {content.venueArea}
-          {content.address ? ` · ${content.address}` : ""}
-        </p>
-        <p className={styles.venueMeta}>{content.bestTime}</p>
-        {content.priceNote ? (
-          <p className={styles.venueMeta}>{content.priceNote}</p>
-        ) : null}
-        <p className={styles.whyUncommon}>{content.whyUncommon}</p>
-        {chapter.evidence && chapter.evidence.length > 0 ? (
-          <p className={styles.evidence}>
-            {chapter.evidence.map((link, index) => (
-              <a
-                key={link.url}
-                href={link.url}
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                proof {index + 1}
-              </a>
-            ))}
-          </p>
-        ) : null}
-      </div>
-
-      {sendable ? (
-        <div className={styles.acceptRow}>
-          <label className={styles.dateField}>
-            <span>Suggest</span>
-            <input
-              type="date"
-              value={dateDraft}
-              min={todayIso()}
-              onChange={(event) => setDateDraft(event.target.value)}
-              aria-label="Choose a day to suggest"
-            />
-          </label>
-          <div className={styles.actions}>
-            <button
-              type="button"
-              disabled={busy || !dateDraft}
-              onClick={() => onSend(dateDraft)}
-            >
-              Send to {chapter.partnerName}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {answerable && !declining ? (
-        <div className={styles.acceptRow}>
-          <p className={styles.proposedFor}>
-            {chapter.partnerName} suggested {friendlyDate(chapter.proposedFor)}
-          </p>
-          <div className={styles.actions}>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => onAccept(chapter.proposedFor || dateDraft)}
-            >
-              I’m in
-            </button>
-            <button
-              type="button"
-              className={styles.quiet}
-              onClick={() => setDeclining(true)}
-            >
-              Can’t make it
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {answerable && declining ? (
-        <form
-          className={styles.declineForm}
-          onSubmit={(event) => {
-            event.preventDefault();
-            onDecline(declineDraft.trim());
-          }}
-        >
-          <input
-            type="text"
-            value={declineDraft}
-            onChange={(event) => setDeclineDraft(event.target.value)}
-            placeholder="Why not? (helps the next one)"
-            aria-label="Why this one isn’t right"
-            maxLength={300}
-          />
-          <div className={styles.actions}>
-            <button type="submit" disabled={busy}>
-              Send that
-            </button>
-            <button
-              type="button"
-              className={styles.quiet}
-              onClick={() => setDeclining(false)}
-            >
-              Back
-            </button>
-          </div>
-        </form>
-      ) : null}
-
-      {livable ? (
-        <div className={styles.actions}>
-          <button type="button" disabled={busy} onClick={onLived}>
-            We lived this
-          </button>
-        </div>
-      ) : null}
-
-      {notice ? <p className={styles.notice}>{notice}</p> : null}
-    </article>
-  );
-}
-
-export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
   const [state, setState] = useState<ViewState>({ status: "loading" });
+  const [gists, setGists] = useState<TogetherGist[]>([]);
+  const [reading, setReading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [stageIndex, setStageIndex] = useState(0);
@@ -295,11 +154,7 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
 
   const refresh = useCallback(async () => {
     try {
-      const [together, connections] = await Promise.all([
-        loadTogether(),
-        loadMyConnections(),
-      ]);
-      setState({ status: "ready", together, connections });
+      setState({ status: "ready", together: await loadTogether() });
     } catch (error) {
       console.error("Could not load Together", error);
       setState({
@@ -316,11 +171,8 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
     let active = true;
     void (async () => {
       try {
-        const [together, connections] = await Promise.all([
-          loadTogether(),
-          loadMyConnections(),
-        ]);
-        if (active) setState({ status: "ready", together, connections });
+        const together = await loadTogether();
+        if (active) setState({ status: "ready", together });
       } catch (error) {
         console.error("Could not load Together", error);
         if (active) {
@@ -339,8 +191,29 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
     };
   }, []);
 
-  const chapters =
-    state.status === "ready" ? state.together.chapters : [];
+  // Read once. What two worlds share changes when a world changes, not while
+  // someone is looking at it — so this never polls and never blocks the page.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const found = await loadTogetherGists();
+        if (active) setGists(found.gists);
+      } catch (error) {
+        console.error("Could not read your gists", error);
+      } finally {
+        if (active) setReading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const chapters = useMemo(
+    () => (state.status === "ready" ? state.together.chapters : []),
+    [state],
+  );
   const researching = chapters.some(
     (chapter) => chapter.status === "researching",
   );
@@ -378,13 +251,13 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
 
   const runAction = useCallback(
     async (
-      chapterId: string,
+      cardId: string,
       action: () => Promise<unknown>,
       failureNotice: string,
     ) => {
       setBusy(true);
       setNotice("");
-      setNoticeFor(chapterId);
+      setNoticeFor(cardId);
       try {
         await action();
         await refresh();
@@ -397,6 +270,33 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
       }
     },
     [refresh],
+  );
+
+  const entries = useMemo(
+    () => buildEntries(chapters, gists),
+    [chapters, gists],
+  );
+  /**
+   * A safety net for the people rail. A person's node normally carries the
+   * connection itself, but graph projection can merge the node that held it —
+   * and someone Chapter is actively planning with must never be offered an
+   * invitation as though they were still only a memory.
+   */
+  const connectedNames = useMemo(
+    () =>
+      new Set(
+        [
+          ...gists.map((gist) => gist.partnerName),
+          ...chapters.map((chapter) => chapter.partnerName),
+        ]
+          .map((name) => name.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    [gists, chapters],
+  );
+  const people = useMemo(
+    () => buildPeople(nodes, connectedNames),
+    [nodes, connectedNames],
   );
 
   if (state.status === "loading") {
@@ -424,168 +324,137 @@ export default function TogetherView({ onOpenYou }: { onOpenYou: () => void }) {
     );
   }
 
-  const { accepted, pending } = state.connections;
-
-  if (accepted.length === 0 && pending.length === 0) {
+  if (people.length === 0) {
     return (
       <section className={styles.state}>
         <div className={styles.emptyOrbs} aria-hidden="true">
-          <span />
-          <span />
+          <span style={{ background: categoryOrbGradient("self") }} />
+          <span style={{ background: categoryOrbGradient("people") }} />
         </div>
-        <h1>Invite someone you know.</h1>
-        <p className={styles.stateCopy}>
-          Open a person in You and send them a private link. When they accept,
-          Chapter can plan something real for the two of you.
-        </p>
+        <h1>Nobody is in your world yet.</h1>
         <button type="button" onClick={onOpenYou}>
-          Find a person in You
+          Open your world
         </button>
       </section>
     );
   }
 
-  const openChapters = chapters.filter(isOpen);
   const pastChapters = chapters.filter((chapter) => !isOpen(chapter));
-  // One open chapter per person, so the "plan something" action stays honest.
-  const busyConnectionIds = new Set(
-    openChapters.map((chapter) => chapter.connectionId),
+  const noticeOrphaned = Boolean(
+    notice && !entries.some((entry) => entry.connectionId === noticeFor),
   );
 
   return (
     <section className={styles.together}>
-      <header className={styles.header}>
-        <h1>
-          {openChapters.length > 0
-            ? "What you’re doing together."
-            : "Plan something real."}
-        </h1>
-        <p>
-          {openChapters.length > 0
-            ? "One chapter at a time with each person."
-            : "Chapter reads both your worlds and finds one thing neither of you would have found alone."}
-        </p>
-      </header>
-
-      {openChapters.length > 0 ? (
-        <div className={styles.cards}>
-          {openChapters.map((chapter) => (
-            <ChapterCard
-              key={chapter.id}
-              chapter={chapter}
-              busy={busy}
-              notice={noticeFor === chapter.id ? notice : ""}
-              stageLabel={RESEARCH_STAGES[stageIndex]}
-              onSend={(proposedFor) =>
+      <div className={styles.main}>
+        {entries.length === 0 ? (
+          <h1 className={styles.quietHeading}>
+            {reading
+              ? "Chapter is reading your worlds."
+              : people.some((person) => person.presence === "connected")
+                ? "Nothing yet runs through both your worlds."
+                : "No one you know is here yet."}
+          </h1>
+        ) : (
+          <div className={styles.gists}>
+            {entries.map((entry) => {
+              /**
+               * Every chapter action is rendered by a card state that only exists
+               * once a chapter does. This keeps that promise honest rather than
+               * asserting it, so a stale render can't reach for a missing id.
+               */
+              const onChapter = (
+                act: (chapterId: string) => Promise<unknown>,
+                failureNotice: string,
+              ) => {
+                const chapterId = entry.chapter?.id;
+                if (!chapterId) return;
                 void runAction(
-                  chapter.id,
-                  () =>
-                    sendTogetherChapter(
-                      chapter.id,
-                      proposedFor,
-                      chapter.partnerName,
-                    ),
-                  "Chapter couldn’t send that.",
-                )
-              }
-              onAccept={(scheduledFor) =>
-                void runAction(
-                  chapter.id,
-                  () =>
-                    acceptTogetherChapter(
-                      chapter.id,
-                      scheduledFor,
-                      chapter.partnerName,
-                    ),
-                  "Chapter couldn’t save that.",
-                )
-              }
-              onDecline={(reason) =>
-                void runAction(
-                  chapter.id,
-                  () =>
-                    declineTogetherChapter(
-                      chapter.id,
-                      reason,
-                      chapter.partnerName,
-                    ),
-                  "Chapter couldn’t record that.",
-                )
-              }
-              onLived={() =>
-                void runAction(
-                  chapter.id,
-                  () =>
-                    markTogetherChapterLived(chapter.id, chapter.partnerName),
-                  "Chapter couldn’t record that.",
-                )
-              }
-            />
-          ))}
-        </div>
-      ) : null}
+                  entry.connectionId,
+                  () => act(chapterId),
+                  failureNotice,
+                );
+              };
 
-      {accepted.length > 0 ? (
-        <div className={styles.people} aria-label="Connected people">
-          {accepted.map((connection) => {
-            const engaged = busyConnectionIds.has(connection.id);
-            return (
-              <div className={styles.person} key={connection.id}>
-                <span className={styles.personOrb} aria-hidden="true">
-                  {initialFor(connection.name)}
-                </span>
-                <span className={styles.personName}>{connection.name}</span>
-                <button
-                  type="button"
-                  className={styles.planButton}
-                  disabled={busy || engaged}
-                  onClick={() =>
-                    void runAction(
-                      connection.id,
-                      () => startTogetherChapter(connection.id),
-                      "Chapter couldn’t start writing.",
-                    )
-                  }
-                >
-                  {engaged ? "In progress" : "Plan something"}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-
-      {notice && !openChapters.some((chapter) => chapter.id === noticeFor) ? (
-        <p className={styles.notice}>{notice}</p>
-      ) : null}
-
-      {pastChapters.length > 0 ? (
-        <div className={styles.past}>
-          <p>Behind you</p>
-          <div>
-            {pastChapters.slice(0, 6).map((chapter) => (
-              <span key={chapter.id}>
-                {chapter.content?.title ?? "A chapter"} · {statusLine(chapter)}
-              </span>
-            ))}
+              return (
+              <TogetherGistCard
+                key={entry.connectionId}
+                partnerName={entry.partnerName}
+                gist={entry.gist}
+                chapter={entry.chapter}
+                busy={busy}
+                notice={noticeFor === entry.connectionId ? notice : ""}
+                stageLabel={RESEARCH_STAGES[stageIndex]}
+                onGo={() =>
+                  void runAction(
+                    entry.connectionId,
+                    () => startTogetherChapter(entry.connectionId),
+                    "Chapter couldn’t start writing.",
+                  )
+                }
+                onSend={(proposedFor) =>
+                  onChapter(
+                    (chapterId) =>
+                      sendTogetherChapter(
+                        chapterId,
+                        proposedFor,
+                        entry.partnerName,
+                      ),
+                    "Chapter couldn’t send that.",
+                  )
+                }
+                onAccept={(scheduledFor) =>
+                  onChapter(
+                    (chapterId) =>
+                      acceptTogetherChapter(
+                        chapterId,
+                        scheduledFor,
+                        entry.partnerName,
+                      ),
+                    "Chapter couldn’t save that.",
+                  )
+                }
+                onDecline={(reason) =>
+                  onChapter(
+                    (chapterId) =>
+                      declineTogetherChapter(chapterId, reason, entry.partnerName),
+                    "Chapter couldn’t record that.",
+                  )
+                }
+                onLived={() =>
+                  onChapter(
+                    (chapterId) =>
+                      markTogetherChapterLived(chapterId, entry.partnerName),
+                    "Chapter couldn’t record that.",
+                  )
+                }
+              />
+              );
+            })}
           </div>
-        </div>
-      ) : null}
+        )}
 
-      {pending.length > 0 ? (
-        <div className={styles.pending}>
-          <p>Waiting for</p>
-          <div>
-            {pending.map((invite) => (
-              <span key={invite.id}>{invite.name}</span>
-            ))}
-          </div>
-        </div>
-      ) : null}
+        {noticeOrphaned ? <p className={styles.notice}>{notice}</p> : null}
+      </div>
 
-      <button className={styles.addButton} type="button" onClick={onOpenYou}>
-        Invite someone else
-      </button>
+      {/* The standing furniture of the tab: who you have, and what's behind you. */}
+      <div className={styles.rail}>
+        <TogetherFriendsCard people={people} onInviteCreated={onGraphAdvanced} />
+
+        {pastChapters.length > 0 ? (
+          <section className={styles.past}>
+            <p className={styles.railLabel}>Behind you</p>
+            <ul>
+              {pastChapters.slice(0, 6).map((chapter) => (
+                <li key={chapter.id}>
+                  <span>{chapter.content?.title ?? "A chapter"}</span>
+                  <span>{chapter.partnerName}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </div>
     </section>
   );
 }

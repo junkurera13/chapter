@@ -130,6 +130,14 @@ export function fetchMyGraph(accessToken: string) {
   );
 }
 
+/** The same list the browser can ask for, read server-side to pair worlds up. */
+export function fetchMyConnections(accessToken: string) {
+  return invokeSidequestData<import("./backendTypes").MyConnectionsRecord>(
+    { action: "getMyConnections" },
+    accessToken,
+  );
+}
+
 type NowChapterValue = {
   chapter: import("./nowChapterSchema").NowChapterRecord;
 };

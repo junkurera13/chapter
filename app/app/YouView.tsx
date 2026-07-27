@@ -10,13 +10,7 @@ import {
   humanizeExperienceSubtype,
 } from "../../lib/experienceOntology";
 import { formatNodeLabel } from "../../lib/displayText";
-import { createConnectionInvite } from "../../lib/base44Connections";
-import {
-  cacheInviteUrl,
-  forgetCachedInviteUrl,
-  readCachedInviteUrl,
-} from "../../lib/inviteLinkCache";
-import { publicInviteUrl } from "../../lib/publicAppUrl";
+import { useConnectionInvite } from "../../lib/useConnectionInvite";
 import {
   type WorldEdge,
   type WorldNode,
@@ -63,13 +57,6 @@ import styles from "./YouView.module.css";
 const INITIAL_CAMERA_DESKTOP = new THREE.Vector3(0, 0.12, 10.25);
 const INITIAL_CAMERA_MOBILE = new THREE.Vector3(0, 0.1, 19);
 const CONNECTION_SEGMENTS = 28;
-/**
- * What a friend actually reads. It says the true thing — they are already in
- * one of your memories — in the voice of a person sending a text, and never
- * addresses them by a name the sender may have written differently.
- */
-const INVITE_MESSAGE =
-  "I added a memory with you in it to my world. Let's connect on Chapter.";
 const LEGEND_CATEGORY_ORDER: readonly WorldNodeCategory[] = [
   "self",
   ...EXPERIENCE_NODE_CATEGORIES,
@@ -180,18 +167,18 @@ export default function YouView({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRefs = useRef(new Map<string, HTMLButtonElement>());
   const selectedKeyRef = useRef<string | null>(null);
-  /**
-   * The system share sheet is single-flight: asking for a second one while the
-   * first is still open rejects the call outright. On desktop the first can sit
-   * unsettled for a long time, so a second click is easy to make by accident.
-   */
-  const sharingRef = useRef(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [inviteState, setInviteState] = useState<{
-    nodeId: string;
-    status: "creating" | "ready" | "shared" | "error";
-    url?: string;
-  } | null>(null);
+  const connectedNodeIds = useMemo(
+    () =>
+      worldNodes
+        .filter((node) => node.linkedUserId || node.connectionId)
+        .map((node) => node.key),
+    [worldNodes],
+  );
+  const { inviteState, prepareInvite, shareInvite } = useConnectionInvite({
+    connectedNodeIds,
+    onInviteCreated,
+  });
   const worldNodeByKey = useMemo(
     () => new Map(worldNodes.map((node) => [node.key, node])),
     [worldNodes],
@@ -242,101 +229,6 @@ export default function YouView({
   useEffect(() => {
     selectedKeyRef.current = selectedKey;
   }, [selectedKey]);
-
-  // Once someone accepts, their link is spent. Drop it so a stale one is never
-  // handed out again from this device.
-  useEffect(() => {
-    for (const node of worldNodes) {
-      if (node.linkedUserId || node.connectionId) {
-        forgetCachedInviteUrl(node.key);
-      }
-    }
-  }, [worldNodes]);
-
-  /**
-   * Asks the backend for this person's link, showing the one already on this
-   * device first. The link is stable, so the remembered one is almost always
-   * the answer — and a backend call can take many seconds.
-   */
-  async function prepareInvite(node: WorldNode) {
-    const remembered = readCachedInviteUrl(node.key);
-    setInviteState(
-      remembered
-        ? { nodeId: node.key, status: "ready", url: remembered }
-        : { nodeId: node.key, status: "creating" },
-    );
-
-    try {
-      const invite = await createConnectionInvite(node.key);
-      const url = publicInviteUrl(invite.token);
-      cacheInviteUrl(node.key, url);
-      // Someone who already shared while this was in flight keeps that state.
-      setInviteState((current) =>
-        current?.nodeId === node.key && current.status === "shared"
-          ? { ...current, url }
-          : { nodeId: node.key, status: "ready", url },
-      );
-      onInviteCreated?.();
-    } catch (error) {
-      console.error("Could not create a Chapter connection invite", error);
-      // A remembered link is still worth offering when the backend is unwell.
-      if (!remembered) setInviteState({ nodeId: node.key, status: "error" });
-    }
-  }
-
-  function shareInvite(node: WorldNode, url: string) {
-    const markShared = () => {
-      setInviteState({ nodeId: node.key, status: "shared", url });
-    };
-
-    /** Every path that isn't the share sheet: the link still has to reach them. */
-    const copyInvite = () => {
-      if (navigator.clipboard) {
-        void navigator.clipboard
-          .writeText(url)
-          .then(markShared)
-          .catch((error) => {
-            console.error("Could not copy the invite", error);
-            setInviteState({ nodeId: node.key, status: "error", url });
-          });
-        return;
-      }
-
-      window.prompt("Copy this private Chapter invite", url);
-      markShared();
-    };
-
-    // A sheet is already open. The click that got here is a double-tap on a
-    // modal dialog, and the right answer is to do nothing.
-    if (sharingRef.current) return;
-
-    if (navigator.share) {
-      sharingRef.current = true;
-      void navigator
-        .share({
-          title: "Join me on Chapter",
-          text: INVITE_MESSAGE,
-          url,
-        })
-        .then(markShared)
-        .catch((error: unknown) => {
-          // Dismissing the sheet is an answer, not a failure. So is a race we
-          // already lost — a share is open somewhere and will settle on its own.
-          const errorName = error instanceof DOMException ? error.name : "";
-          if (errorName === "AbortError" || errorName === "InvalidStateError") {
-            return;
-          }
-          console.error("Could not open the share sheet", error);
-          copyInvite();
-        })
-        .finally(() => {
-          sharingRef.current = false;
-        });
-      return;
-    }
-
-    copyInvite();
-  }
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -1629,9 +1521,9 @@ export default function YouView({
                           ? inviteState
                           : null;
                       if (currentInvite?.url && currentInvite.status !== "error") {
-                        shareInvite(selectedNode, currentInvite.url);
+                        shareInvite(selectedNode.key, currentInvite.url);
                       } else {
-                        void prepareInvite(selectedNode);
+                        void prepareInvite(selectedNode.key);
                       }
                     }}
                   >
