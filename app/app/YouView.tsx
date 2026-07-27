@@ -11,6 +11,11 @@ import {
 } from "../../lib/experienceOntology";
 import { formatNodeLabel } from "../../lib/displayText";
 import { createConnectionInvite } from "../../lib/base44Connections";
+import {
+  cacheInviteUrl,
+  forgetCachedInviteUrl,
+  readCachedInviteUrl,
+} from "../../lib/inviteLinkCache";
 import { publicInviteUrl } from "../../lib/publicAppUrl";
 import {
   type WorldEdge,
@@ -58,6 +63,13 @@ import styles from "./YouView.module.css";
 const INITIAL_CAMERA_DESKTOP = new THREE.Vector3(0, 0.12, 10.25);
 const INITIAL_CAMERA_MOBILE = new THREE.Vector3(0, 0.1, 19);
 const CONNECTION_SEGMENTS = 28;
+/**
+ * What a friend actually reads. It says the true thing — they are already in
+ * one of your memories — in the voice of a person sending a text, and never
+ * addresses them by a name the sender may have written differently.
+ */
+const INVITE_MESSAGE =
+  "I added a memory with you in it to my world. Let's connect on Chapter.";
 const LEGEND_CATEGORY_ORDER: readonly WorldNodeCategory[] = [
   "self",
   ...EXPERIENCE_NODE_CATEGORIES,
@@ -231,24 +243,48 @@ export default function YouView({
     selectedKeyRef.current = selectedKey;
   }, [selectedKey]);
 
+  // Once someone accepts, their link is spent. Drop it so a stale one is never
+  // handed out again from this device.
+  useEffect(() => {
+    for (const node of worldNodes) {
+      if (node.linkedUserId || node.connectionId) {
+        forgetCachedInviteUrl(node.key);
+      }
+    }
+  }, [worldNodes]);
+
+  /**
+   * Asks the backend for this person's link, showing the one already on this
+   * device first. The link is stable, so the remembered one is almost always
+   * the answer — and a backend call can take many seconds.
+   */
   async function prepareInvite(node: WorldNode) {
-    setInviteState({ nodeId: node.key, status: "creating" });
+    const remembered = readCachedInviteUrl(node.key);
+    setInviteState(
+      remembered
+        ? { nodeId: node.key, status: "ready", url: remembered }
+        : { nodeId: node.key, status: "creating" },
+    );
+
     try {
       const invite = await createConnectionInvite(node.key);
-      setInviteState({
-        nodeId: node.key,
-        status: "ready",
-        url: publicInviteUrl(invite.token),
-      });
+      const url = publicInviteUrl(invite.token);
+      cacheInviteUrl(node.key, url);
+      // Someone who already shared while this was in flight keeps that state.
+      setInviteState((current) =>
+        current?.nodeId === node.key && current.status === "shared"
+          ? { ...current, url }
+          : { nodeId: node.key, status: "ready", url },
+      );
       onInviteCreated?.();
     } catch (error) {
       console.error("Could not create a Chapter connection invite", error);
-      setInviteState({ nodeId: node.key, status: "error" });
+      // A remembered link is still worth offering when the backend is unwell.
+      if (!remembered) setInviteState({ nodeId: node.key, status: "error" });
     }
   }
 
   function shareInvite(node: WorldNode, url: string) {
-    const name = formatNodeLabel(node.label);
     const markShared = () => {
       setInviteState({ nodeId: node.key, status: "shared", url });
     };
@@ -278,8 +314,8 @@ export default function YouView({
       sharingRef.current = true;
       void navigator
         .share({
-          title: `${name}, join me on Chapter`,
-          text: "I found you in my world on Chapter. Connect with me so we can build what comes next together.",
+          title: "Join me on Chapter",
+          text: INVITE_MESSAGE,
           url,
         })
         .then(markShared)
