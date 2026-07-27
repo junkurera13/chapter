@@ -17,9 +17,22 @@ import {
   type TogetherState,
   TogetherRequestError,
 } from "../../lib/togetherClient";
-import type { IntroductionRecord } from "../../lib/introductionSchema";
+import type {
+  IntroductionRecord,
+  IntroductionsState,
+} from "../../lib/introductionSchema";
+import {
+  lastOpened,
+  OPENED_GISTS,
+  OPENED_INTRODUCTIONS,
+  OPENED_TOGETHER,
+} from "../../lib/openedViews";
 import { buildEntries, isOpen } from "../../lib/togetherEntries";
-import type { TogetherGist } from "../../lib/togetherGistSchema";
+import type {
+  TogetherGist,
+  TogetherGistsState,
+} from "../../lib/togetherGistSchema";
+import { demoGists } from "../../lib/togetherSamples";
 import { categoryOrbGradient } from "./categoryAppearance";
 import type { WorldNode } from "./graphData";
 import TogetherGistCard from "./TogetherGistCard";
@@ -79,18 +92,40 @@ type ViewState =
 
 export default function TogetherView({
   nodes,
+  showSamples = false,
   onOpenYou,
   onGraphAdvanced,
 }: {
   nodes: readonly WorldNode[];
+  /** This account sees sample gists behind whatever is real. */
+  showSamples?: boolean;
   onOpenYou: () => void;
   onGraphAdvanced?: () => void;
 }) {
-  const [state, setState] = useState<ViewState>({ status: "loading" });
-  const [gists, setGists] = useState<TogetherGist[]>([]);
-  const [introductions, setIntroductions] = useState<IntroductionRecord[]>([]);
+  /**
+   * What this tab already knew, if it has been open before. Together unmounts
+   * when you leave it, and everything behind it is a network read, so a second
+   * visit would otherwise start from the same blank screen as the first.
+   */
+  const opened = lastOpened<TogetherState>(OPENED_TOGETHER);
+  const openedGists = lastOpened<TogetherGistsState>(OPENED_GISTS);
+  const openedIntroductions = lastOpened<IntroductionsState>(
+    OPENED_INTRODUCTIONS,
+  );
+
+  const [state, setState] = useState<ViewState>(
+    opened ? { status: "ready", together: opened } : { status: "loading" },
+  );
+  // Samples are constants. They have no business waiting on a round trip, let
+  // alone on the model call that writes the real ones.
+  const [gists, setGists] = useState<TogetherGist[]>(
+    openedGists?.gists ?? (showSamples ? demoGists() : []),
+  );
+  const [introductions, setIntroductions] = useState<IntroductionRecord[]>(
+    openedIntroductions?.introductions ?? [],
+  );
   /** True until the gist request has answered, either way. */
-  const [reading, setReading] = useState(true);
+  const [reading, setReading] = useState(!openedGists);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [stageIndex, setStageIndex] = useState(0);
@@ -102,39 +137,31 @@ export default function TogetherView({
       setState({ status: "ready", together: await loadTogether() });
     } catch (error) {
       console.error("Could not load Together", error);
-      setState({
-        status: "error",
-        message:
-          error instanceof TogetherRequestError
-            ? error.message
-            : "Together couldn’t open.",
-      });
+      // A failed re-read of a tab that is already standing is not a reason to
+      // take it down. What was true a moment ago stays on screen.
+      setState((current) =>
+        current.status === "ready"
+          ? current
+          : {
+              status: "error",
+              message:
+                error instanceof TogetherRequestError
+                  ? error.message
+                  : "Together couldn’t open.",
+            },
+      );
     }
   }, []);
 
   useEffect(() => {
     let active = true;
     void (async () => {
-      try {
-        const together = await loadTogether();
-        if (active) setState({ status: "ready", together });
-      } catch (error) {
-        console.error("Could not load Together", error);
-        if (active) {
-          setState({
-            status: "error",
-            message:
-              error instanceof TogetherRequestError
-                ? error.message
-                : "Together couldn’t open.",
-          });
-        }
-      }
+      if (active) await refresh();
     })();
     return () => {
       active = false;
     };
-  }, []);
+  }, [refresh]);
 
   // Read once. What two worlds share changes when a world changes, not while
   // someone is looking at it — so this never polls and never blocks the page.

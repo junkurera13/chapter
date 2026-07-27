@@ -74,6 +74,28 @@ function litAnchors(
 }
 
 /**
+ * The scan, and nothing else, when it can't be run.
+ *
+ * Looking for someone you haven't met is the one part of this read that is
+ * made on another account's behalf, so it is the one part that can be refused
+ * by the backend for reasons that have nothing to do with the reader. A
+ * refusal here should cost the scan and leave the page standing.
+ */
+async function scanForCandidates(accessToken: string, requestId: string) {
+  try {
+    return await findIntroductionCandidates(accessToken);
+  } catch (error) {
+    console.error("[together:introductions] scan unavailable", {
+      requestId,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      status: error instanceof Base44FunctionError ? error.status : undefined,
+      detail: error instanceof Error ? error.message : undefined,
+    });
+    return undefined;
+  }
+}
+
+/**
  * Who Chapter has noticed for you among the people you have not met.
  *
  * Reading also offers. A scan that finds nobody costs one query and says so;
@@ -102,8 +124,20 @@ export async function GET(request: Request) {
       });
     }
 
-    const { candidates, matchCity, scanned, skipped } =
-      await findIntroductionCandidates(accessToken);
+    const settled = await scanForCandidates(accessToken, requestId);
+    if (!settled) {
+      // The scan is the part of this read that speaks to strangers, and it is
+      // the part that can be refused for reasons the reader has no part in.
+      // When it is, they still have the introductions they already had.
+      return Response.json({
+        value: {
+          ...existing,
+          introductions: litAnchors(existing.introductions, nodeIdsByLabel),
+        } satisfies IntroductionsState,
+      });
+    }
+
+    const { candidates, matchCity, scanned, skipped } = settled;
     if (skipped) {
       // A bounded scan that reports nothing looks exactly like an empty city.
       console.info("[together:introductions] scan truncated", {
@@ -133,28 +167,35 @@ export async function GET(request: Request) {
       signal: request.signal,
     });
 
-    const offered: IntroductionRecord[] = [];
-    for (const introduction of written) {
-      try {
-        const result = await offerIntroduction(
-          {
-            otherUserId: introduction.otherUserId,
-            line: introduction.line,
-            anchorsJson: JSON.stringify(introduction.anchors),
-            weight: introduction.weight,
-            matchCity: matchCity || city,
-          },
-          accessToken,
-        );
-        if (result.introduction) offered.push(result.introduction);
-      } catch (error) {
-        // One offer that can't be written down costs itself and nothing else.
-        console.warn("[together:introductions] offer failed", {
-          requestId,
-          errorName: error instanceof Error ? error.name : "UnknownError",
-        });
-      }
-    }
+    // Written down together, and in the order they were ranked. One at a time
+    // meant a round trip per offer before the page could say anything.
+    const recorded = await Promise.all(
+      written.map(async (introduction) => {
+        try {
+          const result = await offerIntroduction(
+            {
+              otherUserId: introduction.otherUserId,
+              line: introduction.line,
+              anchorsJson: JSON.stringify(introduction.anchors),
+              weight: introduction.weight,
+              matchCity: matchCity || city,
+            },
+            accessToken,
+          );
+          return result.introduction;
+        } catch (error) {
+          // One offer that can't be written down costs itself and nothing else.
+          console.warn("[together:introductions] offer failed", {
+            requestId,
+            errorName: error instanceof Error ? error.name : "UnknownError",
+          });
+          return undefined;
+        }
+      }),
+    );
+    const offered = recorded.filter((one): one is IntroductionRecord =>
+      Boolean(one),
+    );
 
     const seen = new Set(existing.introductions.map((one) => one.id));
     return Response.json({

@@ -4,6 +4,14 @@ import type {
   IntroductionAnswer,
   IntroductionsState,
 } from "./introductionSchema";
+import {
+  forgetOpened,
+  OPENED_GISTS,
+  OPENED_INTRODUCTIONS,
+  OPENED_NOW,
+  OPENED_TOGETHER,
+  rememberOpened,
+} from "./openedViews";
 import type { TogetherChapterRecord } from "./togetherChapterSchema";
 import type { TogetherGistsState } from "./togetherGistSchema";
 
@@ -59,16 +67,30 @@ async function togetherFetch<T>(init?: {
       response.status,
     );
   }
+  // Anything that changed something is the one case where what a tab last
+  // knew is worth less than nothing, so it goes rather than ages out.
+  if (init?.method === "POST") {
+    forgetOpened(
+      OPENED_TOGETHER,
+      OPENED_GISTS,
+      OPENED_INTRODUCTIONS,
+      OPENED_NOW,
+    );
+  }
   return payload.value;
 }
 
 export function loadTogether() {
-  return togetherFetch<TogetherState>();
+  return togetherFetch<TogetherState>().then((value) =>
+    rememberOpened(OPENED_TOGETHER, value),
+  );
 }
 
 /** Read once when Together opens: what each of your worlds turns out to share. */
 export function loadTogetherGists() {
-  return togetherFetch<TogetherGistsState>({ path: "/gists" });
+  return togetherFetch<TogetherGistsState>({ path: "/gists" }).then((value) =>
+    rememberOpened(OPENED_GISTS, value),
+  );
 }
 
 /**
@@ -76,7 +98,9 @@ export function loadTogetherGists() {
  * terms as gists: once when Together opens, never polled.
  */
 export function loadIntroductions() {
-  return togetherFetch<IntroductionsState>({ path: "/introductions" });
+  return togetherFetch<IntroductionsState>({ path: "/introductions" }).then(
+    (value) => rememberOpened(OPENED_INTRODUCTIONS, value),
+  );
 }
 
 /** The way out. There is no way in, because taking part discloses nothing. */

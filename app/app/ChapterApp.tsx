@@ -8,6 +8,7 @@ import type { AuthenticatedViewer } from "../../lib/base44Auth";
 import { loadMyExperienceGraph } from "../../lib/base44Graph";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
+import { isDemoAccount } from "../../lib/togetherSamples";
 import { buildWorldGraph } from "./graphData";
 import NowView from "./NowView";
 import TogetherView from "./TogetherView";
@@ -152,6 +153,7 @@ export default function ChapterApp({
     ) : displayedIndex === 2 ? (
       <TogetherView
         nodes={worldGraph?.nodes ?? []}
+        showSamples={isDemoAccount(viewer.email)}
         onOpenYou={() => changeTab(0)}
         onGraphAdvanced={queueGraphLoad}
       />

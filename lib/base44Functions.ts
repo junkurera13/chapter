@@ -193,6 +193,38 @@ export function fetchPartnerPlanningGraph(
   );
 }
 
+/**
+ * Everything a gist is made of, in one call: your shareable ground, the
+ * shareable ground of everyone you're connected to, and the email the sample
+ * check is made against.
+ *
+ * Server-only, like the partner graph it replaces — it opens other people's
+ * worlds — and gated on the internal secret for the same reason. This exists
+ * because the same reads spread over one call per person made opening Together
+ * cost far more in proving who you are than in reading anything.
+ */
+export function fetchTogetherGistSource(
+  args: { limit?: number },
+  accessToken: string,
+) {
+  return invokeSidequestData<{
+    viewerEmail: string;
+    mine: import("./togetherChapterSchema").TogetherPlanningGraph;
+    partners: Array<{
+      connectionId: string;
+      partnerName: string;
+      graph: import("./togetherChapterSchema").TogetherPlanningGraph;
+    }>;
+  }>(
+    {
+      action: "getTogetherGistSource",
+      ...args,
+      internalSecret: internalSecret(),
+    },
+    accessToken,
+  );
+}
+
 export function fetchMyIntroductions(accessToken: string) {
   return invokeSidequestData<import("./introductionSchema").IntroductionsState>(
     { action: "getMyIntroductions" },

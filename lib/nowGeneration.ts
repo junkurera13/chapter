@@ -19,6 +19,14 @@ const NOW_MODEL_ID =
   process.env.CHAPTER_NOW_MODEL || "moonshotai/kimi-k2.6";
 const NOW_FALLBACK_MODEL_ID =
   process.env.CHAPTER_NOW_FALLBACK_MODEL || "deepseek/deepseek-v4-flash";
+/**
+ * For calls a person is sitting and waiting on. Reasoning about where two
+ * people should spend an afternoon deserves the larger model; writing one
+ * sentence about what they already have in common does not, and Together
+ * opens at the speed of whichever model writes it.
+ */
+const CHAPTER_QUICK_MODEL_ID =
+  process.env.CHAPTER_QUICK_MODEL || "deepseek/deepseek-v4-flash";
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -133,12 +141,16 @@ export async function generateStructured<T>(args: {
   signal?: AbortSignal;
   /** Log surface, so Together's calls are legible in the same stream. */
   surface?: "now" | "together";
+  /** Someone is watching a spinner for this one. Write it with the fast model. */
+  quick?: boolean;
 }): Promise<T> {
   const surface = args.surface ?? "now";
   if (!process.env.OPENROUTER_API_KEY) {
     throw new NowGenerationError("OPENROUTER_API_KEY is not configured.");
   }
-  const modelIds = [NOW_MODEL_ID, NOW_FALLBACK_MODEL_ID];
+  const modelIds = args.quick
+    ? [CHAPTER_QUICK_MODEL_ID, NOW_MODEL_ID]
+    : [NOW_MODEL_ID, NOW_FALLBACK_MODEL_ID];
   for (const [attempt, modelId] of modelIds.entries()) {
     const startedAt = Date.now();
     try {

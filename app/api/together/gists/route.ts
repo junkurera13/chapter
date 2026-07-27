@@ -4,7 +4,9 @@ import {
   fetchMyGraph,
   fetchMySession,
   fetchPartnerPlanningGraph,
+  fetchTogetherGistSource,
 } from "@/lib/base44Functions";
+import type { TogetherPlanningGraph } from "@/lib/togetherChapterSchema";
 import { planningGraphFrom } from "@/lib/togetherGeneration";
 import {
   demoGists,
@@ -48,6 +50,90 @@ function rememberedLine(thread: TogetherGistThread) {
   return entry.line;
 }
 
+type GistSource = {
+  viewerEmail: string;
+  mine: TogetherPlanningGraph;
+  partners: Array<{
+    connectionId: string;
+    partnerName: string;
+    graph: TogetherPlanningGraph;
+  }>;
+};
+
+/**
+ * The same reads, the long way round: one call for the connections, one for
+ * the graph, one for the session, one more per person.
+ *
+ * Kept only so that a Vercel deploy landing before its Base44 one degrades to
+ * the speed it used to have rather than to an empty tab. The two halves of
+ * Chapter ship separately, and the fast path is a backend action the older
+ * backend has never heard of.
+ */
+async function gistSourceTheLongWay(
+  accessToken: string,
+  requestId: string,
+): Promise<GistSource> {
+  const [connections, graph, session] = await Promise.all([
+    fetchMyConnections(accessToken),
+    fetchMyGraph(accessToken),
+    fetchMySession(accessToken).catch(() => undefined),
+  ]);
+
+  const people = connections.accepted.slice(0, MAX_PEOPLE);
+  const partners = await Promise.all(
+    people.map(async (person) => {
+      try {
+        const partner = await fetchPartnerPlanningGraph(person.id, accessToken);
+        return {
+          connectionId: person.id,
+          // The name in your own world wins: Chapter should call them what
+          // you call them, not what their account says.
+          partnerName: person.name || partner.partnerName,
+          graph: partner.graph,
+        };
+      } catch (error) {
+        // One unreachable world costs its own gist and nothing else.
+        console.warn("[together:gists] partner unreadable", {
+          requestId,
+          errorName: error instanceof Error ? error.name : "UnknownError",
+        });
+        return undefined;
+      }
+    }),
+  );
+
+  return {
+    viewerEmail: session?.viewer.email ?? "",
+    mine: planningGraphFrom(graph),
+    partners: partners.filter(
+      (partner): partner is GistSource["partners"][number] => Boolean(partner),
+    ),
+  };
+}
+
+/**
+ * Everything a gist is made of, in one call where the backend can do it.
+ *
+ * "Unknown action" is the one failure that means the backend is simply older
+ * than this route, and it is the one failure worth retrying differently.
+ */
+async function readGistSource(
+  accessToken: string,
+  requestId: string,
+): Promise<GistSource> {
+  try {
+    return await fetchTogetherGistSource({ limit: MAX_PEOPLE }, accessToken);
+  } catch (error) {
+    if (!(error instanceof Base44FunctionError) || error.status !== 400) {
+      throw error;
+    }
+    console.warn("[together:gists] backend predates the single-call source", {
+      requestId,
+    });
+    return gistSourceTheLongWay(accessToken, requestId);
+  }
+}
+
 function accessTokenFrom(request: Request) {
   const authorization = request.headers.get("authorization");
   return authorization?.startsWith("Bearer ")
@@ -79,50 +165,30 @@ export async function GET(request: Request) {
   if (!accessToken) return unauthenticated();
 
   try {
-    const [connections, graph, session] = await Promise.all([
-      fetchMyConnections(accessToken),
-      fetchMyGraph(accessToken),
-      fetchMySession(accessToken).catch(() => undefined),
-    ]);
+    // One call, not one per person. Everything below is arithmetic on what it
+    // returns, so nothing here waits on the network again until the writing.
+    const source = await readGistSource(accessToken, requestId);
     // Samples sit behind whatever is real, so a genuine gist is never demoted
     // by one — and an account that isn't the demo account never sees them.
-    const samples = isDemoAccount(session?.viewer.email) ? demoGists() : [];
+    const samples = isDemoAccount(source.viewerEmail) ? demoGists() : [];
 
-    const people = connections.accepted.slice(0, MAX_PEOPLE);
-    if (people.length === 0) {
+    if (source.partners.length === 0) {
       return Response.json({ value: { gists: samples } });
     }
 
-    const mine = planningGraphFrom(graph);
     const threads: TogetherGistThread[] = [];
-    await Promise.all(
-      people.map(async (person) => {
-        try {
-          const partner = await fetchPartnerPlanningGraph(
-            person.id,
-            accessToken,
-          );
-          const anchors = findGistAnchors({
-            mine,
-            theirs: partner.graph,
-          });
-          if (anchors.length === 0) return;
-          threads.push({
-            connectionId: person.id,
-            // The name in your own world wins: Chapter should call them what
-            // you call them, not what their account says.
-            partnerName: person.name || partner.partnerName,
-            anchors,
-          });
-        } catch (error) {
-          // One unreachable world costs its own gist and nothing else.
-          console.warn("[together:gists] partner unreadable", {
-            requestId,
-            errorName: error instanceof Error ? error.name : "UnknownError",
-          });
-        }
-      }),
-    );
+    for (const partner of source.partners) {
+      const anchors = findGistAnchors({
+        mine: source.mine,
+        theirs: partner.graph,
+      });
+      if (anchors.length === 0) continue;
+      threads.push({
+        connectionId: partner.connectionId,
+        partnerName: partner.partnerName,
+        anchors,
+      });
+    }
 
     const remembered = new Map<string, TogetherGist>();
     const unwritten: TogetherGistThread[] = [];

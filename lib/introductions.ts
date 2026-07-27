@@ -101,6 +101,8 @@ export async function writeIntroductionLines(args: {
       requestId: args.requestId,
       signal: args.signal,
       surface: "together",
+      // The same one-sentence job as a gist, on the same open-the-tab path.
+      quick: true,
     });
     lines = new Map(draft.lines.map((entry) => [entry.index, entry.line.trim()]));
   } catch (error) {

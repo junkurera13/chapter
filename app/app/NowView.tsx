@@ -29,6 +29,7 @@ import {
   type NowState,
 } from "../../lib/nowClient";
 import type { NowAnchor } from "../../lib/nowChapterSchema";
+import { lastOpened, OPENED_NOW } from "../../lib/openedViews";
 import { categoryOrbGradient } from "./categoryAppearance";
 import type { WorldNodeCategory } from "./graphData";
 import placeholderLocationImage from "../assets/mojiko-waterfront.jpg";
@@ -419,7 +420,15 @@ export default function NowView({
 }: {
   onGraphAdvanced: () => void;
 }) {
-  const [state, setState] = useState<ViewState>({ status: "loading" });
+  /**
+   * Now unmounts when you leave the tab, so without this every return trip
+   * pays for the read again and opens on a spinner. What it last said is put
+   * back straight away and re-read behind you.
+   */
+  const opened = lastOpened<NowState>(OPENED_NOW);
+  const [state, setState] = useState<ViewState>(
+    opened ? { status: "ready", now: opened } : { status: "loading" },
+  );
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [dateDraft, setDateDraft] = useState(nextSaturdayIso());
@@ -434,36 +443,31 @@ export default function NowView({
       const now = await loadNow();
       setState({ status: "ready", now });
     } catch (error) {
-      setState({
-        status: "error",
-        message:
-          error instanceof NowRequestError
-            ? error.message
-            : "Now couldn’t open.",
-      });
+      // A tab that is already standing stays standing. Only a Now that never
+      // opened is allowed to say it couldn't.
+      setState((current) =>
+        current.status === "ready"
+          ? current
+          : {
+              status: "error",
+              message:
+                error instanceof NowRequestError
+                  ? error.message
+                  : "Now couldn’t open.",
+            },
+      );
     }
   }, []);
 
   useEffect(() => {
     let active = true;
-    void loadNow()
-      .then((now) => {
-        if (active) setState({ status: "ready", now });
-      })
-      .catch((error) => {
-        if (!active) return;
-        setState({
-          status: "error",
-          message:
-            error instanceof NowRequestError
-              ? error.message
-              : "Now couldn’t open.",
-        });
-      });
+    void (async () => {
+      if (active) await refresh();
+    })();
     return () => {
       active = false;
     };
-  }, []);
+  }, [refresh]);
 
   const chapter =
     state.status === "ready" ? state.now.chapter : null;

@@ -354,36 +354,66 @@ function parsedJson(value: unknown) {
  * memory graph. Shared by the owner's own graph read and by Together's
  * partner-side planning read, so both see exactly the same source of truth.
  */
-async function projectedGraphFor(base44: Row, user: Row) {
+async function projectedGraphFor(
+  base44: Row,
+  user: Row,
+  /**
+   * Planning reads only ever look at nodes. Asking for edges anyway meant a
+   * third five-thousand-row query per world opened, thrown away on arrival —
+   * and Together opens one world per person, plus every stranger a scan
+   * reaches. Skipping it is most of what that read costs.
+   */
+  options: { withEdges?: boolean } = {},
+) {
   const phone = stringValue(user.phone);
   const authUserId = stringValue(user.auth_user_id);
+  const withEdges = options.withEdges !== false;
 
   const memories = base44.asServiceRole.entities.ExperienceMemory;
   const graphNodes = base44.asServiceRole.entities.ExperienceGraphNode;
   const graphEdges = base44.asServiceRole.entities.ExperienceGraphEdge;
-  const memoryRows = await readWithRateLimitRetry(() =>
-    memories.filter(
-      phone
-        ? {
-            status: "complete",
-            $or: [{ phone }, { auth_user_id: authUserId }],
-          }
-        : { auth_user_id: authUserId, status: "complete" },
-      "created_at",
-      5000,
-    )
-  );
-  const nodeRows = await readWithRateLimitRetry(() =>
-    graphNodes.filter(
-      phone
-        ? {
-            $or: [{ phone }, { owner_user_id: user.id }],
-          }
-        : { owner_user_id: user.id },
-      "created_at",
-      5000,
-    )
-  );
+
+  // Read together rather than one after another. None of the three needs an
+  // answer from the others to be asked; only to be understood.
+  const [memoryRows, nodeRows, edgeRows] = await Promise.all([
+    readWithRateLimitRetry(() =>
+      memories.filter(
+        phone
+          ? {
+              status: "complete",
+              $or: [{ phone }, { auth_user_id: authUserId }],
+            }
+          : { auth_user_id: authUserId, status: "complete" },
+        "created_at",
+        5000,
+      )
+    ),
+    readWithRateLimitRetry(() =>
+      graphNodes.filter(
+        phone
+          ? {
+              $or: [{ phone }, { owner_user_id: user.id }],
+            }
+          : { owner_user_id: user.id },
+        "created_at",
+        5000,
+      )
+    ),
+    withEdges
+      ? readWithRateLimitRetry(() =>
+        graphEdges.filter(
+          phone
+            ? {
+                $or: [{ phone }, { auth_user_id: authUserId }],
+              }
+            : { auth_user_id: authUserId },
+          "created_at",
+          5000,
+        )
+      )
+      : Promise.resolve([] as Row[]),
+  ]);
+
   const completeMemoryIds = new Set(memoryRows.map((row: Row) => row.id));
   const completedNodes = nodeRows.filter(
     (row: Row) =>
@@ -391,25 +421,14 @@ async function projectedGraphFor(base44: Row, user: Row) {
       (row.source_type === "connection" && row.owner_user_id === user.id),
   );
   const completedNodeIds = new Set(completedNodes.map((row: Row) => row.id));
-  const edgeRows = completeMemoryIds.size > 0
-    ? await readWithRateLimitRetry(() =>
-      graphEdges.filter(
-        phone
-          ? {
-              $or: [{ phone }, { auth_user_id: authUserId }],
-            }
-          : { auth_user_id: authUserId },
-        "created_at",
-        5000,
-      )
-    )
-    : [];
-  const completedEdges = edgeRows.filter(
-    (row: Row) =>
-      completeMemoryIds.has(row.memory_id) &&
-      completedNodeIds.has(row.from_node_id) &&
-      completedNodeIds.has(row.to_node_id),
-  );
+  const completedEdges = completeMemoryIds.size === 0
+    ? []
+    : edgeRows.filter(
+      (row: Row) =>
+        completeMemoryIds.has(row.memory_id) &&
+        completedNodeIds.has(row.from_node_id) &&
+        completedNodeIds.has(row.to_node_id),
+    );
 
   return {
     memoryRows,
@@ -430,7 +449,11 @@ const TOGETHER_SHAREABLE_CATEGORIES = ["place", "activity", "interest"] as const
  * descriptions, no evidence, no edges, no memories, no people, no feelings.
  */
 async function planningGraphFor(base44: Row, user: Row) {
-  const { projected } = await projectedGraphFor(base44, user);
+  // Nodes only. A planning graph is a list of labels and weights; it has never
+  // named an edge, and reading them was pure cost.
+  const { projected } = await projectedGraphFor(base44, user, {
+    withEdges: false,
+  });
   const nodes = projected.nodes
     .filter((node: Row) =>
       (TOGETHER_SHAREABLE_CATEGORIES as readonly string[]).includes(
@@ -472,6 +495,20 @@ function firstName(user: Row | undefined, fallback = "your friend") {
 function trustedInternalCall(data: Row) {
   const expected = Deno.env.get("SIDEQUEST_INTERNAL_SECRET");
   return Boolean(expected) && data.internalSecret === expected;
+}
+
+/**
+ * A caller that cannot prove it is Chapter's own server is refused, but it is
+ * refused as a server. Answering 401 here told a signed-in person their
+ * session had expired when the only thing wrong was a secret two deployments
+ * disagreed about, and sent them to sign in again from a session that was
+ * never in question.
+ */
+function untrustedInternalCall() {
+  return Response.json(
+    { error: "internal call not permitted" },
+    { status: 403 },
+  );
 }
 
 /** The accepted connection joining the viewer to someone else, or undefined. */
@@ -793,57 +830,65 @@ Deno.serve(async (req) => {
       const connections = base44.asServiceRole.entities.SidequestConnection;
       const invites = base44.asServiceRole.entities.ConnectionInvite;
       const graphNodes = base44.asServiceRole.entities.ExperienceGraphNode;
-      const connectionRows = await readWithRateLimitRetry(() =>
-        connections.filter(
-          {
-            status: "accepted",
-            $or: [
-              { user_a_id: user.id },
-              { user_b_id: user.id },
-            ],
-          },
-          "-created_at",
-          100,
-        )
-      );
-      const pendingRows = await readWithRateLimitRetry(() =>
-        invites.filter(
-          { inviter_user_id: user.id, status: "pending" },
-          "-created_at",
-          100,
-        )
-      );
+      const [connectionRows, pendingRows] = await Promise.all([
+        readWithRateLimitRetry(() =>
+          connections.filter(
+            {
+              status: "accepted",
+              $or: [
+                { user_a_id: user.id },
+                { user_b_id: user.id },
+              ],
+            },
+            "-created_at",
+            100,
+          )
+        ),
+        readWithRateLimitRetry(() =>
+          invites.filter(
+            { inviter_user_id: user.id, status: "pending" },
+            "-created_at",
+            100,
+          )
+        ),
+      ]);
 
-      const accepted = [];
-      for (const connection of connectionRows) {
-        const userIsFirst = connection.user_a_id === user.id;
-        const otherUserId = userIsFirst
-          ? connection.user_b_id
-          : connection.user_a_id;
-        const nodeId = userIsFirst
-          ? connection.user_a_node_id
-          : connection.user_b_node_id;
-        let otherUser: Row | undefined;
-        let node: Row | undefined;
-        try {
-          otherUser = await readWithRateLimitRetry(() =>
-            users.get(otherUserId)
-          );
-          node = nodeId
-            ? await readWithRateLimitRetry(() => graphNodes.get(nodeId))
-            : undefined;
-        } catch {
+      // Every connection at once. Read one after another, a list of ten people
+      // cost twenty round trips before the first name appeared.
+      const resolved = await Promise.all(
+        connectionRows.map(async (connection: Row) => {
+          const userIsFirst = connection.user_a_id === user.id;
+          const otherUserId = userIsFirst
+            ? connection.user_b_id
+            : connection.user_a_id;
+          const nodeId = userIsFirst
+            ? connection.user_a_node_id
+            : connection.user_b_node_id;
+          // The node is read alongside the person and allowed to fail on its
+          // own: a connection whose label row has gone is still a connection,
+          // and the account behind it still has a name.
+          const [otherUser, node] = await Promise.all([
+            readWithRateLimitRetry(() => users.get(otherUserId)).catch(
+              () => undefined,
+            ),
+            nodeId
+              ? readWithRateLimitRetry(() => graphNodes.get(nodeId)).catch(
+                () => undefined,
+              )
+              : Promise.resolve(undefined),
+          ]);
           // A partially repaired connection remains private and is omitted.
-        }
-        if (!otherUser) continue;
+          if (!otherUser) return undefined;
 
-        accepted.push({
-          id: connection.id,
-          nodeId,
-          name: stringValue(node?.label) || displayName(otherUser),
-          connectedAt: connection.created_at,
-        });
-      }
+          return {
+            id: connection.id,
+            nodeId,
+            name: stringValue(node?.label) || displayName(otherUser),
+            connectedAt: connection.created_at,
+          };
+        }),
+      );
+      const accepted = resolved.filter(Boolean);
 
       const now = Date.now();
       const pending = pendingRows
@@ -960,9 +1005,10 @@ Deno.serve(async (req) => {
      */
     if (action === "findIntroductionCandidates") {
       const viewer = await authenticatedViewer(base44);
-      if (!viewer || !trustedInternalCall(data)) {
+      if (!viewer) {
         return Response.json({ error: "authentication required" }, { status: 401 });
       }
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
 
       const user = await ensureSidequestUser(users, viewer);
       const city = normalizeCity(user.home_city);
@@ -1076,9 +1122,10 @@ Deno.serve(async (req) => {
      */
     if (action === "offerIntroduction") {
       const viewer = await authenticatedViewer(base44);
-      if (!viewer || !trustedInternalCall(data)) {
+      if (!viewer) {
         return Response.json({ error: "authentication required" }, { status: 401 });
       }
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
 
       const user = await ensureSidequestUser(users, viewer);
       const otherUserId = stringValue(data.otherUserId);
@@ -1641,28 +1688,31 @@ Deno.serve(async (req) => {
         )
       );
 
-      const partnerNames = new Map<string, string>();
-      const records = [];
-      for (const row of rows) {
-        if (!visibleTo(row, user.id)) continue;
-
-        const role = row.initiator_user_id === user.id ? "initiator" : "partner";
-        const partnerUserId = role === "initiator"
+      const visible = rows.filter((row: Row) => visibleTo(row, user.id));
+      const partnerUserIdFor = (row: Row) =>
+        row.initiator_user_id === user.id
           ? stringValue(row.partner_user_id)
           : stringValue(row.initiator_user_id);
-        if (!partnerNames.has(partnerUserId)) {
-          let partner: Row | undefined;
-          try {
-            partner = await readWithRateLimitRetry(() => users.get(partnerUserId));
-          } catch {
-            partner = undefined;
-          }
-          partnerNames.set(partnerUserId, firstName(partner));
-        }
-        records.push(
-          togetherChapterRecord(row, user.id, partnerNames.get(partnerUserId)!),
-        );
-      }
+
+      // Each partner looked up once, and all of them at the same time. Read in
+      // sequence, a person with a few chapters open waited on one round trip
+      // per chapter before the tab could say anything at all.
+      const partnerNames = new Map<string, string>();
+      const partnerUserIds = [...new Set(visible.map(partnerUserIdFor))];
+      const partnerRows = await Promise.all(
+        partnerUserIds.map((partnerUserId) =>
+          readWithRateLimitRetry(() => users.get(partnerUserId)).catch(
+            () => undefined,
+          )
+        ),
+      );
+      partnerUserIds.forEach((partnerUserId, index) => {
+        partnerNames.set(partnerUserId, firstName(partnerRows[index]));
+      });
+
+      const records = visible.map((row: Row) =>
+        togetherChapterRecord(row, user.id, partnerNames.get(partnerUserIdFor(row))!)
+      );
 
       return Response.json({
         value: {
@@ -1677,9 +1727,10 @@ Deno.serve(async (req) => {
 
     if (action === "getPartnerPlanningGraph") {
       const viewer = await authenticatedViewer(base44);
-      if (!viewer || !trustedInternalCall(data)) {
+      if (!viewer) {
         return Response.json({ error: "authentication required" }, { status: 401 });
       }
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
 
       const user = await ensureSidequestUser(users, viewer);
       const connection = await acceptedConnectionFor(
@@ -1709,6 +1760,91 @@ Deno.serve(async (req) => {
           partnerUserId,
           partnerName: firstName(partner),
           graph: await planningGraphFor(base44, partner),
+        },
+      });
+    }
+
+    /**
+     * Everything Together needs to work out what your worlds share, in one
+     * call.
+     *
+     * It used to take one call for your connections, one for your graph, one
+     * for your session, and then one more per person — each of them proving
+     * who you are and finding your row again before it did any work. Opening
+     * the tab cost more in round trips than in reading. Nothing here is new;
+     * it is the same reads, asked once and asked together.
+     *
+     * Server-only for the same reason the partner graph is: it opens other
+     * people's worlds. Only the shareable ground of each comes back, and the
+     * caller must prove it is Chapter's own server.
+     */
+    if (action === "getTogetherGistSource") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
+
+      const user = await ensureSidequestUser(users, viewer);
+      const connections = base44.asServiceRole.entities.SidequestConnection;
+      const graphNodes = base44.asServiceRole.entities.ExperienceGraphNode;
+
+      const [connectionRows, mine] = await Promise.all([
+        readWithRateLimitRetry(() =>
+          connections.filter(
+            {
+              status: "accepted",
+              $or: [{ user_a_id: user.id }, { user_b_id: user.id }],
+            },
+            "-created_at",
+            100,
+          )
+        ),
+        planningGraphFor(base44, user),
+      ]);
+
+      const asked = typeof data.limit === "number" && Number.isFinite(data.limit)
+        ? data.limit
+        : 8;
+      const limit = Math.min(Math.max(Math.floor(asked), 1), 24);
+      const partners = await Promise.all(
+        connectionRows.slice(0, limit).map(async (connection: Row) => {
+          const userIsFirst = connection.user_a_id === user.id;
+          const partnerUserId = userIsFirst
+            ? connection.user_b_id
+            : connection.user_a_id;
+          const nodeId = userIsFirst
+            ? connection.user_a_node_id
+            : connection.user_b_node_id;
+          try {
+            const [partner, node] = await Promise.all([
+              readWithRateLimitRetry(() => users.get(partnerUserId)),
+              nodeId
+                ? readWithRateLimitRetry(() => graphNodes.get(nodeId)).catch(
+                  () => undefined,
+                )
+                : Promise.resolve(undefined),
+            ]);
+            if (!partner) return undefined;
+            return {
+              connectionId: connection.id,
+              // The name in the reader's own world wins, exactly as it does
+              // on the connections list this replaced.
+              partnerName: stringValue(node?.label) || firstName(partner),
+              graph: await planningGraphFor(base44, partner),
+            };
+          } catch {
+            // One unreachable world costs its own gist and nothing else.
+            return undefined;
+          }
+        }),
+      );
+
+      return Response.json({
+        value: {
+          viewerEmail: stringValue(viewer.email),
+          mine,
+          partners: partners.filter(Boolean),
         },
       });
     }
@@ -1896,9 +2032,10 @@ Deno.serve(async (req) => {
 
     if (action === "getTogetherNotifyTarget") {
       const viewer = await authenticatedViewer(base44);
-      if (!viewer || !trustedInternalCall(data)) {
+      if (!viewer) {
         return Response.json({ error: "authentication required" }, { status: 401 });
       }
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
 
       const user = await ensureSidequestUser(users, viewer);
       const chapters = base44.asServiceRole.entities.TogetherChapter;

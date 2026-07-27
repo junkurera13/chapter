@@ -1,6 +1,7 @@
 import { getAccessToken } from "@base44/sdk";
 
 import type { NowChapterRecord } from "./nowChapterSchema";
+import { forgetOpened, OPENED_NOW, rememberOpened } from "./openedViews";
 import type { PlaceSuggestion } from "./placeSearch";
 
 export type { PlaceSuggestion };
@@ -56,11 +57,12 @@ async function nowFetch<T>(init?: {
       response.status,
     );
   }
+  if (init?.method === "POST") forgetOpened(OPENED_NOW);
   return payload.value;
 }
 
 export function loadNow() {
-  return nowFetch<NowState>();
+  return nowFetch<NowState>().then((value) => rememberOpened(OPENED_NOW, value));
 }
 
 export function saveHomeCity(homeCity: string) {
