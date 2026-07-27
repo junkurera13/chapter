@@ -2,6 +2,23 @@ import { createClientFromRequest } from "npm:@base44/sdk";
 
 import { collapseMemoryGraphRows } from "../../shared/memory-map.ts";
 import {
+  batched,
+  bothSaidYes,
+  INTRODUCTION_GRAPH_READS,
+  INTRODUCTION_MIN_ANCHORS,
+  INTRODUCTION_READ_BATCH,
+  INTRODUCTION_SCAN_LIMIT,
+  INTRODUCTION_TTL_MS,
+  introductionPairKey,
+  introductionRecordFor,
+  isLiveIntroduction,
+  MAX_LIVE_INTRODUCTIONS,
+  normalizeCity,
+  responseOf,
+  sharedAnchorsBetween,
+  sideFor,
+} from "../../shared/introductions.ts";
+import {
   TOGETHER_OPEN_STATUSES,
   togetherChapterRecord,
   visibleTo,
@@ -201,6 +218,9 @@ function viewerRecord(viewer: Row, user: Row) {
     phone: user.phone,
     assignedPhone: user.assigned_phone,
     messagingConnected: Boolean(user.phone && user.assigned_phone),
+    // Absent means no. Being reachable by a stranger is never a default.
+    introductionsOptIn: Boolean(user.introductions_opt_in),
+    homeCity: stringValue(user.home_city) || undefined,
   };
 }
 
@@ -689,6 +709,7 @@ Deno.serve(async (req) => {
           user_a_id: inviter.id,
           user_b_id: recipient.id,
           invite_id: invite.id,
+          origin: "invite",
           status: "accepted",
           created_at: Date.now(),
         });
@@ -832,6 +853,434 @@ Deno.serve(async (req) => {
         }));
 
       return Response.json({ value: { accepted, pending } });
+    }
+
+    /**
+     * Being reachable by someone you have not met is a decision, made once,
+     * reversible at any moment. Opting out does not only stop new offers: it
+     * withdraws every live one, because an offer standing in someone else's
+     * app after you left is a promise you did not make.
+     */
+    if (action === "setMyIntroductions") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const optIn = data.optIn === true;
+      await users.update(user.id, {
+        introductions_opt_in: optIn,
+        ...(optIn ? { introductions_opt_in_at: Date.now() } : {}),
+      });
+
+      if (!optIn) {
+        const introductions = base44.asServiceRole.entities.Introduction;
+        const live = await readWithRateLimitRetry(() =>
+          introductions.filter(
+            {
+              status: "offered",
+              $or: [{ user_a_id: user.id }, { user_b_id: user.id }],
+            },
+            "-created_at",
+            100,
+          )
+        );
+        await Promise.all(
+          live.map((row: Row) =>
+            introductions.update(row.id, { status: "expired" })
+          ),
+        );
+      }
+
+      return Response.json({ value: { introductionsOptIn: optIn } });
+    }
+
+    if (action === "getMyIntroductions") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      if (!user.introductions_opt_in) {
+        return Response.json({
+          value: { optedIn: false, homeCity: "", introductions: [] },
+        });
+      }
+
+      const introductions = base44.asServiceRole.entities.Introduction;
+      const rows = await readWithRateLimitRetry(() =>
+        introductions.filter(
+          {
+            status: "offered",
+            $or: [{ user_a_id: user.id }, { user_b_id: user.id }],
+          },
+          "-created_at",
+          MAX_LIVE_INTRODUCTIONS * 4,
+        )
+      );
+
+      const now = Date.now();
+      const value = [];
+      for (const row of rows) {
+        const record = introductionRecordFor(row, user.id, now);
+        if (record) value.push(record);
+      }
+
+      return Response.json({
+        value: {
+          optedIn: true,
+          homeCity: stringValue(user.home_city),
+          introductions: value.slice(0, MAX_LIVE_INTRODUCTIONS),
+        },
+      });
+    }
+
+    /**
+     * The pool scan. Reads other accounts on this account's behalf, so it is
+     * gated on the internal secret as well as the caller's own session and is
+     * never reachable from a browser.
+     *
+     * The intersection is computed here rather than upstream on purpose. Only
+     * the labels two worlds genuinely share ever leave this function, so a
+     * stranger's world is never shipped anywhere, not even to Chapter's own
+     * server, and the name behind a candidate is not returned at all.
+     */
+    if (action === "findIntroductionCandidates") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer || !trustedInternalCall(data)) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const city = normalizeCity(user.home_city);
+      if (!user.introductions_opt_in || !city) {
+        return Response.json({ value: { candidates: [] } });
+      }
+
+      const introductions = base44.asServiceRole.entities.Introduction;
+      const connections = base44.asServiceRole.entities.SidequestConnection;
+      const [mineRows, connectionRows] = await Promise.all([
+        readWithRateLimitRetry(() =>
+          introductions.filter(
+            { $or: [{ user_a_id: user.id }, { user_b_id: user.id }] },
+            "-created_at",
+            200,
+          )
+        ),
+        readWithRateLimitRetry(() =>
+          connections.filter(
+            { $or: [{ user_a_id: user.id }, { user_b_id: user.id }] },
+            "-created_at",
+            200,
+          )
+        ),
+      ]);
+
+      const now = Date.now();
+      const liveCount = mineRows.filter((row: Row) =>
+        isLiveIntroduction(row, now)
+      ).length;
+      const openings = MAX_LIVE_INTRODUCTIONS - liveCount;
+      if (openings <= 0) {
+        return Response.json({ value: { candidates: [] } });
+      }
+
+      // A pair is offered once, ever. Someone who passed on you is not shown
+      // to you again under a different sentence, and neither are you to them.
+      const alreadyPaired = new Set<string>();
+      for (const row of mineRows) {
+        alreadyPaired.add(
+          row.user_a_id === user.id ? row.user_b_id : row.user_a_id,
+        );
+      }
+      for (const row of connectionRows) {
+        alreadyPaired.add(
+          row.user_a_id === user.id ? row.user_b_id : row.user_a_id,
+        );
+      }
+
+      const pool = await readWithRateLimitRetry(() =>
+        users.filter({ introductions_opt_in: true }, "-first_seen_at", INTRODUCTION_SCAN_LIMIT)
+      );
+      const mine = (await planningGraphFor(base44, user)).nodes;
+      if (mine.length === 0) {
+        return Response.json({ value: { candidates: [] } });
+      }
+
+      // The city filter is free. Opening a world is not, so only so many are
+      // opened per scan, and the count that was skipped is said out loud
+      // rather than quietly presented as though the city held nobody else.
+      const reachable = pool.filter((candidate: Row) =>
+        candidate.id !== user.id &&
+        !alreadyPaired.has(candidate.id) &&
+        normalizeCity(candidate.home_city) === city
+      );
+      const opened = reachable.slice(0, INTRODUCTION_GRAPH_READS);
+
+      const scored = [];
+      for (const batch of batched(opened, INTRODUCTION_READ_BATCH)) {
+        const graphs = await Promise.all(
+          batch.map(async (candidate: Row) => ({
+            candidate,
+            nodes: (await planningGraphFor(base44, candidate)).nodes,
+          })),
+        );
+        for (const { candidate, nodes } of graphs) {
+          const shared = sharedAnchorsBetween(mine, nodes);
+          if (shared.anchors.length < INTRODUCTION_MIN_ANCHORS) continue;
+          scored.push({
+            userId: candidate.id,
+            anchors: shared.anchors,
+            weight: shared.weight,
+          });
+        }
+      }
+
+      const candidates = scored
+        .sort((first, second) => second.weight - first.weight)
+        .slice(0, openings);
+
+      return Response.json({
+        value: {
+          candidates,
+          matchCity: city,
+          scanned: opened.length,
+          skipped: reachable.length - opened.length,
+        },
+      });
+    }
+
+    /**
+     * Records one offer, once. Idempotent on the pair, so two people scanning
+     * at the same moment cannot end up looking at two different sentences
+     * about the same coincidence.
+     */
+    if (action === "offerIntroduction") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer || !trustedInternalCall(data)) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const otherUserId = stringValue(data.otherUserId);
+      const line = stringValue(data.line);
+      const matchCity = normalizeCity(data.matchCity);
+      if (!user.introductions_opt_in || !otherUserId || !line || !matchCity) {
+        return Response.json({ error: "introduction unavailable" }, { status: 400 });
+      }
+      if (otherUserId === user.id) {
+        return Response.json({ error: "introduction unavailable" }, { status: 400 });
+      }
+
+      let other: Row | undefined;
+      try {
+        other = await readWithRateLimitRetry(() => users.get(otherUserId));
+      } catch {
+        other = undefined;
+      }
+      // Re-checked here rather than trusted from the scan: consent can be
+      // withdrawn between finding a candidate and writing the offer down.
+      if (!other || !other.introductions_opt_in) {
+        return Response.json({ error: "introduction unavailable" }, { status: 409 });
+      }
+
+      const introductions = base44.asServiceRole.entities.Introduction;
+      const stablePairKey = introductionPairKey(user.id, other.id);
+      const existingRows = await introductions.filter(
+        { pair_key: stablePairKey },
+        "-created_at",
+        1,
+      );
+      const existing = existingRows[0];
+      if (existing) {
+        return Response.json({
+          value: {
+            introduction: introductionRecordFor(existing, user.id, Date.now()),
+          },
+        });
+      }
+
+      const [firstId, secondId] = [user.id, other.id].sort();
+      const created = await introductions.create({
+        pair_key: stablePairKey,
+        user_a_id: firstId,
+        user_b_id: secondId,
+        match_city: matchCity,
+        line,
+        anchors_json: boundedJson(data.anchorsJson, 4_000),
+        shared_weight: typeof data.weight === "number" &&
+            Number.isFinite(data.weight)
+          ? data.weight
+          : 0,
+        user_a_response: "pending",
+        user_b_response: "pending",
+        status: "offered",
+        created_at: Date.now(),
+        expires_at: Date.now() + INTRODUCTION_TTL_MS,
+      });
+
+      return Response.json({
+        value: {
+          introduction: introductionRecordFor(created, user.id, Date.now()),
+        },
+      });
+    }
+
+    /**
+     * One person's answer, and the moment two of them become a connection.
+     *
+     * A yes on its own reveals nothing to the other side; only the second yes
+     * does anything at all. That is what makes this safe to answer honestly:
+     * saying yes to a stranger who says no leaves you exactly where you were,
+     * and they never learn you said it.
+     */
+    if (action === "respondToIntroduction") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const answer = data.answer === "yes" || data.answer === "no"
+        ? data.answer
+        : undefined;
+      const introductions = base44.asServiceRole.entities.Introduction;
+      let introduction: Row | undefined;
+      try {
+        introduction = await introductions.get(stringValue(data.introductionId));
+      } catch {
+        introduction = undefined;
+      }
+      const side = introduction ? sideFor(introduction, user.id) : undefined;
+      if (!introduction || !side || !answer) {
+        return Response.json({ error: "introduction not found" }, { status: 404 });
+      }
+      if (!isLiveIntroduction(introduction, Date.now())) {
+        return Response.json({ error: "introduction closed" }, { status: 410 });
+      }
+      if (responseOf(introduction, side) !== "pending") {
+        return Response.json({ error: "already answered" }, { status: 409 });
+      }
+
+      const answerPatch: Row = side === "a"
+        ? { user_a_response: answer, user_a_responded_at: Date.now() }
+        : { user_b_response: answer, user_b_responded_at: Date.now() };
+
+      if (answer === "no") {
+        await introductions.update(introduction.id, {
+          ...answerPatch,
+          status: "declined",
+        });
+        return Response.json({ value: { connected: false, closed: true } });
+      }
+
+      const answered = { ...introduction, ...answerPatch };
+      if (!bothSaidYes(answered)) {
+        await introductions.update(introduction.id, answerPatch);
+        return Response.json({ value: { connected: false, closed: false } });
+      }
+
+      const otherUserId = side === "a"
+        ? introduction.user_b_id
+        : introduction.user_a_id;
+      let other: Row | undefined;
+      try {
+        other = await readWithRateLimitRetry(() => users.get(otherUserId));
+      } catch {
+        other = undefined;
+      }
+      if (!other) {
+        await introductions.update(introduction.id, {
+          ...answerPatch,
+          status: "expired",
+        });
+        return Response.json({ error: "introduction closed" }, { status: 410 });
+      }
+
+      const connections = base44.asServiceRole.entities.SidequestConnection;
+      const graphNodes = base44.asServiceRole.entities.ExperienceGraphNode;
+      const stablePairKey = pairKey(user.id, other.id);
+      const existingConnections = await connections.filter(
+        { pair_key: stablePairKey, status: "accepted" },
+        undefined,
+        1,
+      );
+      let connection = existingConnections[0];
+      if (!connection) {
+        connection = await connections.create({
+          pair_key: stablePairKey,
+          user_a_id: user.id,
+          user_b_id: other.id,
+          introduction_id: introduction.id,
+          origin: "introduction",
+          status: "accepted",
+          created_at: Date.now(),
+        });
+      }
+
+      // Neither side named the other, so unlike an accepted invite there is no
+      // existing node to adopt. Both people get a freshly made one.
+      const nodeFor = async (owner: Row, subject: Row) => {
+        const rows = await graphNodes.filter(
+          {
+            owner_user_id: owner.id,
+            linked_user_id: subject.id,
+            source_type: "connection",
+          },
+          undefined,
+          1,
+        );
+        return rows[0] || await graphNodes.create({
+          owner_user_id: owner.id,
+          source_type: "connection",
+          linked_user_id: subject.id,
+          connection_id: connection.id,
+          key: `connection:${subject.id}`,
+          category: "people",
+          subtype: "friend",
+          kind: "person",
+          label: displayName(subject),
+          description: "Someone Chapter introduced you to.",
+          certainty: "fact",
+          confidence: 1,
+          salience: 0.78,
+          evidence: "Chapter noticed what your two worlds already shared.",
+          created_at: Date.now(),
+        });
+      };
+
+      const [myNode, theirNode] = await Promise.all([
+        nodeFor(user, other),
+        nodeFor(other, user),
+      ]);
+
+      await Promise.all([
+        connections.update(connection.id, {
+          user_a_node_id: connection.user_a_id === user.id
+            ? myNode.id
+            : theirNode.id,
+          user_b_node_id: connection.user_b_id === user.id
+            ? myNode.id
+            : theirNode.id,
+        }),
+        introductions.update(introduction.id, {
+          ...answerPatch,
+          status: "connected",
+          connection_id: connection.id,
+          connected_at: Date.now(),
+        }),
+      ]);
+
+      return Response.json({
+        value: {
+          connected: true,
+          closed: true,
+          connectionId: connection.id,
+          friendName: displayName(other),
+        },
+      });
     }
 
     if (action === "connectMyPhone") {

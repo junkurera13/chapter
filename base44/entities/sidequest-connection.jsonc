@@ -10,11 +10,24 @@
     "user_b_id": { "type": "string" },
     "user_a_node_id": { "type": "string" },
     "user_b_node_id": { "type": "string" },
-    "invite_id": { "type": "string" },
+    "invite_id": {
+      "type": "string",
+      "description": "The accepted invite, when the two people found each other by name"
+    },
+    "introduction_id": {
+      "type": "string",
+      "description": "The accepted introduction, when Chapter put the two of them together instead"
+    },
+    "origin": {
+      "type": "string",
+      "enum": ["invite", "introduction"]
+    },
     "status": { "type": "string", "enum": ["accepted", "blocked"] },
     "created_at": { "type": "number" }
   },
-  "required": ["pair_key", "user_a_id", "user_b_id", "invite_id", "status", "created_at"],
+  // `invite_id` was required while an invite was the only way to connect. It is
+  // now one of two origins, so the requirement moved to `origin` instead.
+  "required": ["pair_key", "user_a_id", "user_b_id", "status", "created_at"],
   "rls": {
     "create": { "user_condition": { "role": "admin" } },
     "read": { "user_condition": { "role": "admin" } },

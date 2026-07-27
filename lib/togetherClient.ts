@@ -1,5 +1,9 @@
 import { getAccessToken } from "@base44/sdk";
 
+import type {
+  IntroductionAnswer,
+  IntroductionsState,
+} from "./introductionSchema";
 import type { TogetherChapterRecord } from "./togetherChapterSchema";
 import type { TogetherGistsState } from "./togetherGistSchema";
 
@@ -65,6 +69,33 @@ export function loadTogether() {
 /** Read once when Together opens: what each of your worlds turns out to share. */
 export function loadTogetherGists() {
   return togetherFetch<TogetherGistsState>({ path: "/gists" });
+}
+
+/**
+ * Who Chapter has noticed among the people you have not met. Read on the same
+ * terms as gists: once when Together opens, never polled.
+ */
+export function loadIntroductions() {
+  return togetherFetch<IntroductionsState>({ path: "/introductions" });
+}
+
+export function setIntroductionsOptIn(optIn: boolean) {
+  return togetherFetch<{ introductionsOptIn: boolean }>({
+    path: "/introductions",
+    method: "POST",
+    body: { action: "optIn", optIn },
+  });
+}
+
+export function answerIntroduction(
+  introductionId: string,
+  answer: "yes" | "no",
+) {
+  return togetherFetch<IntroductionAnswer>({
+    path: "/introductions",
+    method: "POST",
+    body: { action: "answer", introductionId, answer },
+  });
 }
 
 export function startTogetherChapter(connectionId: string) {

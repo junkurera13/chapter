@@ -193,6 +193,70 @@ export function fetchPartnerPlanningGraph(
   );
 }
 
+export function fetchMyIntroductions(accessToken: string) {
+  return invokeSidequestData<import("./introductionSchema").IntroductionsState>(
+    { action: "getMyIntroductions" },
+    accessToken,
+  );
+}
+
+export function setMyIntroductions(optIn: boolean, accessToken: string) {
+  return invokeSidequestData<{ introductionsOptIn: boolean }>(
+    { action: "setMyIntroductions", optIn },
+    accessToken,
+  );
+}
+
+export function respondToIntroduction(
+  args: { introductionId: string; answer: "yes" | "no" },
+  accessToken: string,
+) {
+  return invokeSidequestData<import("./introductionSchema").IntroductionAnswer>(
+    { action: "respondToIntroduction", ...args },
+    accessToken,
+  );
+}
+
+/**
+ * The pool scan. Server-only for the same reason the partner graph is: it
+ * weighs one account against others. Only the labels the two already share
+ * come back, never a name and never a stranger's world.
+ */
+export function findIntroductionCandidates(accessToken: string) {
+  return invokeSidequestData<{
+    candidates: Array<{
+      userId: string;
+      anchors: import("./introductionSchema").IntroductionAnchor[];
+      weight: number;
+    }>;
+    matchCity?: string;
+    /** Worlds actually opened, and worlds in the city the cap did not reach. */
+    scanned?: number;
+    skipped?: number;
+  }>(
+    { action: "findIntroductionCandidates", internalSecret: internalSecret() },
+    accessToken,
+  );
+}
+
+export function offerIntroduction(
+  args: {
+    otherUserId: string;
+    line: string;
+    anchorsJson: string;
+    weight: number;
+    matchCity: string;
+  },
+  accessToken: string,
+) {
+  return invokeSidequestData<{
+    introduction: import("./introductionSchema").IntroductionRecord | undefined;
+  }>(
+    { action: "offerIntroduction", ...args, internalSecret: internalSecret() },
+    accessToken,
+  );
+}
+
 /** Server-only, for the same reason: it returns someone else's phone. */
 export function fetchTogetherNotifyTarget(
   chapterId: string,

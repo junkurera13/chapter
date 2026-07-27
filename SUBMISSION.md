@@ -5,36 +5,74 @@
 - Full name: **[confirm before submitting]**
 - Email: **[confirm before submitting]**
 - Project title: **Chapter**
-- One-line pitch: **An iMessage agent that learns what makes an experience unforgettable and builds a private world around you.**
+- One-line pitch: **Chapter turns your memories into an evolving graph of your life, then creates experiences combining the familiar and the unfamiliar.**
 - Surface type: **Web app**
 - Live URL: https://usechapter.vercel.app
 - Public GitHub repo: https://github.com/junkurera13/chapter
-- Access instructions: **Open `/app`, sign in with Google, connect an iMessage-capable phone number, text Chapter, and share one unforgettable experience. Return to You to see the private graph. Set a home city in Now to get one researched chapter to live this weekend. Open any named person to create a private invite; after they accept with their own Google account, both people receive reciprocal nodes and appear in Together, where Chapter names what their two worlds share and can plan a chapter for both of them.**
+- Access instructions: **Open `/app`, sign in with Google, connect an iMessage-capable phone number, text Chapter, and share one unforgettable experience. Return to You to see the private graph. Set a home city in Now to get one researched chapter to live this weekend. Together works two ways. To connect by name, open any named person and create a private invite; after they accept with their own Google account, both people receive reciprocal nodes and Chapter names what their two worlds share, then plans a chapter for both of them. To be introduced to someone you have not met, press "Look for someone" in Together. Chapter scans other accounts that have opted in and set the same home city, and offers a sentence made only of what the two worlds already share, with no name attached. Both people must say yes before either learns anything more; the second yes creates an ordinary connection. With one opted-in account the pool is empty by design and the tab says so.**
 - Demo video URL: **[optional, not recorded yet]**
-- Agentic IDE used: **Codex**
+- Agentic IDE used: **Codex and Claude Code**
 - Base44 App ID: **6a606ec9966ada5a7874da07**
 
 ### Project write-up
 
+**Why I built this.** Everyone is building AI for X and agents for Y, and we
+still don't have the next great consumer company. I think that's because nobody
+has packaged AI into something genuinely useful, beautiful, and not faintly
+threatening. "1000 songs in your pocket" took a complicated device and made it
+instantly obvious and wanted. That care, making beautiful things out of
+technology rather than selling the technology, is the standard I build to. I
+pointed it at loneliness. People are more isolated than ever, and the products
+meant to fix that ask you to scroll. Chapter asks you to go somewhere. One good
+meal down an alley you've never walked can become a memory, a new favourite
+food, a conversation with whoever is sitting next to you. Unlikely, but you
+won't know if you don't go.
+
+**The idea.** Chapter turns your memories into an evolving graph of your life,
+then creates experiences combining the familiar and the unfamiliar. That
+combination is the whole product, and it is a rule rather than a mood: **the one
+stretch**. Every proposal keeps your world familiar along every dimension except
+exactly one, and that one (place, activity, time, or person) reaches into the
+unknown. Two stretches is a stranger doing a strange thing somewhere strange, and nobody
+goes. Zero stretches is Tuesday. The rule lives in the schema
+(`lib/nowChapterSchema.ts`), not only in the prompt, so nothing downstream can
+quietly break it. **Now** stretches place, activity, or time. **Together** spends
+the person dimension, with someone you have connected to or someone you have
+not met.
+
 Chapter starts with lived experience instead of preference checkboxes. A
 person shares one experience they will never forget in iMessage. Chapter
-extracts a careful graph of the people, places, activities, feelings, and
-patterns that made it meaningful, then reveals that private graph in the
-authenticated **You** view. Explicitly named people remain individual nodes,
-not a single generic group.
+extracts a careful graph against a fixed ontology
+(`lib/experienceOntology.ts`): eight node categories (moment, people, place,
+activity, interest, feeling, condition, pattern), eighteen typed relations,
+and two axes carried on every node, polarity and familiarity. Familiarity is
+what makes the one stretch computable rather than merely intended, since a
+proposal can only reach into the unknown along a dimension the graph already
+knows is new. Explicitly named people remain individual nodes, not a single
+generic group. The private graph is then revealed in the authenticated **You**
+view.
 
 That world is then spent. **Now** takes the graph plus a home city and writes
-one real chapter to live this weekend — a single stretch of a day, researched
+one real chapter to live this weekend: a single stretch of a day, researched
 against the live web through Parallel AI and checked before it is offered,
-rather than a generated itinerary. **Together** does the same for two connected
-accounts: it finds the threads both private worlds actually hold, says the one
-thing they share out loud as a *gist*, and can then plan a chapter for the two
-of them that either person can propose, accept, or mark lived.
+rather than a generated itinerary. **Together** does the same across two private
+worlds. It reduces both graphs to what is shareable, keeps only the threads they
+genuinely hold in common, and says that intersection out loud as a *gist*: one
+sentence, at most three threads, already true on both sides by construction.
+
+The gist is the whole mechanism, and it does two jobs. With someone you have
+connected to, it becomes a chapter for the two of you that either person can
+propose, accept, or mark lived. With someone you have not met, the same sentence
+is the introduction itself. Chapter does not show you a profile, a photograph,
+or a compatibility score. It shows you one true thing your world and a stranger's
+world both contain, and asks whether that is worth an afternoon. Nothing else
+about either person crosses until both people say yes.
 
 Base44 owns authenticated accounts, private image storage, phone-account
 linking, source memories, conversation records, graph validation, connection
-invitations, accepted connections, home city, Now and Together chapters, and
-persistence. Ten Base44 entities model that world. Chapter's durable
+invitations, accepted connections, introductions between strangers, home city,
+Now and Together chapters, and persistence. Eleven Base44 entities model that
+world. Chapter's durable
 conversation runs as an Eve agent on Vercel, and every model call goes directly
 through OpenRouter to 2026 models pinned to zero-data-retention providers:
 `google/gemini-3.1-flash-lite` (falling back to `moonshotai/kimi-k2.6`) for
@@ -44,29 +82,61 @@ conversation, and `moonshotai/kimi-k2.6` for Now and Together composition.
 structured graph before persistence; `sidequest-message` provides idempotent
 web and iMessage processing and stores the opaque Eve continuation cursor;
 `sidequest-data` provides authenticated ownership, graph retrieval, single-use
-invite handling, reciprocal nodes, and chapter records. Direct entity access is
-restricted by access rules.
+invite handling, reciprocal nodes, the introduction pool scan, and chapter
+records. Direct entity access is restricted by access rules. The scan is the
+one action that weighs an account against accounts it has never met, so it
+computes the intersection inside Base44 and returns only the labels the two
+already share: a stranger's world never leaves the backend, not even to
+Chapter's own server.
 
-Privacy is enforced server-side rather than by convention. Together reduces each
-graph to a shareable cut — places, activities, and interests only — and feelings,
-people, conditions, patterns, and raw memories never leave the server. A gist is
+Privacy is enforced server-side rather than by convention. The eight categories
+split cleanly in two. Together reduces each graph to a shareable cut of three,
+places, activities, and interests. The other five, moments, people, feelings,
+conditions, and patterns, never leave the server. A gist is
 narrower still: it reveals only the intersection of the two worlds, so every
-sentence it produces is already true on both sides. Composition belongs to the
-initiator alone, so a partner cannot see or spend a research run they don't know
-exists.
+sentence it produces is already true on both sides. That property is what lets
+Chapter introduce two people who have never met without asking either of them to
+negotiate consent first. A label you already hold in your own world is not the
+other person's to disclose, and the sentence is identically true read from
+either side, so an introduction reveals nothing that was not already yours.
+Composition belongs to the initiator alone, so a partner cannot see or spend a
+research run they don't know exists.
 
 Photon is deliberately narrow: it connects Apple Messages to the signed
 Next.js webhook, while Base44 remains the source of truth. The product
 demonstrates Google sign-in, phone linking, an iMessage memory conversation,
 graph growth, a private interactive world, identity-backed connections, a
-researched personal chapter in **Now**, and a shared one in **Together**.
+researched personal chapter in **Now**, a shared one in **Together**, and an
+introduction between two people whose worlds overlap but who have never met.
+
+**Decisions I would defend.** Anchors come back from the model as labels, never
+as ids, and every label is resolved against the real graph before it survives.
+A label neither world holds is dropped, because an invitation should never claim
+a memory that does not exist. Uncommonness is pushed into retrieval rather than
+hoped for from a model: the anti-obvious constraints (no chains, no landmarks,
+nothing that headlines a top-ten list; prove it still operates) are carried in
+the research schema's own field descriptions. And when extraction encoded a
+relationship as text, with "Sharing tiramisu with Halmoni" arriving as a single
+label unlinked to the Halmoni node, the fix was a deterministic read-time lint
+(`lib/graphRepair.ts`) that moves the relationship into structure, rather than
+another round of prompt escalation.
+
+**What I learned.** Reliable extraction was the hard part, harder than the
+graph or the rendering. Getting a model to return a well-formed, evidence-linked
+graph from a photo and a paragraph, consistently and in production, took the
+most iterations, and the answer turned out to be structural rather than verbal:
+preserve sources before any model work, validate before persistence, repair at
+read time. The rest was cost-performance shopping across gateways and models,
+which is why every model choice here is an environment variable, not a constant.
+I don't use Figma; I design straight into the code, hopping between Codex and
+Claude Code, and I hold the commit history to the same bar as the interface.
 
 ## Backend features used
 
 - [x] Authentication & user management
 - [x] Database / entities
 - [x] Backend functions (Deno)
-- [x] AI / LLM structured extraction (Eve + OpenRouter)
+- [x] AI / LLM structured extraction (OpenRouter)
 - [ ] Real-time subscriptions
 - [x] File & media storage
 
@@ -91,8 +161,8 @@ call so the first memory never depends on the agent sandbox. The external
 browser SDK's anonymous analytics initialization also made a healthy public
 integration look broken by logging an authentication error. The distinction
 between deployed resources and production log visibility was unclear while
-testing an external Next.js frontend. Long-running work — deep research that
-outlives a single request — needed polling built by hand, since there is no
+testing an external Next.js frontend. Long-running work such as deep research
+that outlives a single request needed polling built by hand, since there is no
 first-party job or subscription primitive to lean on.
 
 ### What was missing, or what would you add?

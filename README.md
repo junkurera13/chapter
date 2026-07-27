@@ -40,6 +40,10 @@ web / iMessage <-> Next.js <-> Eve <-> OpenRouter
         Now                          Together
   home city + graph            People node -> hashed private invite
           |                    -> verified friend -> reciprocal nodes
+          |                                |
+          |                    opt in -> same-city pool scan
+          |                    -> strict intersection -> unnamed gist
+          |                    -> both say yes -> reciprocal nodes
           v                              |
   deep research (Parallel)               v
           |                    shared threads -> gist
@@ -57,7 +61,7 @@ web research. Every model choice is overridable by environment variable.
 | Path | Model | Override |
 | --- | --- | --- |
 | Onboarding memory extraction (multimodal) | `google/gemini-3.1-flash-lite`, falling back to `moonshotai/kimi-k2.6` | `CHAPTER_MEMORY_MODEL`, `CHAPTER_MEMORY_FALLBACK_MODEL` |
-| Eve conversation (web + iMessage) | `deepseek/deepseek-v4-flash` for text, `moonshotai/kimi-k2.6` for image-bearing turns | — |
+| Eve conversation (web + iMessage) | `deepseek/deepseek-v4-flash` for text, `moonshotai/kimi-k2.6` for image-bearing turns | none |
 | Now / Together briefs, chapters, gists | `moonshotai/kimi-k2.6`, falling back to `deepseek/deepseek-v4-flash` | `CHAPTER_NOW_MODEL`, `CHAPTER_NOW_FALLBACK_MODEL` |
 | Now / Together web research | Parallel AI `core` processor | `CHAPTER_NOW_PROCESSOR` |
 
@@ -71,7 +75,7 @@ OpenRouter calls are pinned to zero-data-retention providers with
   city, and Now/Together chapter records.
 - Eve owns the durable Chapter conversation. The same Eve session continues
   across the web and iMessage. Onboarding extraction does **not** go through
-  Eve — it calls OpenRouter directly so the first memory never depends on the
+  Eve. It calls OpenRouter directly so the first memory never depends on the
   agent sandbox.
 - `sidequest-memory` preserves text and private-image sources before extraction,
   signs short-lived image URLs, then validates and persists the result.
@@ -82,15 +86,18 @@ OpenRouter calls are pinned to zero-data-retention providers with
 - The deployed Base44 resource IDs retain their pre-rebrand `sidequest-*`
   slugs as compatibility contracts. They are internal identifiers, not product
   branding.
-- Ten Base44 entities hold accounts, messages, memories, source memories, graph
-  nodes, graph edges, connection invites, accepted connections, Now chapters,
-  and Together chapters.
+- Eleven Base44 entities hold accounts, messages, memories, source memories,
+  graph nodes, graph edges, connection invites, accepted connections,
+  introductions, Now chapters, and Together chapters.
+- A connection records how it began. An invite means the two people found each
+  other by name; an introduction means Chapter put them together, and neither
+  learned anything about the other until both said yes.
 - Raw invite tokens are never persisted. Base44 stores only a SHA-256 hash,
   and an accepted token links exact user IDs rather than guessing from names.
 
 ### What Together is allowed to say
 
-Together reduces each private graph to a shareable cut — places, activities,
+Together reduces each private graph to a shareable cut of places, activities,
 and interests only. Feelings, people, conditions, patterns, and the memories
 themselves never leave the server.
 
@@ -98,6 +105,14 @@ A **gist** is narrower still: it reveals only the intersection of the two
 worlds, so every sentence is already true on both sides. Composition is the
 initiator's job alone; the partner polls the same endpoint but cannot see or
 advance a draft, and so cannot spend a research run they don't know exists.
+
+An **introduction** is a gist about someone you have not met, and it carries
+less again. No name, no face, no city more specific than your own, and no count
+of how well you supposedly match. It does not report whether the other person
+has answered, because that is a fact about them and because knowing it would
+change the answer you give. Only the second yes does anything at all, and it
+creates an ordinary connection with a name attached. Both people must opt in
+first, and opting back out withdraws every offer already standing.
 
 ## Local development
 
@@ -146,7 +161,7 @@ npx eve info --json
 npx eve channels list --json
 ```
 
-`npm test` currently runs 178 tests across 28 files.
+`npm test` currently runs 214 tests across 30 files.
 
 The production pass should additionally verify Google sign-in, phone linking,
 the iMessage webhook health route, one real memory turn, private graph

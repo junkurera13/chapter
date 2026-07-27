@@ -17,6 +17,11 @@
     "home_city": { "type": "string" },
     "current_city": { "type": "string" },
     "on_vacation": { "type": "boolean" },
+    "introductions_opt_in": {
+      "type": "boolean",
+      "description": "Whether this account may be offered introductions to people it has not met. Absent means no."
+    },
+    "introductions_opt_in_at": { "type": "number" },
     "notes": { "type": "string" },
     "memory_updated_at": { "type": "number" },
     "eve_session_id": {

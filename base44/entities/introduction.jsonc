@@ -1,0 +1,64 @@
+{
+  "name": "Introduction",
+  "type": "object",
+  "properties": {
+    "pair_key": {
+      "type": "string",
+      "description": "Stable sorted pair of SidequestUser IDs, so a pair is only ever offered once"
+    },
+    "user_a_id": { "type": "string" },
+    "user_b_id": { "type": "string" },
+    "match_city": {
+      "type": "string",
+      "description": "The normalised home city both people share; two people who cannot meet are not introduced"
+    },
+    "line": {
+      "type": "string",
+      "description": "The one sentence both people see, written only from the strict intersection of their two shareable graphs"
+    },
+    "anchors_json": {
+      "type": "string",
+      "description": "The shared labels the line is built from, as labels and categories only, resolved to node IDs per reader at read time"
+    },
+    "shared_weight": {
+      "type": "number",
+      "description": "Combined salience of everything the two worlds share, used to rank candidates"
+    },
+    "user_a_response": {
+      "type": "string",
+      "enum": ["pending", "yes", "no"]
+    },
+    "user_b_response": {
+      "type": "string",
+      "enum": ["pending", "yes", "no"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["offered", "connected", "declined", "expired"]
+    },
+    "connection_id": {
+      "type": "string",
+      "description": "Set once both people said yes and a real connection was created"
+    },
+    "created_at": { "type": "number" },
+    "expires_at": { "type": "number" },
+    "user_a_responded_at": { "type": "number" },
+    "user_b_responded_at": { "type": "number" },
+    "connected_at": { "type": "number" }
+  },
+  "required": [
+    "pair_key",
+    "user_a_id",
+    "user_b_id",
+    "line",
+    "status",
+    "created_at",
+    "expires_at"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
