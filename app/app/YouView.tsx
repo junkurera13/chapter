@@ -1613,17 +1613,6 @@ export default function YouView({
                           ? "Try invite again"
                           : `Invite ${formatNodeLabel(selectedNode.label)}`}
                   </button>
-                  <p>
-                    {inviteState?.nodeId === selectedNode.key &&
-                    inviteState.status === "ready"
-                      ? "Your private link is ready."
-                      : inviteState?.nodeId === selectedNode.key &&
-                          inviteState.status === "shared"
-                        ? "Invite ready to send."
-                        : selectedNode.inviteStatus === "pending"
-                          ? "An invite is open. Make a fresh one to resend it."
-                          : "They’ll get you in their world when they accept."}
-                  </p>
                 </div>
               )
             ) : null}
