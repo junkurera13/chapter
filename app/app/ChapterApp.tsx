@@ -9,7 +9,7 @@ import { loadMyExperienceGraph } from "../../lib/base44Graph";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import { buildWorldGraph } from "./graphData";
-import ChatView from "./ChatView";
+import NowView from "./NowView";
 import TogetherView from "./TogetherView";
 import YouOnboarding from "./YouOnboarding";
 import YouView from "./YouView";
@@ -34,6 +34,7 @@ export default function ChapterApp({
   initialTab?: ChapterTabIndex;
 }) {
   const [activeIndex, setActiveIndex] = useState<ChapterTabIndex>(initialTab);
+  const [addingMemory, setAddingMemory] = useState(false);
   const [graphState, setGraphState] = useState<GraphState>({
     status: "ready",
     graph: initialGraph,
@@ -110,6 +111,15 @@ export default function ChapterApp({
     );
   } else if (graphState.graph.memoryCount === 0) {
     youPanel = <YouOnboarding onMemoryCreated={queueGraphLoad} />;
+  } else if (addingMemory) {
+    youPanel = (
+      <YouOnboarding
+        onMemoryCreated={() => {
+          setAddingMemory(false);
+          queueGraphLoad();
+        }}
+      />
+    );
   } else if (!worldGraph) {
     youPanel = (
       <div className={styles.graphLoading} aria-busy="true">
@@ -117,16 +127,23 @@ export default function ChapterApp({
       </div>
     );
   } else {
-    youPanel = <YouView nodes={worldGraph.nodes} edges={worldGraph.edges} />;
+    youPanel = (
+      <>
+        <YouView nodes={worldGraph.nodes} edges={worldGraph.edges} />
+        <button
+          type="button"
+          className={styles.addMemoryButton}
+          onClick={() => setAddingMemory(true)}
+        >
+          + Memory
+        </button>
+      </>
+    );
   }
 
   const activePanel =
     displayedIndex === 1 ? (
-      <ChatView
-        viewer={viewer}
-        onConnectPhone={onConnectPhone}
-        onConversationAdvanced={queueGraphLoad}
-      />
+      <NowView onGraphAdvanced={queueGraphLoad} />
     ) : displayedIndex === 2 ? (
       <TogetherView onOpenYou={() => changeTab(0)} />
     ) : (

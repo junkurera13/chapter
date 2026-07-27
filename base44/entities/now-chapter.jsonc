@@ -1,0 +1,52 @@
+{
+  "name": "NowChapter",
+  "type": "object",
+  "properties": {
+    "owner_user_id": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": [
+        "researching",
+        "proposed",
+        "accepted",
+        "declined",
+        "lived",
+        "failed"
+      ]
+    },
+    "research_run_id": {
+      "type": "string",
+      "description": "Parallel task run id while the deep research is in flight"
+    },
+    "brief_json": {
+      "type": "string",
+      "description": "Serialized one-stretch brief: thread, graph anchors, stretch, research objective"
+    },
+    "content_json": {
+      "type": "string",
+      "description": "Serialized composed proposal shown to the person"
+    },
+    "evidence_json": {
+      "type": "string",
+      "description": "Serialized citation links from the research run"
+    },
+    "venue_name": {
+      "type": "string",
+      "description": "Denormalized venue name for excluding repeats in later briefs"
+    },
+    "decline_reason": { "type": "string" },
+    "scheduled_for": {
+      "type": "string",
+      "description": "ISO date (YYYY-MM-DD) the person accepted for"
+    },
+    "created_at": { "type": "number" },
+    "updated_at": { "type": "number" }
+  },
+  "required": ["owner_user_id", "status", "created_at"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

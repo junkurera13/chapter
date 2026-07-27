@@ -68,3 +68,24 @@
   outline: 2px solid #9e8265;
   outline-offset: 3px;
 }
+
+.addMemoryButton {
+  position: absolute;
+  z-index: 4;
+  top: 22px;
+  right: 22px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(57, 48, 43, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  color: rgba(37, 33, 29, 0.78);
+  cursor: pointer;
+  font: 580 13px/38px var(--font-chapter-instrument), system-ui, sans-serif;
+}
+
+.addMemoryButton:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 2px;
+}

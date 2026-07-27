@@ -266,6 +266,41 @@ function validInviteToken(value: unknown) {
   return /^[A-Za-z0-9_-]{40,100}$/.test(token) ? token : "";
 }
 
+/** Accepts only parseable JSON payloads within a byte budget. */
+function boundedJson(value: unknown, maxLength: number) {
+  const text = typeof value === "string" ? value : "";
+  if (!text || text.length > maxLength) return "";
+  try {
+    JSON.parse(text);
+    return text;
+  } catch {
+    return "";
+  }
+}
+
+function parsedJson(value: unknown) {
+  if (typeof value !== "string" || !value) return undefined;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function nowChapterRecord(row: Row) {
+  return {
+    id: row.id,
+    status: row.status,
+    createdAt: Number(row.created_at),
+    scheduledFor: stringValue(row.scheduled_for) || undefined,
+    researchRunId: stringValue(row.research_run_id) || undefined,
+    brief: parsedJson(row.brief_json),
+    content: parsedJson(row.content_json),
+    evidence: parsedJson(row.evidence_json) ?? [],
+    declineReason: stringValue(row.decline_reason) || undefined,
+  };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -839,6 +874,145 @@ Deno.serve(async (req) => {
           })),
         },
       });
+    }
+
+    if (action === "getMyNow") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const chapters = base44.asServiceRole.entities.NowChapter;
+      const rows = await readWithRateLimitRetry(() =>
+        chapters.filter({ owner_user_id: user.id }, "-created_at", 24)
+      );
+
+      return Response.json({
+        value: {
+          homeCity: stringValue(user.home_city) || stringValue(user.current_city),
+          chapter: rows[0] ? nowChapterRecord(rows[0]) : null,
+          avoidVenues: rows
+            .map((row: Row) => stringValue(row.venue_name))
+            .filter(Boolean),
+        },
+      });
+    }
+
+    if (action === "setMyHomeCity") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const homeCity = stringValue(data.homeCity).slice(0, 80);
+      if (homeCity.length < 2) {
+        return Response.json({ error: "home city required" }, { status: 400 });
+      }
+
+      await users.update(user.id, { home_city: homeCity });
+      return Response.json({ value: { homeCity } });
+    }
+
+    if (action === "createNowChapter") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const researchRunId = stringValue(data.researchRunId).slice(0, 120);
+      const briefJson = boundedJson(data.briefJson, 12_000);
+      if (!researchRunId || !briefJson) {
+        return Response.json({ error: "invalid chapter" }, { status: 400 });
+      }
+
+      const chapters = base44.asServiceRole.entities.NowChapter;
+      const rows = await readWithRateLimitRetry(() =>
+        chapters.filter({ owner_user_id: user.id }, "-created_at", 1)
+      );
+      const latest = rows[0];
+      if (
+        latest &&
+        ["researching", "proposed", "accepted"].includes(latest.status)
+      ) {
+        return Response.json(
+          { error: "one chapter at a time", code: "NOW_CHAPTER_ACTIVE" },
+          { status: 409 },
+        );
+      }
+
+      const now = Date.now();
+      const created = await chapters.create({
+        owner_user_id: user.id,
+        status: "researching",
+        research_run_id: researchRunId,
+        brief_json: briefJson,
+        created_at: now,
+        updated_at: now,
+      });
+
+      return Response.json({ value: { chapter: nowChapterRecord(created) } });
+    }
+
+    if (action === "updateNowChapter") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const chapters = base44.asServiceRole.entities.NowChapter;
+      const chapterId = stringValue(data.chapterId);
+      let chapter: Row | undefined;
+      try {
+        chapter = chapterId ? await chapters.get(chapterId) : undefined;
+      } catch {
+        chapter = undefined;
+      }
+      if (!chapter || chapter.owner_user_id !== user.id) {
+        return Response.json({ error: "chapter not found" }, { status: 404 });
+      }
+
+      const nextStatus = stringValue(data.status);
+      const allowed: Record<string, readonly string[]> = {
+        researching: ["proposed", "failed"],
+        proposed: ["accepted", "declined"],
+        accepted: ["lived"],
+      };
+      if (!(allowed[chapter.status] ?? []).includes(nextStatus)) {
+        return Response.json(
+          { error: "invalid chapter transition" },
+          { status: 409 },
+        );
+      }
+
+      const patch: Row = { status: nextStatus, updated_at: Date.now() };
+      if (nextStatus === "proposed") {
+        const contentJson = boundedJson(data.contentJson, 12_000);
+        const evidenceJson = boundedJson(data.evidenceJson, 8_000);
+        const venueName = stringValue(data.venueName).slice(0, 160);
+        if (!contentJson || !venueName) {
+          return Response.json({ error: "invalid proposal" }, { status: 400 });
+        }
+        patch.content_json = contentJson;
+        patch.evidence_json = evidenceJson || "[]";
+        patch.venue_name = venueName;
+      }
+      if (nextStatus === "accepted") {
+        const scheduledFor = stringValue(data.scheduledFor);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledFor)) {
+          return Response.json({ error: "invalid date" }, { status: 400 });
+        }
+        patch.scheduled_for = scheduledFor;
+      }
+      if (nextStatus === "declined") {
+        patch.decline_reason = stringValue(data.declineReason).slice(0, 300);
+      }
+
+      const updated = await chapters.update(chapter.id, patch);
+      return Response.json({ value: { chapter: nowChapterRecord(updated) } });
     }
 
     return Response.json({ error: "unknown action" }, { status: 400 });

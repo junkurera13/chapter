@@ -122,3 +122,57 @@ export function fetchMySession(accessToken: string) {
     viewer: import("./base44Auth").AuthenticatedViewer;
   }>({ action: "getMySession" }, accessToken);
 }
+
+export function fetchMyGraph(accessToken: string) {
+  return invokeSidequestData<import("./backendTypes").ExperienceGraphRecord>(
+    { action: "getMyGraph" },
+    accessToken,
+  );
+}
+
+type NowChapterValue = {
+  chapter: import("./nowChapterSchema").NowChapterRecord;
+};
+
+export function fetchMyNow(accessToken: string) {
+  return invokeSidequestData<{
+    homeCity: string;
+    chapter: import("./nowChapterSchema").NowChapterRecord | null;
+    avoidVenues: string[];
+  }>({ action: "getMyNow" }, accessToken);
+}
+
+export function setMyHomeCity(homeCity: string, accessToken: string) {
+  return invokeSidequestData<{ homeCity: string }>(
+    { action: "setMyHomeCity", homeCity },
+    accessToken,
+  );
+}
+
+export function createNowChapter(
+  args: { researchRunId: string; briefJson: string },
+  accessToken: string,
+) {
+  return invokeSidequestData<NowChapterValue>(
+    { action: "createNowChapter", ...args },
+    accessToken,
+  );
+}
+
+export function updateNowChapter(
+  args: {
+    chapterId: string;
+    status: "proposed" | "failed" | "accepted" | "declined" | "lived";
+    contentJson?: string;
+    evidenceJson?: string;
+    venueName?: string;
+    scheduledFor?: string;
+    declineReason?: string;
+  },
+  accessToken: string,
+) {
+  return invokeSidequestData<NowChapterValue>(
+    { action: "updateNowChapter", ...args },
+    accessToken,
+  );
+}
