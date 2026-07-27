@@ -15,6 +15,27 @@ type SidequestBot = Chat<
 >;
 
 let bot: SidequestBot | undefined;
+let imessageAdapter: ReturnType<typeof createiMessageAdapter> | undefined;
+
+/**
+ * The iMessage adapter on its own, memoized alongside the bot.
+ *
+ * The Chat instance keeps its adapters private, and Together needs to reach
+ * one directly: a chapter proposal has to start a conversation rather than
+ * answer one. The adapter builds its transport on demand, so it works here
+ * without the bot's webhook ever having run.
+ */
+export function getSidequestiMessageAdapter() {
+  if (!imessageAdapter) {
+    imessageAdapter = createiMessageAdapter({
+      projectId: process.env.IMESSAGE_PROJECT_ID ?? process.env.PHOTON_PROJECT_ID,
+      projectSecret:
+        process.env.IMESSAGE_PROJECT_SECRET ?? process.env.PHOTON_PROJECT_SECRET,
+      webhookSecret: process.env.IMESSAGE_WEBHOOK_SECRET,
+    });
+  }
+  return imessageAdapter;
+}
 
 async function retry<T>(operation: () => Promise<T>, attempts = 3) {
   let lastError: unknown;
@@ -34,15 +55,7 @@ async function retry<T>(operation: () => Promise<T>, attempts = 3) {
 export function getSidequestBot() {
   if (bot) return bot;
 
-  const projectId =
-    process.env.IMESSAGE_PROJECT_ID ?? process.env.PHOTON_PROJECT_ID;
-  const projectSecret =
-    process.env.IMESSAGE_PROJECT_SECRET ?? process.env.PHOTON_PROJECT_SECRET;
-  const adapter = createiMessageAdapter({
-    projectId,
-    projectSecret,
-    webhookSecret: process.env.IMESSAGE_WEBHOOK_SECRET,
-  });
+  const adapter = getSidequestiMessageAdapter();
 
   bot = new Chat({
     userName: "chapter",

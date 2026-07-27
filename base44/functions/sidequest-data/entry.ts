@@ -1,6 +1,11 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
 
 import { collapseMemoryGraphRows } from "../../shared/memory-map.ts";
+import {
+  TOGETHER_OPEN_STATUSES,
+  togetherChapterRecord,
+  visibleTo,
+} from "../../shared/together-chapter.ts";
 
 // Base44 entity rows are dynamic at this SDK boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -238,13 +243,26 @@ async function ensureSidequestUser(users: Row, viewer: Row) {
   });
 }
 
-function bearerToken() {
-  const bytes = new Uint8Array(32);
+/**
+ * Invite codes read aloud and typed by hand, so the alphabet drops the
+ * characters people confuse: I, L, O, and U never appear.
+ */
+const INVITE_CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const INVITE_CODE_LENGTH = 10;
+
+/**
+ * Ten characters from a 32-letter alphabet is about 1.1 quadrillion codes.
+ * Unlike a password, this one is single-use, expires, and grants nothing but a
+ * connection to one person — so it is stored as written rather than hashed,
+ * which is what lets the same link be handed out twice.
+ */
+function inviteCode() {
+  const bytes = new Uint8Array(INVITE_CODE_LENGTH);
   crypto.getRandomValues(bytes);
-  return btoa(String.fromCharCode(...bytes))
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replaceAll("=", "");
+  return Array.from(
+    bytes,
+    (byte) => INVITE_CODE_ALPHABET[byte % INVITE_CODE_ALPHABET.length],
+  ).join("");
 }
 
 async function tokenHash(token: string) {
@@ -261,9 +279,29 @@ function pairKey(firstUserId: string, secondUserId: string) {
   return [firstUserId, secondUserId].sort().join(":");
 }
 
+/** Accepts a current short code, or one of the long tokens issued before. */
 function validInviteToken(value: unknown) {
   const token = stringValue(value);
+  if (new RegExp(`^[${INVITE_CODE_ALPHABET}]{${INVITE_CODE_LENGTH}}$`).test(token)) {
+    return token;
+  }
   return /^[A-Za-z0-9_-]{40,100}$/.test(token) ? token : "";
+}
+
+/**
+ * Finds an invite by its code. New invites match on the stored code; links
+ * handed out before the change still match on their hash.
+ */
+async function inviteByCode(invites: Row, code: string) {
+  const byCode = await readWithRateLimitRetry(() =>
+    invites.filter({ code }, undefined, 1)
+  );
+  if (byCode[0]) return byCode[0];
+
+  const byHash = await readWithRateLimitRetry(async () =>
+    invites.filter({ token_hash: await tokenHash(code) }, undefined, 1)
+  );
+  return byHash[0];
 }
 
 /** Accepts only parseable JSON payloads within a byte budget. */
@@ -287,6 +325,104 @@ function parsedJson(value: unknown) {
   }
 }
 
+/**
+ * Every completed node and edge a person owns, collapsed into the projected
+ * memory graph. Shared by the owner's own graph read and by Together's
+ * partner-side planning read, so both see exactly the same source of truth.
+ */
+async function projectedGraphFor(base44: Row, user: Row) {
+  const phone = stringValue(user.phone);
+  const authUserId = stringValue(user.auth_user_id);
+
+  const memories = base44.asServiceRole.entities.ExperienceMemory;
+  const graphNodes = base44.asServiceRole.entities.ExperienceGraphNode;
+  const graphEdges = base44.asServiceRole.entities.ExperienceGraphEdge;
+  const memoryRows = await readWithRateLimitRetry(() =>
+    memories.filter(
+      phone
+        ? {
+            status: "complete",
+            $or: [{ phone }, { auth_user_id: authUserId }],
+          }
+        : { auth_user_id: authUserId, status: "complete" },
+      "created_at",
+      5000,
+    )
+  );
+  const nodeRows = await readWithRateLimitRetry(() =>
+    graphNodes.filter(
+      phone
+        ? {
+            $or: [{ phone }, { owner_user_id: user.id }],
+          }
+        : { owner_user_id: user.id },
+      "created_at",
+      5000,
+    )
+  );
+  const completeMemoryIds = new Set(memoryRows.map((row: Row) => row.id));
+  const completedNodes = nodeRows.filter(
+    (row: Row) =>
+      completeMemoryIds.has(row.memory_id) ||
+      (row.source_type === "connection" && row.owner_user_id === user.id),
+  );
+  const completedNodeIds = new Set(completedNodes.map((row: Row) => row.id));
+  const edgeRows = completeMemoryIds.size > 0
+    ? await readWithRateLimitRetry(() =>
+      graphEdges.filter(
+        phone
+          ? {
+              $or: [{ phone }, { auth_user_id: authUserId }],
+            }
+          : { auth_user_id: authUserId },
+        "created_at",
+        5000,
+      )
+    )
+    : [];
+  const completedEdges = edgeRows.filter(
+    (row: Row) =>
+      completeMemoryIds.has(row.memory_id) &&
+      completedNodeIds.has(row.from_node_id) &&
+      completedNodeIds.has(row.to_node_id),
+  );
+
+  return {
+    memoryRows,
+    projected: collapseMemoryGraphRows(completedNodes, completedEdges),
+  };
+}
+
+/**
+ * The only node categories that may be named in an invitation two people
+ * both read. Mirrored in lib/togetherChapterSchema.ts; enforced on both sides
+ * so neither can widen it alone.
+ */
+const TOGETHER_SHAREABLE_CATEGORIES = ["place", "activity", "interest"] as const;
+
+/**
+ * A partner's world cut down to what a shared plan may be built from: three
+ * safe categories, and per node only an id, a label, and a weight. No
+ * descriptions, no evidence, no edges, no memories, no people, no feelings.
+ */
+async function planningGraphFor(base44: Row, user: Row) {
+  const { projected } = await projectedGraphFor(base44, user);
+  const nodes = projected.nodes
+    .filter((node: Row) =>
+      (TOGETHER_SHAREABLE_CATEGORIES as readonly string[]).includes(
+        categoryForNode(node),
+      )
+    )
+    .map((node: Row) => ({
+      id: node.id,
+      label: stringValue(node.label),
+      category: categoryForNode(node),
+      salience: boundedUnit(node.salience, 0.6),
+    }))
+    .filter((node: Row) => node.label);
+  return { nodes };
+}
+
 function nowChapterRecord(row: Row) {
   return {
     id: row.id,
@@ -299,6 +435,42 @@ function nowChapterRecord(row: Row) {
     evidence: parsedJson(row.evidence_json) ?? [],
     declineReason: stringValue(row.decline_reason) || undefined,
   };
+}
+
+function firstName(user: Row | undefined, fallback = "your friend") {
+  return displayName(user, fallback).split(" ")[0];
+}
+
+/**
+ * Actions that read one account on behalf of another are reachable only from
+ * Chapter's own server, never from a browser holding a user token.
+ */
+function trustedInternalCall(data: Row) {
+  const expected = Deno.env.get("SIDEQUEST_INTERNAL_SECRET");
+  return Boolean(expected) && data.internalSecret === expected;
+}
+
+/** The accepted connection joining the viewer to someone else, or undefined. */
+async function acceptedConnectionFor(
+  base44: Row,
+  userId: string,
+  connectionId: string,
+) {
+  const connections = base44.asServiceRole.entities.SidequestConnection;
+  let connection: Row | undefined;
+  try {
+    connection = connectionId ? await connections.get(connectionId) : undefined;
+  } catch {
+    connection = undefined;
+  }
+  if (
+    !connection ||
+    connection.status !== "accepted" ||
+    (connection.user_a_id !== userId && connection.user_b_id !== userId)
+  ) {
+    return undefined;
+  }
+  return connection;
 }
 
 Deno.serve(async (req) => {
@@ -330,12 +502,7 @@ Deno.serve(async (req) => {
       }
 
       const invites = base44.asServiceRole.entities.ConnectionInvite;
-      const inviteRows = await invites.filter(
-        { token_hash: await tokenHash(token) },
-        undefined,
-        1,
-      );
-      const invite = inviteRows[0];
+      const invite = await inviteByCode(invites, token);
       if (!invite || invite.status === "revoked") {
         return Response.json({ value: { status: "unavailable" } });
       }
@@ -389,22 +556,49 @@ Deno.serve(async (req) => {
       }
 
       const invites = base44.asServiceRole.entities.ConnectionInvite;
-      const previousInvites = await invites.filter({
-        inviter_user_id: user.id,
-        inviter_node_id: node.id,
-        status: "pending",
-      });
-      for (const previousInvite of previousInvites) {
+      const now = Date.now();
+
+      // The same person gets the same link every time. Minting a fresh code on
+      // each tap used to revoke the one already sent, quietly killing a link
+      // that was sitting in somebody's messages.
+      const openInvites = await readWithRateLimitRetry(() =>
+        invites.filter(
+          {
+            inviter_user_id: user.id,
+            inviter_node_id: node.id,
+            status: "pending",
+          },
+          "-created_at",
+          10,
+        )
+      );
+      const reusable = openInvites.find(
+        (row: Row) => stringValue(row.code) && row.expires_at > now,
+      );
+      if (reusable) {
+        return Response.json({
+          value: {
+            inviteId: reusable.id,
+            token: stringValue(reusable.code),
+            invitedName: reusable.invited_name,
+            expiresAt: reusable.expires_at,
+          },
+        });
+      }
+
+      // Anything left open that can't be handed out again (a pre-code link, or
+      // an expired one) is retired so only one invite per person stays live.
+      for (const previousInvite of openInvites) {
         await invites.update(previousInvite.id, { status: "revoked" });
       }
 
-      const token = bearerToken();
-      const now = Date.now();
+      const token = inviteCode();
       const expiresAt = now + 30 * 24 * 60 * 60 * 1000;
       const invite = await invites.create({
         inviter_user_id: user.id,
         inviter_node_id: node.id,
         invited_name: stringValue(node.label) || "your friend",
+        code: token,
         token_hash: await tokenHash(token),
         status: "pending",
         expires_at: expiresAt,
@@ -433,12 +627,7 @@ Deno.serve(async (req) => {
       }
 
       const invites = base44.asServiceRole.entities.ConnectionInvite;
-      const inviteRows = await invites.filter(
-        { token_hash: await tokenHash(token) },
-        undefined,
-        1,
-      );
-      const invite = inviteRows[0];
+      const invite = await inviteByCode(invites, token);
       if (!invite || invite.status === "revoked" || invite.status === "expired") {
         return Response.json({ error: "invite unavailable" }, { status: 410 });
       }
@@ -736,63 +925,8 @@ Deno.serve(async (req) => {
       }
 
       const user = await ensureSidequestUser(users, viewer);
-      const phone = stringValue(user.phone);
-      const authUserId = stringValue(user.auth_user_id);
-
-      const memories = base44.asServiceRole.entities.ExperienceMemory;
-      const graphNodes = base44.asServiceRole.entities.ExperienceGraphNode;
-      const graphEdges = base44.asServiceRole.entities.ExperienceGraphEdge;
       const invites = base44.asServiceRole.entities.ConnectionInvite;
-      const memoryRows = await readWithRateLimitRetry(() =>
-        memories.filter(
-          phone
-            ? {
-                status: "complete",
-                $or: [{ phone }, { auth_user_id: authUserId }],
-              }
-            : { auth_user_id: authUserId, status: "complete" },
-          "created_at",
-          5000,
-        )
-      );
-      const nodeRows = await readWithRateLimitRetry(() =>
-        graphNodes.filter(
-          phone
-            ? {
-                $or: [{ phone }, { owner_user_id: user.id }],
-              }
-            : { owner_user_id: user.id },
-          "created_at",
-          5000,
-        )
-      );
-      const completeMemoryIds = new Set(memoryRows.map((row: Row) => row.id));
-      const completedNodes = nodeRows.filter(
-        (row: Row) =>
-          completeMemoryIds.has(row.memory_id) ||
-          (row.source_type === "connection" && row.owner_user_id === user.id),
-      );
-      const completedNodeIds = new Set(completedNodes.map((row: Row) => row.id));
-      const edgeRows = completeMemoryIds.size > 0
-        ? await readWithRateLimitRetry(() =>
-          graphEdges.filter(
-            phone
-              ? {
-                  $or: [{ phone }, { auth_user_id: authUserId }],
-                }
-              : { auth_user_id: authUserId },
-            "created_at",
-            5000,
-          )
-        )
-        : [];
-      const completedEdges = edgeRows.filter(
-        (row: Row) =>
-          completeMemoryIds.has(row.memory_id) &&
-          completedNodeIds.has(row.from_node_id) &&
-          completedNodeIds.has(row.to_node_id),
-      );
-      const projected = collapseMemoryGraphRows(completedNodes, completedEdges);
+      const { memoryRows, projected } = await projectedGraphFor(base44, user);
       const now = Date.now();
       const inviteStatusByNode = new Map<string, "pending">();
       const hasPeopleNodes = projected.nodes.some(
@@ -1013,6 +1147,329 @@ Deno.serve(async (req) => {
 
       const updated = await chapters.update(chapter.id, patch);
       return Response.json({ value: { chapter: nowChapterRecord(updated) } });
+    }
+
+    if (action === "getMyTogether") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const chapters = base44.asServiceRole.entities.TogetherChapter;
+      const rows = await readWithRateLimitRetry(() =>
+        chapters.filter(
+          {
+            $or: [
+              { initiator_user_id: user.id },
+              { partner_user_id: user.id },
+            ],
+          },
+          "-created_at",
+          40,
+        )
+      );
+
+      const partnerNames = new Map<string, string>();
+      const records = [];
+      for (const row of rows) {
+        if (!visibleTo(row, user.id)) continue;
+
+        const role = row.initiator_user_id === user.id ? "initiator" : "partner";
+        const partnerUserId = role === "initiator"
+          ? stringValue(row.partner_user_id)
+          : stringValue(row.initiator_user_id);
+        if (!partnerNames.has(partnerUserId)) {
+          let partner: Row | undefined;
+          try {
+            partner = await readWithRateLimitRetry(() => users.get(partnerUserId));
+          } catch {
+            partner = undefined;
+          }
+          partnerNames.set(partnerUserId, firstName(partner));
+        }
+        records.push(
+          togetherChapterRecord(row, user.id, partnerNames.get(partnerUserId)!),
+        );
+      }
+
+      return Response.json({
+        value: {
+          homeCity: stringValue(user.home_city) || stringValue(user.current_city),
+          chapters: records,
+          avoidVenues: rows
+            .map((row: Row) => stringValue(row.venue_name))
+            .filter(Boolean),
+        },
+      });
+    }
+
+    if (action === "getPartnerPlanningGraph") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer || !trustedInternalCall(data)) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const connection = await acceptedConnectionFor(
+        base44,
+        user.id,
+        stringValue(data.connectionId),
+      );
+      if (!connection) {
+        return Response.json({ error: "connection not found" }, { status: 404 });
+      }
+
+      const partnerUserId = connection.user_a_id === user.id
+        ? connection.user_b_id
+        : connection.user_a_id;
+      let partner: Row | undefined;
+      try {
+        partner = await readWithRateLimitRetry(() => users.get(partnerUserId));
+      } catch {
+        partner = undefined;
+      }
+      if (!partner) {
+        return Response.json({ error: "connection not found" }, { status: 404 });
+      }
+
+      return Response.json({
+        value: {
+          partnerUserId,
+          partnerName: firstName(partner),
+          graph: await planningGraphFor(base44, partner),
+        },
+      });
+    }
+
+    if (action === "createTogetherChapter") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const connection = await acceptedConnectionFor(
+        base44,
+        user.id,
+        stringValue(data.connectionId),
+      );
+      if (!connection) {
+        return Response.json({ error: "connection not found" }, { status: 404 });
+      }
+
+      const researchRunId = stringValue(data.researchRunId).slice(0, 120);
+      const briefJson = boundedJson(data.briefJson, 12_000);
+      if (!researchRunId || !briefJson) {
+        return Response.json({ error: "invalid chapter" }, { status: 400 });
+      }
+
+      const partnerUserId = connection.user_a_id === user.id
+        ? connection.user_b_id
+        : connection.user_a_id;
+      const key = pairKey(user.id, partnerUserId);
+      const chapters = base44.asServiceRole.entities.TogetherChapter;
+      const pairRows = await readWithRateLimitRetry(() =>
+        chapters.filter({ pair_key: key }, "-created_at", 20)
+      );
+      const openRow = pairRows.find((row: Row) =>
+        (TOGETHER_OPEN_STATUSES as readonly string[]).includes(row.status)
+      );
+      if (openRow) {
+        return Response.json(
+          { error: "one chapter at a time", code: "TOGETHER_CHAPTER_ACTIVE" },
+          { status: 409 },
+        );
+      }
+
+      const now = Date.now();
+      const created = await chapters.create({
+        pair_key: key,
+        connection_id: connection.id,
+        initiator_user_id: user.id,
+        partner_user_id: partnerUserId,
+        status: "researching",
+        research_run_id: researchRunId,
+        brief_json: briefJson,
+        initiator_lived: false,
+        partner_lived: false,
+        created_at: now,
+        updated_at: now,
+      });
+
+      let partner: Row | undefined;
+      try {
+        partner = await readWithRateLimitRetry(() => users.get(partnerUserId));
+      } catch {
+        partner = undefined;
+      }
+
+      return Response.json({
+        value: {
+          chapter: togetherChapterRecord(created, user.id, firstName(partner)),
+        },
+      });
+    }
+
+    if (action === "updateTogetherChapter") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const chapters = base44.asServiceRole.entities.TogetherChapter;
+      const chapterId = stringValue(data.chapterId);
+      let chapter: Row | undefined;
+      try {
+        chapter = chapterId ? await chapters.get(chapterId) : undefined;
+      } catch {
+        chapter = undefined;
+      }
+      const role = chapter?.initiator_user_id === user.id
+        ? "initiator"
+        : chapter?.partner_user_id === user.id
+        ? "partner"
+        : undefined;
+      if (!chapter || !role) {
+        return Response.json({ error: "chapter not found" }, { status: 404 });
+      }
+
+      const nextStatus = stringValue(data.status);
+      const patch: Row = { updated_at: Date.now() };
+
+      // "Lived" is the one transition both sides make, each for themselves.
+      // The chapter closes only once both have said so.
+      if (nextStatus === "lived") {
+        if (chapter.status !== "accepted" && chapter.status !== "lived") {
+          return Response.json(
+            { error: "invalid chapter transition" },
+            { status: 409 },
+          );
+        }
+        const bothLived = role === "initiator"
+          ? Boolean(chapter.partner_lived)
+          : Boolean(chapter.initiator_lived);
+        patch[role === "initiator" ? "initiator_lived" : "partner_lived"] = true;
+        patch.status = bothLived ? "lived" : "accepted";
+        const updated = await chapters.update(chapter.id, patch);
+        return Response.json({
+          value: {
+            chapter: togetherChapterRecord(
+              updated,
+              user.id,
+              stringValue(data.partnerName) || "your friend",
+            ),
+          },
+        });
+      }
+
+      // Everything else is role-gated: the initiator reviews and sends, the
+      // partner answers, and neither can act on the other's behalf.
+      const allowed: Record<string, Record<string, readonly string[]>> = {
+        researching: { initiator: ["draft", "failed"], partner: [] },
+        draft: { initiator: ["proposed", "declined"], partner: [] },
+        proposed: { initiator: ["declined"], partner: ["accepted", "declined"] },
+        accepted: { initiator: [], partner: [] },
+      };
+      if (!(allowed[chapter.status]?.[role] ?? []).includes(nextStatus)) {
+        return Response.json(
+          { error: "invalid chapter transition" },
+          { status: 409 },
+        );
+      }
+      patch.status = nextStatus;
+
+      if (nextStatus === "draft") {
+        const contentJson = boundedJson(data.contentJson, 12_000);
+        const evidenceJson = boundedJson(data.evidenceJson, 8_000);
+        const venueName = stringValue(data.venueName).slice(0, 160);
+        if (!contentJson || !venueName) {
+          return Response.json({ error: "invalid proposal" }, { status: 400 });
+        }
+        patch.content_json = contentJson;
+        patch.evidence_json = evidenceJson || "[]";
+        patch.venue_name = venueName;
+      }
+      if (nextStatus === "proposed") {
+        const proposedFor = stringValue(data.proposedFor);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(proposedFor)) {
+          return Response.json({ error: "invalid date" }, { status: 400 });
+        }
+        patch.proposed_for = proposedFor;
+      }
+      if (nextStatus === "accepted") {
+        const scheduledFor = stringValue(data.scheduledFor) ||
+          stringValue(chapter.proposed_for);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledFor)) {
+          return Response.json({ error: "invalid date" }, { status: 400 });
+        }
+        patch.scheduled_for = scheduledFor;
+      }
+      if (nextStatus === "declined") {
+        patch.decline_reason = stringValue(data.declineReason).slice(0, 300);
+        patch.declined_by_user_id = user.id;
+      }
+
+      const updated = await chapters.update(chapter.id, patch);
+      return Response.json({
+        value: {
+          chapter: togetherChapterRecord(
+            updated,
+            user.id,
+            stringValue(data.partnerName) || "your friend",
+          ),
+        },
+      });
+    }
+
+    if (action === "getTogetherNotifyTarget") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer || !trustedInternalCall(data)) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const chapters = base44.asServiceRole.entities.TogetherChapter;
+      const chapterId = stringValue(data.chapterId);
+      let chapter: Row | undefined;
+      try {
+        chapter = chapterId ? await chapters.get(chapterId) : undefined;
+      } catch {
+        chapter = undefined;
+      }
+      const role = chapter?.initiator_user_id === user.id
+        ? "initiator"
+        : chapter?.partner_user_id === user.id
+        ? "partner"
+        : undefined;
+      if (!chapter || !role) {
+        return Response.json({ error: "chapter not found" }, { status: 404 });
+      }
+
+      // You can only ever ask for the address of the person you just acted
+      // toward, and only from Chapter's own server.
+      const recipientUserId = role === "initiator"
+        ? stringValue(chapter.partner_user_id)
+        : stringValue(chapter.initiator_user_id);
+      let recipient: Row | undefined;
+      try {
+        recipient = await readWithRateLimitRetry(() => users.get(recipientUserId));
+      } catch {
+        recipient = undefined;
+      }
+      if (!recipient) {
+        return Response.json({ error: "chapter not found" }, { status: 404 });
+      }
+
+      return Response.json({
+        value: {
+          phone: stringValue(recipient.phone) || undefined,
+          assignedPhone: stringValue(recipient.assigned_phone) || undefined,
+          recipientName: firstName(recipient),
+          senderName: firstName(user),
+        },
+      });
     }
 
     return Response.json({ error: "unknown action" }, { status: 400 });

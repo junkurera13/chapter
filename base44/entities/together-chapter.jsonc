@@ -1,0 +1,73 @@
+{
+  "name": "TogetherChapter",
+  "type": "object",
+  "properties": {
+    "pair_key": {
+      "type": "string",
+      "description": "Stable sorted pair of SidequestUser IDs, matching SidequestConnection"
+    },
+    "connection_id": { "type": "string" },
+    "initiator_user_id": { "type": "string" },
+    "partner_user_id": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": [
+        "researching",
+        "draft",
+        "proposed",
+        "accepted",
+        "declined",
+        "lived",
+        "failed"
+      ]
+    },
+    "research_run_id": {
+      "type": "string",
+      "description": "Parallel task run id while the deep research is in flight"
+    },
+    "brief_json": {
+      "type": "string",
+      "description": "Serialized one-stretch brief planned from both worlds: thread, resolved anchors, stretch, research objective"
+    },
+    "content_json": {
+      "type": "string",
+      "description": "Serialized composed proposal, read by both people"
+    },
+    "evidence_json": {
+      "type": "string",
+      "description": "Serialized citation links from the research run"
+    },
+    "venue_name": {
+      "type": "string",
+      "description": "Denormalized venue name for excluding repeats in later briefs"
+    },
+    "proposed_for": {
+      "type": "string",
+      "description": "ISO date (YYYY-MM-DD) the initiator suggested when sending"
+    },
+    "scheduled_for": {
+      "type": "string",
+      "description": "ISO date (YYYY-MM-DD) the partner confirmed"
+    },
+    "decline_reason": { "type": "string" },
+    "declined_by_user_id": { "type": "string" },
+    "initiator_lived": { "type": "boolean" },
+    "partner_lived": { "type": "boolean" },
+    "created_at": { "type": "number" },
+    "updated_at": { "type": "number" }
+  },
+  "required": [
+    "pair_key",
+    "connection_id",
+    "initiator_user_id",
+    "partner_user_id",
+    "status",
+    "created_at"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

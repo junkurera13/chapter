@@ -149,6 +149,103 @@ export function setMyHomeCity(homeCity: string, accessToken: string) {
   );
 }
 
+type TogetherChapterValue = {
+  chapter: import("./togetherChapterSchema").TogetherChapterRecord;
+};
+
+export function fetchMyTogether(accessToken: string) {
+  return invokeSidequestData<{
+    homeCity: string;
+    chapters: import("./togetherChapterSchema").TogetherChapterRecord[];
+    avoidVenues: string[];
+  }>({ action: "getMyTogether" }, accessToken);
+}
+
+/**
+ * The partner's shareable ground for planning. Server-only: it carries one
+ * account's labels on another account's request, so it is gated on the
+ * internal secret as well as the caller's own session, and its result must
+ * never be forwarded to a browser.
+ */
+export function fetchPartnerPlanningGraph(
+  connectionId: string,
+  accessToken: string,
+) {
+  return invokeSidequestData<{
+    partnerUserId: string;
+    partnerName: string;
+    graph: import("./togetherChapterSchema").TogetherPlanningGraph;
+  }>(
+    {
+      action: "getPartnerPlanningGraph",
+      connectionId,
+      internalSecret: internalSecret(),
+    },
+    accessToken,
+  );
+}
+
+/** Server-only, for the same reason: it returns someone else's phone. */
+export function fetchTogetherNotifyTarget(
+  chapterId: string,
+  accessToken: string,
+) {
+  return invokeSidequestData<{
+    phone?: string;
+    assignedPhone?: string;
+    recipientName: string;
+    senderName: string;
+  }>(
+    {
+      action: "getTogetherNotifyTarget",
+      chapterId,
+      internalSecret: internalSecret(),
+    },
+    accessToken,
+  );
+}
+
+export function createTogetherChapter(
+  args: { connectionId: string; researchRunId: string; briefJson: string },
+  accessToken: string,
+) {
+  return invokeSidequestData<TogetherChapterValue>(
+    { action: "createTogetherChapter", ...args },
+    accessToken,
+  );
+}
+
+export function updateTogetherChapter(
+  args: {
+    chapterId: string;
+    status: "draft" | "failed" | "proposed" | "accepted" | "declined" | "lived";
+    contentJson?: string;
+    evidenceJson?: string;
+    venueName?: string;
+    proposedFor?: string;
+    scheduledFor?: string;
+    declineReason?: string;
+    partnerName?: string;
+  },
+  accessToken: string,
+) {
+  return invokeSidequestData<TogetherChapterValue>(
+    { action: "updateTogetherChapter", ...args },
+    accessToken,
+  );
+}
+
+function internalSecret() {
+  const secret = process.env.SIDEQUEST_INTERNAL_SECRET;
+  if (!secret) {
+    throw new Base44FunctionError(
+      "SIDEQUEST_INTERNAL_SECRET is not configured.",
+      500,
+    );
+  }
+  return secret;
+}
+
 export function createNowChapter(
   args: { researchRunId: string; briefJson: string },
   accessToken: string,

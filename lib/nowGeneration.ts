@@ -120,14 +120,21 @@ function anchorsExistingIn(graph: ExperienceGraphRecord, brief: NowBrief) {
   return anchors;
 }
 
-async function generateStructured<T>(args: {
+/**
+ * One structured model call with a fallback model behind it. Shared with
+ * Together, which runs the same two-stage pipeline over two graphs.
+ */
+export async function generateStructured<T>(args: {
   prompt: string;
   schemaName: string;
   schemaDescription: string;
   schema: z.ZodType<T>;
   requestId: string;
   signal?: AbortSignal;
+  /** Log surface, so Together's calls are legible in the same stream. */
+  surface?: "now" | "together";
 }): Promise<T> {
+  const surface = args.surface ?? "now";
   if (!process.env.OPENROUTER_API_KEY) {
     throw new NowGenerationError("OPENROUTER_API_KEY is not configured.");
   }
@@ -151,7 +158,7 @@ async function generateStructured<T>(args: {
         abortSignal: args.signal,
       });
       const value = args.schema.parse(result.output);
-      console.info("[now:generate] structured call completed", {
+      console.info(`[${surface}:generate] structured call completed`, {
         requestId: args.requestId,
         schemaName: args.schemaName,
         attempt: attempt + 1,
@@ -160,7 +167,7 @@ async function generateStructured<T>(args: {
       });
       return value;
     } catch (error) {
-      console.warn("[now:generate] structured call failed", {
+      console.warn(`[${surface}:generate] structured call failed`, {
         requestId: args.requestId,
         schemaName: args.schemaName,
         attempt: attempt + 1,
