@@ -25,8 +25,8 @@ export function shouldPlayAgentOrb({
 }
 
 export default function AgentOrbVideo({
-  src = "/agent-orb.mp4",
-  poster = "/agent-orb-poster.jpg",
+  src = "/you-agent-orb.mp4",
+  poster = "/you-agent-orb-poster.jpg",
   playWhileMounted = false,
 }: {
   src?: string;

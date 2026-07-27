@@ -31,13 +31,21 @@ export function isDemoAccount(email: string | undefined) {
  * them. The anchors carry ids so they render as orbs — the point of a sample
  * is to show what a real one looks like — but the connection ids are marked,
  * so nothing downstream can mistake one for a person you can actually plan with.
+ *
+ * Written in the voice of the cards at the top of the landing page, which is
+ * the voice a gist has to earn: name the specific thing, not the feeling about
+ * it. "Both know the patience film photography asks for" is a sentence about
+ * nobody. "You each have rolls sitting undeveloped since spring" is two people.
+ * The detail is what makes a stranger recognisable, so every line carries one
+ * a person could only have if the thing actually happened — a time of day, a
+ * route, a season — and stops before explaining what it means.
  */
 export function demoGists(): TogetherGist[] {
   return [
     {
       connectionId: "demo:samuel",
       partnerName: "Samuel",
-      line: "You and Samuel both know the feeling of cycling around Mojiko.",
+      line: "Samuel goes cycling around Mojiko the long way you do — the waterfront, after the ferries stop. He has ridden it alone every weekend since March.",
       anchors: [
         { label: "cycling", category: "activity", nodeId: "demo:cycling" },
         { label: "Mojiko", category: "place", nodeId: "demo:mojiko" },
@@ -47,32 +55,38 @@ export function demoGists(): TogetherGist[] {
     {
       connectionId: "demo:daniel",
       partnerName: "Daniel",
-      line: "You and Daniel both treat ramen in Hakata as the end of a night, never the start.",
+      line: "You and Daniel both order naengmyeon in Ojangdong in the middle of winter. Neither of you has ever explained why.",
       anchors: [
-        { label: "ramen", category: "interest", nodeId: "demo:ramen" },
-        { label: "Hakata", category: "place", nodeId: "demo:hakata" },
+        {
+          label: "naengmyeon",
+          category: "interest",
+          nodeId: "demo:naengmyeon",
+        },
+        { label: "Ojangdong", category: "place", nodeId: "demo:ojangdong" },
       ],
       demo: true,
     },
     {
       connectionId: "demo:aron",
       partnerName: "Aron",
-      line: "You and Aron both know the patience film photography asks for.",
+      line: "Aron picked up film photography the same winter you did. You have both photographed the same stretch of Yeonnam, a year apart.",
       anchors: [
         {
           label: "film photography",
           category: "interest",
           nodeId: "demo:film",
         },
+        { label: "Yeonnam", category: "place", nodeId: "demo:yeonnam" },
       ],
       demo: true,
     },
     {
       connectionId: "demo:mina",
       partnerName: "Mina",
-      line: "You and Mina both go quiet in the same way on a long train ride.",
+      line: "Mina takes the slow line to Nagasaki rather than the shinkansen. You were both on that train ride the same Friday in May.",
       anchors: [
         { label: "train ride", category: "activity", nodeId: "demo:train" },
+        { label: "Nagasaki", category: "place", nodeId: "demo:nagasaki" },
       ],
       demo: true,
     },

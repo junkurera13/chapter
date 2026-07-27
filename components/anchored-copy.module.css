@@ -9,7 +9,8 @@
   align-items: baseline;
   gap: var(--anchor-orb-gap, 4px);
   color: var(--anchor-color, inherit);
-  font-weight: 620;
+  font-weight: var(--anchor-weight, 620);
+  text-transform: var(--anchor-transform, none);
   white-space: nowrap;
 }
 
@@ -18,9 +19,12 @@
   width: var(--anchor-orb-size, 11px);
   height: var(--anchor-orb-size, 11px);
   align-self: center;
+  border: var(--anchor-orb-border, 0 solid transparent);
   border-radius: 50%;
-  box-shadow:
+  box-shadow: var(
+    --anchor-orb-shadow,
     inset 2px 2px 3px rgba(255, 255, 255, 0.55),
     inset -1px -2px 3px rgba(30, 20, 12, 0.28),
-    0 1px 3px rgba(50, 36, 22, 0.22);
+    0 1px 3px rgba(50, 36, 22, 0.22)
+  );
 }

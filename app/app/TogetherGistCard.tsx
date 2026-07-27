@@ -227,8 +227,8 @@ export default function TogetherGistCard({
       <div className={styles.cardFoot}>
         {/*
           Before you have met, the card asks rather than plans. There is no
-          "Go together" here on purpose: there is no one to go with until
-          they have said yes too.
+          "Message" here on purpose: there is no one to write to until they
+          have said yes too.
         */}
         {unanswered ? (
           <div className={styles.actions}>
@@ -271,7 +271,7 @@ export default function TogetherGistCard({
         {!chapter && !introduction ? (
           <div className={styles.actions}>
             <button type="button" disabled={busy} onClick={onGo}>
-              Go together
+              Message
             </button>
           </div>
         ) : null}

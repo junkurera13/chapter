@@ -24,6 +24,9 @@ type GraphState =
 
 const GRAPH_RETRY_MS = 5000;
 
+/** What each tab calls itself in the address bar, by index. */
+const TAB_VIEWS = ["you", "now", "together"] as const;
+
 export default function ChapterApp({
   viewer,
   initialGraph,
@@ -59,10 +62,23 @@ export default function ChapterApp({
   const queueGraphLoad = useCallback(() => {
     setGraphState({ status: "loading" });
   }, []);
+  /**
+   * The tab you are on is written into the address, so reloading puts you back
+   * where you were standing rather than at the top of your world. Replacing
+   * rather than pushing: moving between tabs is looking around one place, not
+   * travelling, and Back should still leave the app the way it always did.
+   */
   const changeTab = useCallback(
     (nextIndex: ChapterTabIndex) => {
       if (worldLocked && nextIndex !== 0) return;
       setActiveIndex(nextIndex);
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("view", TAB_VIEWS[nextIndex]);
+      // The invitation flag is true of an arrival, not of the page. It goes
+      // the first time you move, so a reload can't replay the welcome.
+      url.searchParams.delete("joined");
+      window.history.replaceState(null, "", url);
     },
     [worldLocked],
   );

@@ -6,10 +6,10 @@ import { categoryOrbGradient } from "./categoryAppearance";
 import styles from "./TogetherView.module.css";
 
 /**
- * A person in your world is in one of three states, and the orb says which
- * before any word does: lit if they're here, dimmed behind a ring while a link
- * is out, hollow if they're still only a memory. Only the last has anything to
- * press.
+ * A person in your world is in one of three states, and their picture says
+ * which before any word does: full if they're here, dimmed behind a ring while
+ * a link is out, faded if they're still only a memory. Only the last has
+ * anything to press.
  */
 export type PersonPresence = "connected" | "invited" | "remembered";
 
@@ -19,8 +19,25 @@ export type TogetherPerson = {
   presence: PersonPresence;
 };
 
-function initialFor(name: string) {
-  return name.trim().charAt(0).toUpperCase() || "·";
+/**
+ * Until people bring their own picture, everyone gets the same drawn one: a
+ * plain head and shoulders in grey. It is a placeholder and says so — colour
+ * here would look like it meant something about the person, and it doesn't.
+ *
+ * Deliberately a drawing and not an orb. An orb means a thing in your world —
+ * a place, an interest, a feeling — and a person is not one of those.
+ */
+function DefaultAvatar() {
+  return (
+    <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+      <circle cx="20" cy="20" r="20" fill="#e6e4e1" />
+      <circle cx="20" cy="16" r="6.4" fill="#b3afaa" />
+      <path
+        d="M20 24.4c-6.3 0-11.4 4.3-12.4 10.1A20 20 0 0 0 20 40a20 20 0 0 0 12.4-5.5c-1-5.8-6.1-10.1-12.4-10.1Z"
+        fill="#b3afaa"
+      />
+    </svg>
+  );
 }
 
 /**
@@ -44,10 +61,6 @@ export default function TogetherFriendsCard({
 
   if (people.length === 0) return null;
 
-  const here = people.filter(
-    (person) => person.presence === "connected",
-  ).length;
-
   return (
     <aside className={styles.friends} aria-label="People in your world">
       <p className={styles.friendsHeader}>
@@ -56,10 +69,7 @@ export default function TogetherFriendsCard({
           style={{ background: categoryOrbGradient("people") }}
           aria-hidden="true"
         />
-        <span className={styles.friendsTitle}>Your people</span>
-        <span className={styles.friendsCount}>
-          {here}/{people.length}
-        </span>
+        <span className={styles.friendsTitle}>Your People</span>
       </p>
 
       <ul className={styles.friendsList}>
@@ -70,21 +80,16 @@ export default function TogetherFriendsCard({
           return (
             <li className={styles.friend} key={person.nodeId}>
               <span
-                className={`${styles.friendOrb} ${
+                className={`${styles.friendFace} ${
                   person.presence === "remembered"
-                    ? styles.friendOrbHollow
+                    ? styles.friendFaceMemory
                     : person.presence === "invited"
-                      ? styles.friendOrbWaiting
+                      ? styles.friendFaceWaiting
                       : ""
                 }`}
-                style={
-                  person.presence === "remembered"
-                    ? undefined
-                    : { background: categoryOrbGradient("people") }
-                }
                 aria-hidden="true"
               >
-                {person.presence === "remembered" ? "" : initialFor(label)}
+                <DefaultAvatar />
               </span>
 
               <span className={styles.friendName} title={label}>

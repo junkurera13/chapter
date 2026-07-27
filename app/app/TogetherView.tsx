@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import AgentOrbVideo from "../../components/landing/agent-orb-video";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import {
   acceptTogetherChapter,
@@ -135,6 +136,10 @@ export default function TogetherView({
   const [stageIndex, setStageIndex] = useState(0);
   /** Which card a failure belongs to, so it lands under the button pressed. */
   const [noticeFor, setNoticeFor] = useState("");
+  // The search is closed until asked for: the tab is for reading, and a field
+  // standing open in the title row is a question nobody arrived with.
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState("");
 
   const refresh = useCallback(async () => {
     try {
@@ -354,6 +359,27 @@ export default function TogetherView({
     () => buildEntries(chapters, gists, introductions),
     [chapters, gists, introductions],
   );
+
+  /**
+   * Finding one card again. A gist is a sentence about a person, so the search
+   * reads the sentence as well as the name — you look for whoever it was, or
+   * for the thing the two of you turned out to share, and either finds it.
+   */
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return entries;
+    return entries.filter((entry) =>
+      [
+        entry.partnerName,
+        entry.gist?.line,
+        entry.introduction?.line,
+        entry.chapter?.content?.title,
+        entry.chapter?.content?.invitation,
+      ]
+        .filter(Boolean)
+        .some((text) => text!.toLowerCase().includes(needle)),
+    );
+  }, [entries, query]);
   /**
    * A safety net for the people rail. A person's node normally carries the
    * connection itself, but graph projection can merge the node that held it —
@@ -431,24 +457,125 @@ export default function TogetherView({
 
   return (
     <section className={styles.together}>
-      <div className={styles.main}>
+      {/*
+        The title and the way to search it, on one line across the whole band.
+        Saying nothing until the search has answered: "Looking" is only true of
+        an empty page, and a page that already has gists on it must never flash
+        it on the way to filling up.
+      */}
+      <header className={styles.head}>
         {/*
-          Saying nothing until the search has answered. "Looking" is only true
-          of an empty page, and a page that already has gists on it must never
-          flash it on the way to filling up.
+          The orb is the subject of the sentence, not an ornament in front of
+          one: it is the agent speaking, so it stands where its name would and
+          the sentence carries on from it. The name stays for screen readers,
+          which have no orb to see.
         */}
         {entries.length > 0 ? (
           <h1 className={styles.title}>
-            Chapter found {entries.length}{" "}
-            {entries.length === 1 ? "gist" : "gists"} for you
+            <span className={styles.titleOrb} aria-hidden="true">
+              <AgentOrbVideo playWhileMounted />
+            </span>
+            <span className={styles.said}>Chapter</span>
+            Found {entries.length}{" "}
+            {entries.length === 1 ? "Gist" : "Gists"} for you
           </h1>
         ) : reading ? null : (
-          <h1 className={styles.title}>Chapter is looking for gists</h1>
+          <h1 className={styles.title}>
+            <span className={styles.titleOrb} aria-hidden="true">
+              <AgentOrbVideo playWhileMounted />
+            </span>
+            <span className={styles.said}>Chapter</span>
+            is looking for Gists
+          </h1>
         )}
 
         {entries.length > 0 ? (
+          <div className={styles.search}>
+            {/* Standing furniture for now: the shape of where messages will be. */}
+            <button
+              type="button"
+              className={styles.headButton}
+              aria-label="Messages"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M16.5 11.6c0 1.1-.9 2-2 2H8.2l-3.4 2.6a.4.4 0 0 1-.63-.32V13.6a2 2 0 0 1-1.17-1.82V5.4c0-1.1.9-2 2-2h9.5c1.1 0 2 .9 2 2Z" />
+              </svg>
+            </button>
+
+            {searching ? (
+              <input
+                type="search"
+                className={styles.searchField}
+                value={query}
+                autoFocus
+                placeholder="A name, or a thing you share"
+                aria-label="Search your gists"
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Escape") return;
+                  setQuery("");
+                  setSearching(false);
+                }}
+                onBlur={() => {
+                  if (!query.trim()) setSearching(false);
+                }}
+              />
+            ) : null}
+            <button
+              type="button"
+              className={styles.headButton}
+              aria-label={searching ? "Close search" : "Search your gists"}
+              aria-expanded={searching}
+              onClick={() => {
+                if (searching) setQuery("");
+                setSearching((open) => !open);
+              }}
+            >
+              {searching ? (
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                >
+                  <path d="m5.5 5.5 9 9M14.5 5.5l-9 9" />
+                </svg>
+              ) : (
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                >
+                  <circle cx="9" cy="9" r="5.25" />
+                  <path d="m12.9 12.9 3.1 3.1" />
+                </svg>
+              )}
+            </button>
+          </div>
+        ) : null}
+      </header>
+
+      <div className={styles.main}>
+        {entries.length > 0 && visible.length === 0 ? (
+          <p className={styles.noMatch}>Nothing here goes by that.</p>
+        ) : null}
+
+        {visible.length > 0 ? (
           <div className={styles.gists}>
-            {entries.map((entry) => {
+            {visible.map((entry) => {
               /**
                * Every chapter action is rendered by a card state that only exists
                * once a chapter does. This keeps that promise honest rather than

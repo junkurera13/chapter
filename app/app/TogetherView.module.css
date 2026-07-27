@@ -1,7 +1,7 @@
 /**
- * Together is a board of cards: gists filling the page, and one standing card
- * of people off to the side, built from the same white-and-elevated material
- * as Now's location card so the two tabs feel like one app.
+ * Together is a board of cards: gists filling the page in the same white,
+ * lifted material the landing page opens with, and one standing plate of
+ * people off to the side, settled quietly into the ground behind them.
  *
  * Pure white ground, no tints. Colour appears only where it carries meaning —
  * rose is people everywhere in Chapter's world (categoryAppearance.ts), and
@@ -20,16 +20,151 @@
  * A column, not a canvas. The You world runs edge to edge because a graph
  * wants the room; Together is reading, and reading wants a measure. Everything
  * sits in one centred band with the people card as its right-hand margin.
+ *
+ * The title takes its own row across the whole band, so the people card starts
+ * where the gists start: one shelf line across the top of the page rather than
+ * a card floating up beside a heading.
  */
 .together {
   display: grid;
   width: 100%;
-  max-width: 64rem;
+  max-width: 84rem;
   margin: 0 auto;
-  padding: 22px 22px 132px;
-  gap: 22px;
-  grid-template-columns: minmax(0, 1fr) 17rem;
+  /* The tab opens a little below the top edge: the header is a shelf, and a
+     shelf hung flush against the ceiling reads as stuck to it. */
+  padding: 56px 26px 132px;
+  /* The header is its own shelf: the board hangs clear of it, not off it. */
+  row-gap: 42px;
+  column-gap: 76px;
+  grid-template-columns: minmax(0, 1fr) 18rem;
   align-items: start;
+  /* The band is a full screen tall, so its rows must not share out the slack. */
+  align-content: start;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+  grid-column: 1 / -1;
+}
+
+.head .title {
+  display: flex;
+  flex: 1 1 14rem;
+  gap: 0.2em;
+  align-items: center;
+}
+
+/* Said by the orb, so only the screen reader needs it in words. */
+.said {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * The orb sits in the line as a letter would. Its own video is clipped to a
+ * circle at 80% of its box, so the box is drawn larger than the orb needs to
+ * be and the orb comes out a shade taller than the capital beside it.
+ */
+.titleOrb {
+  display: block;
+  width: 1.42em;
+  height: 1.42em;
+  flex: none;
+  margin-left: -0.14em;
+  line-height: 0;
+}
+
+/*
+ * Closed, it is a mark the size of the orbs it sits above. Open, the field
+ * grows out of it to the left, so the button never moves off its own line.
+ */
+.search {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
+}
+
+.searchField {
+  width: clamp(9rem, 24vw, 15rem);
+  min-height: 38px;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #f8f7f5;
+  box-shadow: 0 0 0 1px rgba(28, 22, 16, 0.05);
+  color: #25211d;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  animation: widen 220ms cubic-bezier(0.16, 0.84, 0.28, 1) both;
+}
+
+/* The button beside it is the way to close this, so the browser's own is out. */
+.searchField::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.searchField::placeholder {
+  color: rgba(45, 39, 34, 0.36);
+}
+
+.searchField:focus-visible {
+  outline: 2px solid rgba(201, 118, 135, 0.85);
+  outline-offset: 1px;
+}
+
+@keyframes widen {
+  from {
+    width: 3rem;
+    opacity: 0;
+  }
+}
+
+.headButton {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  place-items: center;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: #f8f7f5;
+  color: rgba(45, 39, 34, 0.66);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.headButton svg {
+  width: 18px;
+  height: 18px;
+}
+
+.headButton:hover {
+  background: #f0eeea;
+  color: #25211d;
+}
+
+.headButton:focus-visible {
+  outline: 2px solid rgba(201, 118, 135, 0.85);
+  outline-offset: 3px;
+}
+
+.noMatch {
+  margin: 0;
+  color: rgba(45, 39, 34, 0.45);
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 14px;
+  letter-spacing: -0.015em;
 }
 
 .state,
@@ -50,23 +185,33 @@
  */
 .gists {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(16.5rem, 1fr));
   align-items: start;
 }
 
 /*
- * The gist card: a soft grey plate, no rim and no lift. Everything that was
- * furniture — the thread drawn across the top, the field of white under the
- * line — is gone, so a card is the size of the thing it has to say.
+ * The gist card is the card from the top of the landing page, minus the image:
+ * white, a hairline rim, lifted off the ground, with its writing set in the
+ * same 10px frame. Someone who arrives from the landing page meets the same
+ * object here, holding a real gist instead of a made-up one.
  */
 .card {
   display: grid;
-  padding: 18px 20px 16px;
-  border-radius: 20px;
-  gap: 14px;
-  align-content: start;
-  background: #f4f3f1;
+  min-height: 13.2rem;
+  padding: 10px;
+  border-radius: 18px;
+  gap: 0;
+  /* Taller than the sentence needs, so the line sits at the top of the card
+     and the one thing to press stays at the foot of it. */
+  align-content: space-between;
+  background: #fff;
+  /* Cast from directly above, not from a light low in the sky: the blur sits
+     evenly around the card instead of pooling under its bottom edge. */
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 1px 16px rgba(0, 0, 0, 0.07),
+    0 1px 4px rgba(0, 0, 0, 0.04);
   animation: rise 460ms cubic-bezier(0.16, 0.84, 0.28, 1) both;
 }
 
@@ -80,16 +225,19 @@
   grid-column: 1 / -1;
 }
 
+/* The landing card's text frame: 12px in from the plate on every side. */
 .cardBody {
   display: grid;
   align-content: start;
   gap: 12px;
   min-width: 0;
+  padding: 12px 12px 18px;
 }
 
 .cardFoot {
   display: grid;
   gap: 10px;
+  padding: 0 12px 6px;
   justify-items: end;
   align-content: end;
 }
@@ -106,30 +254,39 @@
 }
 
 /*
- * The gist itself. Set at reading size, in grey, so the two things that carry
- * meaning — the person and the threads you share — are the only dark words in
- * it, each wearing the orb it wears everywhere else in Chapter.
+ * The gist itself, in the landing card's exact voice: 16px, regular, grey,
+ * with the person and the threads you share as the only dark words in it —
+ * each wearing the orb it wears everywhere else in Chapter.
  */
 .gistLine {
-  --anchor-orb-size: 0.74em;
-  --anchor-orb-gap: 0.22em;
+  --anchor-orb-size: 1.05em;
+  --anchor-orb-gap: 0.14em;
   --anchor-color: #1c1c19;
+  --anchor-weight: 600;
+  /* A thread is a name, so it is written like one. */
+  --anchor-transform: capitalize;
+  --anchor-orb-border: 1px solid rgba(255, 255, 255, 0.8);
+  --anchor-orb-shadow:
+    inset 3px 4px 5px rgba(255, 255, 255, 0.24),
+    inset -2px -3px 5px rgba(24, 17, 13, 0.18),
+    0 2px 5px rgba(47, 34, 24, 0.13);
 
   margin: 0;
-  color: rgba(45, 39, 34, 0.62);
+  color: #77716f;
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 18px;
-  font-weight: 500;
-  letter-spacing: -0.022em;
-  line-height: 1.42;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
   text-wrap: pretty;
 }
 
 /* Once a chapter grew from it, the gist becomes the reason, not the news. */
 .gistLineQuiet {
-  --anchor-orb-size: 0.7em;
+  --anchor-orb-size: 0.85em;
   --anchor-orb-gap: 0.2em;
   --anchor-color: rgba(28, 28, 25, 0.72);
+  --anchor-transform: capitalize;
 
   max-width: 60ch;
   margin: 0;
@@ -146,16 +303,13 @@
   padding: 6px 0;
 }
 
-/* What grew out of the gist, on its own white ground inside the grey card. */
+/* What grew out of the gist, on its own quiet ground inside the white card. */
 .chapterPanel {
   display: grid;
   gap: 10px;
   padding: 20px 22px 22px;
-  border-radius: 16px;
-  background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(28, 22, 16, 0.04),
-    0 1px 3px rgba(28, 22, 16, 0.05);
+  border-radius: 14px;
+  background: #f4f3f1;
 }
 
 .cardTitle {
@@ -169,10 +323,19 @@
 
 /* The line the reference card keeps for its timestamp: where this one stands. */
 .cardStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
+  padding: 12px 12px 0;
   color: rgba(45, 39, 34, 0.4);
   font-size: 12px;
   letter-spacing: -0.005em;
+}
+
+/* The status is the card's first line, so the body stops repeating the inset. */
+.cardStatus + .cardBody {
+  padding-top: 8px;
 }
 
 /* Chapter's own voice, in the face it already speaks with in Chat and You. */
@@ -273,8 +436,8 @@
   padding: 9px 15px;
   border: 0;
   border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 0 0 1px rgba(28, 22, 16, 0.06);
+  background: #f4f3f1;
+  box-shadow: 0 0 0 1px rgba(28, 22, 16, 0.05);
   color: #25211d;
   font-family: inherit;
   font-size: 13px;
@@ -306,23 +469,22 @@
 }
 
 /*
- * White on the grey plate. The card is the quiet thing and the one action is
- * the lit one, which is the opposite of the way it read before.
+ * Ink on the white plate. The card is the quiet thing and the one action is
+ * the lit one — now that the plate is white, the action has to darken to stay
+ * the lit one, in the same ink the open chip wears on the landing card.
  */
 .actions button {
-  min-height: 40px;
-  padding: 11px 20px;
+  min-height: 34px;
+  padding: 9px 16px;
   appearance: none;
   border: 0;
   border-radius: 999px;
-  background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(28, 22, 16, 0.03),
-    0 1px 2px rgba(28, 22, 16, 0.09);
-  color: #1c1c19;
+  background: #141312;
+  box-shadow: 0 2px 6px rgba(20, 19, 18, 0.14);
+  color: #f5f1e8;
   cursor: pointer;
   font-family: var(--font-chapter-instrument), system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 640;
   letter-spacing: -0.01em;
   transition: transform 160ms ease, opacity 160ms ease;
@@ -373,11 +535,6 @@
   text-wrap: balance;
 }
 
-/*
- * The people card. Same material as Now's location card — white, an orb and a
- * title across the top, elevated off the page — and sticky, so it stays with
- * you while the gists scroll past it.
- */
 /*
  * The orb for someone you have not met. Drawn as a rim with nothing inside it:
  * every other person in Chapter wears a filled orb in their category's colour,
@@ -435,23 +592,30 @@
   align-content: start;
 }
 
+/*
+ * A soft grey plate, no rim and no lift. The people card is the standing
+ * furniture of the tab, so it settles into the page while the gists lift off
+ * it — the other way round from how the two used to read.
+ */
 .friends {
   padding: 12px 12px 6px;
-  border-radius: 18px;
-  background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.08),
-    0 12px 28px rgba(0, 0, 0, 0.11),
-    0 4px 8px rgba(0, 0, 0, 0.07);
+  border-radius: 20px;
+  background: #f8f7f5;
 }
 
+/*
+ * The one rule in the card, and it runs the full width of it: a title bar over
+ * a list, not another row among the people. The names below it need no lines —
+ * an orb and a name are already one object each.
+ */
 .friendsHeader {
   display: flex;
   align-items: center;
   min-width: 0;
   gap: 8px;
-  margin: 0;
-  padding: 3px 3px 10px;
+  margin: 0 -12px;
+  padding: 3px 15px 10px;
+  border-bottom: 1px solid rgba(57, 48, 43, 0.1);
 }
 
 .friendsOrb {
@@ -471,20 +635,9 @@
   min-width: 0;
   color: #1c1c19;
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: -0.025em;
-}
-
-.friendsCount {
-  flex: none;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(28, 28, 25, 0.05);
-  color: rgba(28, 28, 25, 0.5);
-  font-size: 11px;
-  font-weight: 620;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
 }
 
 .friendsList {
@@ -495,43 +648,39 @@
 
 .friend {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  gap: 9px;
-  min-height: 46px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  min-height: 48px;
   padding: 5px 3px;
   align-items: center;
-  border-top: 1px solid rgba(57, 48, 43, 0.07);
 }
 
-/* Here, and lit. */
-.friendOrb {
-  display: grid;
-  width: 27px;
-  height: 27px;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.75);
+/* Here. Their face, at the size a face wants to be read at in a list. */
+.friendFace {
+  display: block;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
   border-radius: 50%;
-  box-shadow:
-    inset 4px 5px 8px rgba(255, 255, 255, 0.3),
-    inset -3px -4px 7px rgba(56, 25, 34, 0.22),
-    0 3px 9px rgba(96, 56, 70, 0.14);
-  color: rgba(255, 240, 243, 0.92);
-  font-size: 11px;
-  font-weight: 680;
+}
+
+.friendFace svg,
+.friendFace img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* A link is out. Still them, held at the edge of the world. */
-.friendOrbWaiting {
-  border-color: transparent;
+.friendFaceWaiting {
   box-shadow: 0 0 0 1px rgba(96, 56, 70, 0.28);
-  opacity: 0.4;
+  opacity: 0.45;
 }
 
-/* Only a memory so far — an outline where an orb would be. */
-.friendOrbHollow {
-  border: 1px dashed rgba(96, 56, 70, 0.34);
-  background: transparent;
-  box-shadow: none;
+/* Only a memory so far, so the picture is only half there too. */
+.friendFaceMemory {
+  opacity: 0.55;
 }
 
 .friendName {
@@ -570,7 +719,7 @@
 }
 
 .inviteButton:hover:not(:disabled) {
-  background: rgba(28, 28, 25, 0.05);
+  background: #fff;
 }
 
 .inviteButton:disabled {
@@ -680,10 +829,10 @@
 }
 
 /* No side to sit on: the rail falls in under the gists it served. */
-@media (max-width: 900px) {
+@media (max-width: 1040px) {
   .together {
     grid-template-columns: minmax(0, 1fr);
-    gap: 34px;
+    gap: 46px;
   }
 
   .rail {
@@ -705,8 +854,27 @@
     padding-left: 20px;
   }
 
+  /* No room for a title and a field on one line: the field takes its own. */
+  .search {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+  }
+
+  .searchField {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
   .card {
-    padding: 16px 17px 14px;
+    padding: 9px;
+  }
+
+  .cardBody {
+    padding: 11px 10px 12px;
+  }
+
+  .cardFoot {
+    padding: 0 10px 5px;
   }
 
   .chapterPanel {
