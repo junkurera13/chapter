@@ -8,18 +8,32 @@
   color: #25211d;
 }
 
+/* White on white, so the card is drawn by its edge and its lift alone. */
 .card {
   display: grid;
-  width: min(500px, 100%);
+  width: min(520px, 100%);
+  padding: 52px 44px 44px;
   justify-items: center;
+  border: 1px solid rgba(28, 28, 25, 0.09);
+  border-radius: 30px;
+  background: #fff;
+  box-shadow:
+    0 1px 1px rgba(28, 28, 25, 0.05),
+    0 14px 38px rgba(28, 28, 25, 0.07);
   text-align: center;
 }
 
+/*
+ * The mark's artwork sits inside a lot of empty viewBox, so a bigger box alone
+ * changes nothing. Scaling inside a clipped square is how the landing page
+ * renders it, and keeps the two the same size for the same measurement.
+ */
 .mark {
   display: grid;
-  width: 60px;
-  height: 60px;
-  margin-bottom: 26px;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 22px;
+  overflow: hidden;
   place-items: center;
 }
 
@@ -27,6 +41,7 @@
   display: block;
   width: 100%;
   height: 100%;
+  transform: scale(1.9);
 }
 
 .card h1 {
@@ -199,11 +214,21 @@
 
 @media (max-width: 560px) {
   .page {
-    padding: 24px 20px;
+    padding: 20px 16px;
+  }
+
+  .card {
+    padding: 40px 24px 32px;
+    border-radius: 26px;
+  }
+
+  .mark {
+    width: 78px;
+    height: 78px;
   }
 
   .card h1 {
-    font-size: 42px;
+    font-size: 40px;
   }
 
   .actions {

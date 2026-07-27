@@ -171,28 +171,13 @@ export default function InviteAcceptance({ code }: { code: string }) {
           inviter's memories. That is the reason to open an account, so it is
           the headline — addressed to the reader, never naming them.
         */}
-        <h1>{inviterName} kept a memory with you in it.</h1>
-        {state.status === "ready" && !state.signedIn ? (
-          <div className={styles.actions}>
+        <h1>{inviterName} added a memory with you in it.</h1>
+        <div className={styles.actions}>
+          {state.status === "ready" && !state.signedIn ? (
             <button className={styles.joinAction} type="button" onClick={join}>
               Join Chapter
             </button>
-            {/*
-              A new tab, so looking around Chapter doesn't close the invitation
-              they were sent. The dead-link states below have nothing to keep,
-              so they navigate in place.
-            */}
-            <Link
-              className={styles.exploreAction}
-              href="/"
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              Explore
-            </Link>
-          </div>
-        ) : (
-          <div className={styles.actions}>
+          ) : (
             <button
               className={styles.joinAction}
               type="button"
@@ -201,8 +186,21 @@ export default function InviteAcceptance({ code }: { code: string }) {
             >
               {isAccepting ? "Connecting…" : `Connect with ${inviterName}`}
             </button>
-          </div>
-        )}
+          )}
+          {/*
+            A new tab, so looking around Chapter doesn't close the invitation
+            they were sent. The dead-link states below have nothing to keep,
+            so they navigate in place.
+          */}
+          <Link
+            className={styles.exploreAction}
+            href="/"
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            Explore
+          </Link>
+        </div>
       </section>
     </main>
   );
