@@ -31,6 +31,7 @@ import {
 import type { NowAnchor } from "../../lib/nowChapterSchema";
 import { categoryOrbGradient } from "./categoryAppearance";
 import type { WorldNodeCategory } from "./graphData";
+import placeholderLocationImage from "../assets/mojiko-waterfront.jpg";
 import styles from "./NowView.module.css";
 
 const POLL_INTERVAL_MS = 8_000;
@@ -335,17 +336,34 @@ function HomeCityCard({
         title={homeCity}
         aria-label={`Now is looking in ${homeCity}. Change it.`}
       >
-        <span
-          className={styles.homeCardOrb}
-          style={{ background: categoryOrbGradient("place") }}
-          aria-hidden="true"
-        />
-        <span className={styles.homeCardCopy}>
-          <span className={styles.homeCardKicker}>Now is looking in</span>
+        <span className={styles.homeCardHeader}>
+          <span
+            className={styles.homeCardOrb}
+            style={{ background: categoryOrbGradient("place") }}
+            aria-hidden="true"
+          />
           <span className={styles.homeCardName}>{near}</span>
+          <span className={styles.homeCardAction} aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+            </svg>
+          </span>
         </span>
-        <span className={styles.homeCardAction} aria-hidden="true">
-          Change
+        <span className={styles.homeCardImage}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={placeholderLocationImage.src}
+            alt=""
+            draggable={false}
+            className={styles.homeCardImageImg}
+          />
         </span>
       </button>
 
