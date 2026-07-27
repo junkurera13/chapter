@@ -6,6 +6,7 @@ import {
   fetchPartnerPlanningGraph,
   fetchTogetherGistSource,
 } from "@/lib/base44Functions";
+import { withBackendDetail } from "@/lib/backendFailureDetail";
 import type { TogetherPlanningGraph } from "@/lib/togetherChapterSchema";
 import { planningGraphFrom } from "@/lib/togetherGeneration";
 import {
@@ -259,11 +260,12 @@ export async function GET(request: Request) {
     }
     return Response.json(
       {
-        error: "Chapter couldn’t read that just now.",
+        error: withBackendDetail(
+          "Chapter couldn’t read that just now.",
+          error,
+          status,
+        ),
         code: "TOGETHER_FAILED",
-        // The reason, where saying it out loud costs nothing. In production
-        // this is a backend's own words to a browser, so it stays server-side.
-        ...(process.env.NODE_ENV === "production" ? {} : { detail, status }),
       },
       { status: 502 },
     );

@@ -7,6 +7,7 @@ import {
   fetchTogetherNotifyTarget,
   updateTogetherChapter,
 } from "@/lib/base44Functions";
+import { withBackendDetail } from "@/lib/backendFailureDetail";
 import { NOW_RESEARCH_OUTPUT_SCHEMA } from "@/lib/nowChapterSchema";
 import { NowGenerationError } from "@/lib/nowGeneration";
 import {
@@ -65,7 +66,11 @@ function failure(error: unknown, requestId: string) {
       {
         error: error.status === 409
           ? error.message
-          : "Together isn’t reachable right now.",
+          : withBackendDetail(
+            "Together isn’t reachable right now.",
+            error,
+            error.status,
+          ),
         code: "TOGETHER_BACKEND_FAILED",
       },
       { status: error.status === 409 ? 409 : 502 },

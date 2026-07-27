@@ -7,6 +7,7 @@ import {
   respondToIntroduction,
   setMyIntroductions,
 } from "@/lib/base44Functions";
+import { withBackendDetail } from "@/lib/backendFailureDetail";
 import { writeIntroductionLines } from "@/lib/introductions";
 import type {
   IntroductionRecord,
@@ -39,15 +40,25 @@ function unauthenticated() {
 }
 
 function failed(error: unknown, requestId: string) {
+  const status = error instanceof Base44FunctionError ? error.status : undefined;
   console.error("[together:introductions] request failed", {
     requestId,
     errorName: error instanceof Error ? error.name : "UnknownError",
+    status,
+    detail: error instanceof Error ? error.message : String(error),
   });
   if (error instanceof Base44FunctionError && error.status === 401) {
     return unauthenticated();
   }
   return Response.json(
-    { error: "Chapter couldn’t read that just now.", code: "TOGETHER_FAILED" },
+    {
+      error: withBackendDetail(
+        "Chapter couldn’t read that just now.",
+        error,
+        status,
+      ),
+      code: "TOGETHER_FAILED",
+    },
     { status: 502 },
   );
 }

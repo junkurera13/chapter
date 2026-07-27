@@ -1,12 +1,14 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
 
+import {
+  mapWithLimit,
+  OPEN_WORLDS_AT_ONCE,
+} from "../../shared/concurrency.ts";
 import { collapseMemoryGraphRows } from "../../shared/memory-map.ts";
 import {
-  batched,
   bothSaidYes,
   INTRODUCTION_GRAPH_READS,
   INTRODUCTION_MIN_ANCHORS,
-  INTRODUCTION_READ_BATCH,
   INTRODUCTION_SCAN_LIMIT,
   INTRODUCTION_TTL_MS,
   introductionPairKey,
@@ -61,6 +63,7 @@ async function readWithRateLimitRetry<T>(operation: () => Promise<T>) {
     }
   }
 }
+
 
 const NODE_CATEGORIES = [
   "experience",
@@ -853,10 +856,13 @@ Deno.serve(async (req) => {
         ),
       ]);
 
-      // Every connection at once. Read one after another, a list of ten people
-      // cost twenty round trips before the first name appeared.
-      const resolved = await Promise.all(
-        connectionRows.map(async (connection: Row) => {
+      // A few connections at a time. Read one after another, a list of ten
+      // people cost twenty round trips before the first name appeared; read
+      // all at once, it is twenty at once against a rate-limited API.
+      const resolved = await mapWithLimit(
+        connectionRows,
+        OPEN_WORLDS_AT_ONCE,
+        async (connection: Row) => {
           const userIsFirst = connection.user_a_id === user.id;
           const otherUserId = userIsFirst
             ? connection.user_b_id
@@ -886,7 +892,7 @@ Deno.serve(async (req) => {
             name: stringValue(node?.label) || displayName(otherUser),
             connectedAt: connection.created_at,
           };
-        }),
+        },
       );
       const accepted = resolved.filter(Boolean);
 
@@ -1082,23 +1088,25 @@ Deno.serve(async (req) => {
       );
       const opened = reachable.slice(0, INTRODUCTION_GRAPH_READS);
 
+      // A stranger's world costs exactly what a friend's does to open, and a
+      // scan opens far more of them, so it is held to the same ceiling.
       const scored = [];
-      for (const batch of batched(opened, INTRODUCTION_READ_BATCH)) {
-        const graphs = await Promise.all(
-          batch.map(async (candidate: Row) => ({
-            candidate,
-            nodes: (await planningGraphFor(base44, candidate)).nodes,
-          })),
-        );
-        for (const { candidate, nodes } of graphs) {
-          const shared = sharedAnchorsBetween(mine, nodes);
-          if (shared.anchors.length < INTRODUCTION_MIN_ANCHORS) continue;
-          scored.push({
-            userId: candidate.id,
-            anchors: shared.anchors,
-            weight: shared.weight,
-          });
-        }
+      const graphs = await mapWithLimit(
+        opened,
+        OPEN_WORLDS_AT_ONCE,
+        async (candidate: Row) => ({
+          candidate,
+          nodes: (await planningGraphFor(base44, candidate)).nodes,
+        }),
+      );
+      for (const { candidate, nodes } of graphs) {
+        const shared = sharedAnchorsBetween(mine, nodes);
+        if (shared.anchors.length < INTRODUCTION_MIN_ANCHORS) continue;
+        scored.push({
+          userId: candidate.id,
+          anchors: shared.anchors,
+          weight: shared.weight,
+        });
       }
 
       const candidates = scored
@@ -1694,17 +1702,18 @@ Deno.serve(async (req) => {
           ? stringValue(row.partner_user_id)
           : stringValue(row.initiator_user_id);
 
-      // Each partner looked up once, and all of them at the same time. Read in
-      // sequence, a person with a few chapters open waited on one round trip
-      // per chapter before the tab could say anything at all.
+      // Each partner looked up once, a few at a time. Read in sequence, a
+      // person with a few chapters open waited on one round trip per chapter
+      // before the tab could say anything at all.
       const partnerNames = new Map<string, string>();
       const partnerUserIds = [...new Set(visible.map(partnerUserIdFor))];
-      const partnerRows = await Promise.all(
-        partnerUserIds.map((partnerUserId) =>
+      const partnerRows = await mapWithLimit(
+        partnerUserIds,
+        OPEN_WORLDS_AT_ONCE,
+        (partnerUserId: string) =>
           readWithRateLimitRetry(() => users.get(partnerUserId)).catch(
             () => undefined,
-          )
-        ),
+          ),
       );
       partnerUserIds.forEach((partnerUserId, index) => {
         partnerNames.set(partnerUserId, firstName(partnerRows[index]));
@@ -1807,8 +1816,10 @@ Deno.serve(async (req) => {
         ? data.limit
         : 8;
       const limit = Math.min(Math.max(Math.floor(asked), 1), 24);
-      const partners = await Promise.all(
-        connectionRows.slice(0, limit).map(async (connection: Row) => {
+      const partners = await mapWithLimit(
+        connectionRows.slice(0, limit),
+        OPEN_WORLDS_AT_ONCE,
+        async (connection: Row) => {
           const userIsFirst = connection.user_a_id === user.id;
           const partnerUserId = userIsFirst
             ? connection.user_b_id
@@ -1837,7 +1848,7 @@ Deno.serve(async (req) => {
             // One unreachable world costs its own gist and nothing else.
             return undefined;
           }
-        }),
+        },
       );
 
       return Response.json({
