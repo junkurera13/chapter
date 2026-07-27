@@ -63,6 +63,65 @@ describe("radial growth placement", () => {
     ).toBeGreaterThan(1);
   });
 
+  it("assigns each branch root its own direction around the circle", () => {
+    const nodes: readonly GrowthNode[] = [
+      centre,
+      { key: "memory-a", radius: 0.5 },
+      { key: "memory-b", radius: 0.5 },
+      { key: "memory-c", radius: 0.5 },
+    ];
+    const edges = [
+      { from: "self", to: "memory-a" },
+      { from: "self", to: "memory-b" },
+      { from: "self", to: "memory-c" },
+    ];
+
+    const positioned = resolveOutwardPositions(nodes, edges);
+    const angles = positioned
+      .slice(1)
+      .map((node) => Math.atan2(node.position[1], node.position[0]));
+
+    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+    for (let index = 1; index < angles.length; index += 1) {
+      let separation = Math.abs(angles[index] - angles[0]);
+      separation = Math.min(separation, Math.PI * 2 - separation);
+      const expected = (index * goldenAngle) % (Math.PI * 2);
+      const expectedSeparation = Math.min(expected, Math.PI * 2 - expected);
+      expect(Math.abs(separation - expectedSeparation)).toBeLessThan(0.5);
+    }
+  });
+
+  it("keeps a memory's nodes chained inside its branch sector", () => {
+    const childKeys = ["friend", "place", "food", "feeling", "activity"];
+    const nodes: readonly GrowthNode[] = [
+      centre,
+      { key: "memory", radius: 0.55 },
+      ...childKeys.map((key) => ({ key, radius: 0.42 })),
+    ];
+    const edges = [
+      { from: "self", to: "memory" },
+      ...childKeys.map((key) => ({ from: "memory", to: key })),
+    ];
+
+    const positioned = resolveOutwardPositions(nodes, edges);
+    const byKey = new Map(positioned.map((node) => [node.key, node]));
+    const memory = byKey.get("memory")!;
+    const memoryAngle = Math.atan2(memory.position[1], memory.position[0]);
+    const memoryDistance = Math.hypot(memory.position[0], memory.position[1]);
+
+    for (const key of childKeys) {
+      const child = byKey.get(key)!;
+      const childAngle = Math.atan2(child.position[1], child.position[0]);
+      let separation = Math.abs(childAngle - memoryAngle);
+      separation = Math.min(separation, Math.PI * 2 - separation);
+
+      expect(separation).toBeLessThan(1);
+      expect(
+        Math.hypot(child.position[0], child.position[1]),
+      ).toBeGreaterThan(memoryDistance);
+    }
+  });
+
   it("resolves chained generated nodes deterministically", () => {
     const nodes: readonly GrowthNode[] = [
       centre,

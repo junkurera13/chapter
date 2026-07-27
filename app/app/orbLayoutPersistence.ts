@@ -1,5 +1,7 @@
+// v2: sector-based radial growth replaced the old scatter layout, so layouts
+// saved under v1 must not override the recomputed positions.
 export const ORB_LAYOUT_STORAGE_KEY =
-  "chapter:you-world:orb-layout:v1";
+  "chapter:you-world:orb-layout:v2";
 
 export type OrbPosition = readonly [number, number, number];
 

@@ -17,6 +17,13 @@ export type PositionedGrowthNode<T extends GrowthNode> = Omit<T, "position"> & {
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
+/**
+ * Children may drift at most this far (radians) from their branch direction,
+ * so a memory's nodes read as one outward chain instead of a scattered ring.
+ */
+const SECTOR_ANGLE_OFFSETS = [0, 0.34, -0.34, 0.68, -0.68] as const;
+const RADIUS_STEP = 0.62;
+
 function seededUnit(seedText: string) {
   let seed = 2166136261;
   for (let index = 0; index < seedText.length; index += 1) {
@@ -42,26 +49,34 @@ function clamp(value: number, minimum: number, maximum: number) {
 }
 
 /**
- * Places one new orb beyond its outermost connection. Candidate positions fan
- * around that outward direction and are scored for breathing room, so siblings
- * grow into an organic branch instead of stacking on a perfect orbit.
+ * Places one new orb along its branch direction. Branch roots (nodes whose
+ * `branchIndex` is provided) claim successive golden-angle directions around
+ * the centre, so each memory owns a sector and later memories wrap around the
+ * circle. Every other node grows outward from its outermost connection inside
+ * a narrow cone: crowding pushes candidates further out rather than sideways,
+ * so a memory's nodes chain away from the centre instead of orbiting it.
  */
 export function placeOrbOutward(
   node: GrowthNode,
   connectedKeys: readonly string[],
   existingNodes: readonly PositionedGrowthNode<GrowthNode>[],
   centreKey = "self",
+  branchIndex?: number,
 ): GrowthPosition {
   const existingByKey = new Map(
     existingNodes.map((existingNode) => [existingNode.key, existingNode]),
   );
   const centre = existingByKey.get(centreKey)?.position ?? [0, 0, 0];
+  const isBranchRoot = branchIndex !== undefined;
   const connections = connectedKeys
     .map((key) => existingByKey.get(key))
     .filter(
       (connectedNode): connectedNode is PositionedGrowthNode<GrowthNode> =>
         Boolean(connectedNode),
-    );
+    )
+    // A branch root belongs to its own sector: relation edges to other
+    // branches must not drag it away from its assigned direction.
+    .filter((connectedNode) => !isBranchRoot || connectedNode.key === centreKey);
   const anchor =
     connections.reduce<PositionedGrowthNode<GrowthNode> | null>(
       (outermost, connectedNode) =>
@@ -82,7 +97,8 @@ export function placeOrbOutward(
           anchorPosition[1] - centre[1],
           anchorPosition[0] - centre[0],
         )
-      : seed * Math.PI * 2 + existingNodes.length * GOLDEN_ANGLE;
+      : (branchIndex ?? existingNodes.length) * GOLDEN_ANGLE +
+        (seed - 0.5) * 0.24;
   const connectedOuterRadius = connections.reduce(
     (outerRadius, connectedNode) =>
       Math.max(
@@ -103,37 +119,43 @@ export function placeOrbOutward(
   ];
   let bestScore = Number.POSITIVE_INFINITY;
 
-  for (let candidateIndex = 0; candidateIndex < 25; candidateIndex += 1) {
-    const fanStep = candidateIndex === 0 ? 0 : Math.ceil(candidateIndex / 2);
-    const fanDirection = candidateIndex % 2 === 1 ? 1 : -1;
-    const angleOffset = fanDirection * fanStep * 0.27;
-    const angle = baseAngle + angleOffset + (seed - 0.5) * 0.12;
-    const radius = minimumRadius + Math.floor(fanStep / 7) * 0.38;
-    const depthVariation =
-      (seededUnit(`${node.key}:${candidateIndex}`) - 0.5) * 0.72;
-    const candidate: GrowthPosition = [
-      centre[0] + Math.cos(angle) * radius,
-      centre[1] + Math.sin(angle) * radius,
-      clamp(anchorPosition[2] + depthVariation, -1.25, 1.25),
-    ];
+  for (let radiusStep = 0; radiusStep < 5; radiusStep += 1) {
+    for (
+      let offsetIndex = 0;
+      offsetIndex < SECTOR_ANGLE_OFFSETS.length;
+      offsetIndex += 1
+    ) {
+      const candidateIndex =
+        radiusStep * SECTOR_ANGLE_OFFSETS.length + offsetIndex;
+      const angleOffset = SECTOR_ANGLE_OFFSETS[offsetIndex];
+      const angle = baseAngle + angleOffset + (seed - 0.5) * 0.12;
+      const radius = minimumRadius + radiusStep * RADIUS_STEP;
+      const depthVariation =
+        (seededUnit(`${node.key}:${candidateIndex}`) - 0.5) * 0.72;
+      const candidate: GrowthPosition = [
+        centre[0] + Math.cos(angle) * radius,
+        centre[1] + Math.sin(angle) * radius,
+        clamp(anchorPosition[2] + depthVariation, -1.25, 1.25),
+      ];
 
-    let score = Math.abs(angleOffset) * 0.7;
+      let score = Math.abs(angleOffset) * 1.5 + radiusStep * 0.4;
 
-    for (const existingNode of existingNodes) {
-      const safeDistance = node.radius + existingNode.radius + 0.52;
-      const separation = distanceBetween(candidate, existingNode.position);
-      if (separation < safeDistance) {
-        score += (safeDistance - separation + 1) ** 2 * 120;
+      for (const existingNode of existingNodes) {
+        const safeDistance = node.radius + existingNode.radius + 0.52;
+        const separation = distanceBetween(candidate, existingNode.position);
+        if (separation < safeDistance) {
+          score += (safeDistance - separation + 1) ** 2 * 120;
+        }
       }
-    }
 
-    for (const connectedNode of connections) {
-      score += distanceBetween(candidate, connectedNode.position) * 0.08;
-    }
+      for (const connectedNode of connections) {
+        score += distanceBetween(candidate, connectedNode.position) * 0.08;
+      }
 
-    if (score < bestScore) {
-      bestScore = score;
-      bestPosition = candidate;
+      if (score < bestScore) {
+        bestScore = score;
+        bestPosition = candidate;
+      }
     }
   }
 
@@ -152,6 +174,22 @@ export function resolveOutwardPositions<T extends GrowthNode>(
 ): readonly PositionedGrowthNode<T>[] {
   const placed = new Map<string, PositionedGrowthNode<T>>();
   const pending = new Map<string, T>();
+
+  // Nodes wired straight to the centre are branch roots. Their order of
+  // appearance decides their sector, so later memories walk around the circle.
+  const rootKeys = new Set<string>();
+  for (const edge of edges) {
+    if (edge.from === centreKey && edge.to !== centreKey) rootKeys.add(edge.to);
+    if (edge.to === centreKey && edge.from !== centreKey) {
+      rootKeys.add(edge.from);
+    }
+  }
+  const branchIndexByKey = new Map<string, number>();
+  for (const node of nodes) {
+    if (node.key !== centreKey && rootKeys.has(node.key)) {
+      branchIndexByKey.set(node.key, branchIndexByKey.size);
+    }
+  }
 
   for (const node of nodes) {
     if (node.position) {
@@ -189,6 +227,7 @@ export function resolveOutwardPositions<T extends GrowthNode>(
         connectedKeys,
         [...placed.values()],
         centreKey,
+        branchIndexByKey.get(key),
       );
       placed.set(
         key,
@@ -207,6 +246,7 @@ export function resolveOutwardPositions<T extends GrowthNode>(
       placed.has(centreKey) ? [centreKey] : [],
       [...placed.values()],
       centreKey,
+      branchIndexByKey.get(next.key),
     );
     placed.set(
       next.key,
