@@ -96,6 +96,100 @@ describe("buildBriefPrompt", () => {
     expect(prompt).toContain("top-10 listicles");
     expect(prompt).toContain("still operates");
   });
+
+  it("hands the researcher the day and the hours that were set aside", () => {
+    const prompt = buildBriefPrompt({
+      graph: sampleGraph(),
+      homeCity: "Seoul",
+      scheduledFor: "2026-08-08",
+      timeWindows: ["evening", "night"],
+    });
+
+    expect(prompt).toContain("Saturday 2026-08-08");
+    expect(prompt).toContain("evening (17:00–21:00)");
+    expect(prompt).toContain("night (21:00–late)");
+    expect(prompt).toContain("find a different one rather than moving the day");
+    // The schedule replaces the model's own guess at a time, rather than
+    // arriving alongside it as a second opinion.
+    expect(prompt).not.toContain("state the day/time window that suits");
+  });
+
+  it("leaves the time of day to the brief when no day was set aside", () => {
+    const prompt = buildBriefPrompt({ graph: sampleGraph(), homeCity: "Seoul" });
+    expect(prompt).toContain("state the day/time window that suits");
+    expect(prompt).not.toContain("This is fixed");
+  });
+
+  it("turns a walkable reach into a neighbourhood-scale search", () => {
+    const prompt = buildBriefPrompt({
+      graph: sampleGraph(),
+      homeCity: "Bangbae-dong, Seoul",
+      reach: "walk",
+    });
+
+    expect(prompt).toContain("a fifteen minute walk of Bangbae-dong, Seoul");
+    expect(prompt).toContain("neighbourhood-scale search");
+    expect(prompt).toContain("wrong answer");
+  });
+
+  it("makes the widest reach leave the city rather than loosen it", () => {
+    const prompt = buildBriefPrompt({
+      graph: sampleGraph(),
+      homeCity: "Seoul",
+      reach: "beyond",
+    });
+
+    // The whole point of the far stop: without this it just returns Seoul
+    // again with a wider bound on it.
+    expect(prompt).toContain("must NOT be in Seoul itself");
+    expect(prompt).toContain("two hours by train, bus or car");
+  });
+
+  it("falls back to the middle reach when none was chosen", () => {
+    const prompt = buildBriefPrompt({ graph: sampleGraph(), homeCity: "Seoul" });
+    expect(prompt).toContain("about thirty minutes");
+    expect(prompt).not.toContain("must NOT be in Seoul itself");
+  });
+});
+
+describe("buildComposePrompt", () => {
+  const finding = {
+    venue_name: "Mangwon Charcoal House",
+    venue_area: "Mangwon-dong, Seoul",
+    why_uncommon: "Run by one family since 1978, no English signage.",
+    best_time: "Saturday evening, from 18:00",
+  };
+  const brief = {
+    threadTitle: "Charcoal nights",
+    anchors: [
+      { nodeId: "n-halmoni", label: "Halmoni", category: "people" },
+    ],
+    stretch: {
+      dimension: "place" as const,
+      description: "A grill in a neighbourhood they have never mentioned.",
+    },
+    researchObjective: "x".repeat(120),
+  };
+
+  it("writes a settled day as settled, never as a suggestion", () => {
+    const prompt = buildComposePrompt({
+      brief,
+      finding,
+      homeCity: "Seoul",
+      scheduledFor: "2026-08-08",
+      timeWindows: ["evening"],
+    });
+
+    expect(prompt).toContain("THE DAY THEY SET ASIDE: Saturday 2026-08-08");
+    expect(prompt).toContain("evening");
+    expect(prompt).toContain("Never offer an alternative day");
+  });
+
+  it("says nothing about a day when there isn’t one", () => {
+    const prompt = buildComposePrompt({ brief, finding, homeCity: "Seoul" });
+    expect(prompt).not.toContain("THE DAY THEY SET ASIDE");
+    expect(prompt).not.toContain("Never offer an alternative day");
+  });
 });
 
 describe("now schemas", () => {

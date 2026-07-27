@@ -1,6 +1,11 @@
 import { getAccessToken } from "@base44/sdk";
 
-import type { NowChapterRecord } from "./nowChapterSchema";
+import type {
+  NowChapterRecord,
+  NowReach,
+  NowTimeWindow,
+} from "./nowChapterSchema";
+import { isoDay } from "./nowSchedule";
 import { forgetOpened, OPENED_NOW, rememberOpened } from "./openedViews";
 import type { PlaceSuggestion } from "./placeSearch";
 
@@ -26,6 +31,7 @@ export class NowRequestError extends Error {
 async function nowFetch<T>(init?: {
   method?: "POST";
   body?: Record<string, unknown>;
+  query?: Record<string, string>;
 }): Promise<T> {
   const accessToken = await getAccessToken();
   if (!accessToken) {
@@ -36,7 +42,8 @@ async function nowFetch<T>(init?: {
     );
   }
 
-  const response = await fetch("/api/now", {
+  const query = init?.query ? `?${new URLSearchParams(init.query)}` : "";
+  const response = await fetch(`/api/now${query}`, {
     method: init?.method ?? "GET",
     headers: {
       Accept: "application/json",
@@ -61,8 +68,38 @@ async function nowFetch<T>(init?: {
   return payload.value;
 }
 
+/**
+ * Reading Now is also what advances it, so it carries the day the person is
+ * standing in: a Saturday set aside in Seoul comes due on Seoul's calendar,
+ * not on whichever one the server happens to keep.
+ */
 export function loadNow() {
-  return nowFetch<NowState>().then((value) => rememberOpened(OPENED_NOW, value));
+  return nowFetch<NowState>({ query: { today: isoDay() } }).then((value) =>
+    rememberOpened(OPENED_NOW, value),
+  );
+}
+
+/** Sets a day aside. Chapter starts writing for it three days before. */
+export function scheduleNowChapter(
+  scheduledFor: string,
+  timeWindows: readonly NowTimeWindow[],
+  reach: NowReach,
+) {
+  return nowFetch<{ chapter: NowChapterRecord }>({
+    method: "POST",
+    body: {
+      action: "schedule",
+      scheduledFor,
+      timeWindows,
+      reach,
+      today: isoDay(),
+    },
+  });
+}
+
+/** Calling off a day before anything has been written for it. */
+export function cancelNowSchedule(chapterId: string) {
+  return declineNowChapter(chapterId, "");
 }
 
 export function saveHomeCity(homeCity: string) {

@@ -13,7 +13,13 @@ import {
   type NowEvidenceLink,
   type NowResearchFinding,
   nowResearchFindingSchema,
+  NOW_DEFAULT_REACH,
+  NOW_REACH,
+  NOW_TIME_WINDOW_HOURS,
+  type NowReach,
+  type NowTimeWindow,
 } from "./nowChapterSchema";
+import { formatWeekday } from "./nowSchedule";
 
 const NOW_MODEL_ID =
   process.env.CHAPTER_NOW_MODEL || "moonshotai/kimi-k2.6";
@@ -83,24 +89,81 @@ export function buildGraphDigest(graph: ExperienceGraphRecord, maxNodes = 60) {
   return { nodes, edges };
 }
 
+/**
+ * The day someone set aside, written the way a researcher can act on it: the
+ * weekday decides whether a place is even open, and the window decides which
+ * hours of it to prove. A schedule that never reached the brief would be a
+ * calendar entry; this is what makes it change what gets found.
+ */
+function whenClause(scheduledFor?: string, timeWindows?: readonly NowTimeWindow[]) {
+  if (!scheduledFor) return "";
+  const windows = timeWindows ?? [];
+  const hours = windows
+    .map((window) => `${window} (${NOW_TIME_WINDOW_HOURS[window]})`)
+    .join(" or ");
+  return [
+    `- BE OPEN AND WORTH GOING TO on ${formatWeekday(scheduledFor)} ${scheduledFor}${
+      hours ? `, during: ${hours}` : ""
+    }.`,
+    "  This is fixed. Verify the opening hours cover it from a source; if the best candidate is closed then, find a different one rather than moving the day.",
+    windows.length > 0
+      ? `  Let the window shape the find, not just filter it: what is worth doing at ${windows[0]} is not what is worth doing at another hour.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
+ * How far someone will travel is not a filter laid over the answer, it is the
+ * scale the whole search happens at.
+ *
+ * A fifteen minute walk forces the hyperlocal, which is where the good ones
+ * are: the single-proprietor, odd-hours, no-English-signage places only exist
+ * at neighbourhood scale, and a search that cannot leave those streets has to
+ * find them. Two hours out has to say plainly that it means somewhere else,
+ * or it returns the same city again with a looser bound on it.
+ */
+function reachClause(homeCity: string, reach: NowReach) {
+  const { travel } = NOW_REACH[reach];
+  if (reach === "beyond") {
+    return [
+      `- START from ${homeCity} and deliberately reach past it: the find must lie within ${travel} of there, and must NOT be in ${homeCity} itself.`,
+      "  Somewhere that is a journey in its own right — a coast town, a mountain village, a valley temple — and say how it is reached.",
+    ].join("\n");
+  }
+  if (reach === "walk") {
+    return [
+      `- CONSTRAIN the search to within ${travel} of ${homeCity}.`,
+      "  This is a neighbourhood-scale search. The answer is a door on those streets, not a better place across the city, and somewhere further away is a wrong answer however good it is.",
+    ].join("\n");
+  }
+  return `- CONSTRAIN the search to within ${travel} of ${homeCity}. Somewhere further away is a wrong answer, however good it is.`;
+}
+
 export function buildBriefPrompt(args: {
   graph: ExperienceGraphRecord;
   homeCity: string;
   avoidVenues?: readonly string[];
   declineReason?: string;
+  /** The day already set aside, when this chapter grew out of a schedule. */
+  scheduledFor?: string;
+  timeWindows?: readonly NowTimeWindow[];
+  reach?: NowReach;
 }) {
   const digest = buildGraphDigest(args.graph);
+  const when = whenClause(args.scheduledFor, args.timeWindows);
   return [
     "You design one real-world experience proposal from a private memory graph.",
     "The product rule is THE ONE STRETCH: pick one living thread of this person's world (their most salient people, activities, places, feelings), keep everything about it familiar, and stretch EXACTLY ONE dimension into the unknown (an unfamiliar place, an unfamiliar activity, an unfamiliar time-of-life ritual, or doing a familiar thing with a different familiar person). Never stretch two dimensions. Never propose the generic.",
     "",
     "Write a research brief for a deep-research agent that will find one real, currently operating, genuinely uncommon venue or recurring event.",
     "The researchObjective must:",
-    `- name the city and constrain the search to it: ${args.homeCity}.`,
+    reachClause(args.homeCity, args.reach ?? NOW_DEFAULT_REACH),
     "- describe what to find in specific sensory terms drawn from the thread (cuisine, atmosphere, materials, sound, pace).",
     "- demand uncommonness: prefer old, small, family-run, single-proprietor, odd-hours, hyperlocal places; explicitly exclude chains, franchises, tourist landmarks, and anything prominent in top-10 listicles or heavy English press.",
     "- require proof the place still operates (recent reviews, posts, or listings).",
-    "- state the day/time window that suits the thread.",
+    when || "- state the day/time window that suits the thread.",
     args.avoidVenues && args.avoidVenues.length > 0
       ? `- exclude these previously proposed venues: ${args.avoidVenues.join("; ")}.`
       : "",
@@ -200,6 +263,9 @@ export async function generateNowBrief(args: {
   homeCity: string;
   avoidVenues?: readonly string[];
   declineReason?: string;
+  scheduledFor?: string;
+  timeWindows?: readonly NowTimeWindow[];
+  reach?: NowReach;
   requestId: string;
   signal?: AbortSignal;
 }): Promise<NowBrief> {
@@ -226,7 +292,10 @@ export function buildComposePrompt(args: {
   brief: NowBrief;
   finding: NowResearchFinding;
   homeCity: string;
+  scheduledFor?: string;
+  timeWindows?: readonly NowTimeWindow[];
 }) {
+  const windows = args.timeWindows ?? [];
   return [
     "Compose one experience proposal for the Chapter app: a short letter-like invitation built from this person's own world plus one verified real-world find.",
     "Voice: a thoughtful friend texting. Warm, specific, unhurried. No marketing language, no exclamation marks, no emoji, no bullet points.",
@@ -237,15 +306,25 @@ export function buildComposePrompt(args: {
     "- knownLine: one sentence starting with 'Because' explaining which thread of their world this grew from, using anchor labels verbatim.",
     "- unknownLine: one sentence naming what is new — the single stretch.",
     "- Keep venue facts exactly as researched. Do not invent details.",
+    args.scheduledFor
+      ? "- The day is already settled: name it plainly, in the tone of a plan being confirmed rather than a date being suggested. Never offer an alternative day or ask when they are free."
+      : "",
     "",
     `HOME CITY: ${args.homeCity}`,
+    args.scheduledFor
+      ? `THE DAY THEY SET ASIDE: ${formatWeekday(args.scheduledFor)} ${args.scheduledFor}${
+          windows.length > 0 ? `, ${windows.join(" or ")}` : ""
+        }`
+      : "",
     "ANCHOR LABELS (use verbatim):",
     JSON.stringify(args.brief.anchors.map((anchor) => anchor.label)),
     "THE STRETCH:",
     JSON.stringify(args.brief.stretch),
     "RESEARCH FINDING (verified):",
     JSON.stringify(args.finding),
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /** Stage 3: turn the verified research finding into the chapter proposal. */
@@ -254,6 +333,8 @@ export async function composeNowChapter(args: {
   researchContent: unknown;
   citations: NowEvidenceLink[];
   homeCity: string;
+  scheduledFor?: string;
+  timeWindows?: readonly NowTimeWindow[];
   requestId: string;
   signal?: AbortSignal;
 }): Promise<{ content: NowChapterContent; evidence: NowEvidenceLink[] }> {
@@ -269,6 +350,8 @@ export async function composeNowChapter(args: {
       brief: args.brief,
       finding: finding.data,
       homeCity: args.homeCity,
+      scheduledFor: args.scheduledFor,
+      timeWindows: args.timeWindows,
     }),
     schemaName: "now_chapter",
     schemaDescription:

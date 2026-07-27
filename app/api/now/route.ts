@@ -3,15 +3,30 @@ import {
   createNowChapter,
   fetchMyGraph,
   fetchMyNow,
+  scheduleNowChapter,
   setMyHomeCity,
   updateNowChapter,
 } from "@/lib/base44Functions";
-import { NOW_RESEARCH_OUTPUT_SCHEMA } from "@/lib/nowChapterSchema";
+import {
+  NOW_REACHES,
+  NOW_RESEARCH_OUTPUT_SCHEMA,
+  NOW_TIME_WINDOWS,
+  type NowChapterRecord,
+  type NowReach,
+  type NowTimeWindow,
+} from "@/lib/nowChapterSchema";
 import {
   composeNowChapter,
   generateNowBrief,
   NowGenerationError,
 } from "@/lib/nowGeneration";
+import {
+  canSchedule,
+  daysBetween,
+  isDueToWrite,
+  isIsoDay,
+  isoDay,
+} from "@/lib/nowSchedule";
 import {
   fetchParallelResearchResult,
   ParallelResearchError,
@@ -36,6 +51,72 @@ function unauthenticated() {
     },
     { status: 401 },
   );
+}
+
+/**
+ * The caller's own calendar day, which is the only one a schedule means
+ * anything in: a Saturday set aside in Seoul is not this server's Saturday.
+ * Clamped to a day either side of the server's, so the worst a bad value can
+ * do is arm a chapter the person could have armed by hand anyway.
+ */
+function viewerToday(value: unknown) {
+  const claimed = typeof value === "string" ? value : "";
+  const serverToday = isoDay();
+  if (!isIsoDay(claimed)) return serverToday;
+  return Math.abs(daysBetween(serverToday, claimed)) <= 1 ? claimed : serverToday;
+}
+
+type NowSnapshot = Awaited<ReturnType<typeof fetchMyNow>>;
+
+/**
+ * Stages one and two of a chapter: read the world, write the one-stretch
+ * brief, hand it to deep research, and record the run against the person.
+ *
+ * This is the only path that spends money, so it stays behind a person asking
+ * — either by pressing the button, or by having set this day aside themselves.
+ */
+async function beginWriting(args: {
+  now: NowSnapshot;
+  graph: Awaited<ReturnType<typeof fetchMyGraph>>;
+  accessToken: string;
+  requestId: string;
+  signal?: AbortSignal;
+}): Promise<NowChapterRecord> {
+  const { now, requestId } = args;
+  const scheduled = now.chapter?.status === "scheduled" ? now.chapter : null;
+
+  const brief = await generateNowBrief({
+    graph: args.graph,
+    homeCity: now.homeCity,
+    avoidVenues: now.avoidVenues,
+    declineReason:
+      now.chapter?.status === "declined" ? now.chapter.declineReason : undefined,
+    scheduledFor: scheduled?.scheduledFor,
+    timeWindows: scheduled?.timeWindows,
+    reach: scheduled?.reach,
+    requestId,
+    signal: args.signal,
+  });
+
+  const { runId } = await startParallelResearch({
+    input: brief.researchObjective,
+    outputSchema: NOW_RESEARCH_OUTPUT_SCHEMA as unknown as Record<
+      string,
+      unknown
+    >,
+    metadata: { app: "chapter", surface: "now" },
+  });
+
+  const created = await createNowChapter(
+    { researchRunId: runId, briefJson: JSON.stringify(brief) },
+    args.accessToken,
+  );
+  console.info("[now:route] research run created", {
+    requestId,
+    chapterId: created.chapter.id,
+    scheduled: Boolean(scheduled),
+  });
+  return created.chapter;
 }
 
 function failure(error: unknown, requestId: string) {
@@ -65,18 +146,58 @@ function failure(error: unknown, requestId: string) {
 }
 
 /**
- * Returns the current Now state. When a research run is in flight it also
- * advances it: a completed Parallel run is composed into the proposal here,
- * so the client only ever polls this one endpoint.
+ * Returns the current Now state, and moves it along on the way past.
+ *
+ * Two things can advance here. A day someone set aside reaches its lead time
+ * and starts being written; a research run that has come back is composed into
+ * the proposal. Both live on this one endpoint so the client only ever polls
+ * the one it is already polling.
  */
 export async function GET(request: Request) {
   const requestId = crypto.randomUUID();
   const accessToken = accessTokenFrom(request);
   if (!accessToken) return unauthenticated();
+  const today = viewerToday(new URL(request.url).searchParams.get("today"));
 
   try {
     const now = await fetchMyNow(accessToken);
     const chapter = now.chapter;
+
+    /*
+     * The automation itself. A scheduled day whose three days of lead time
+     * have opened becomes a chapter being written, without anyone asking
+     * again — they asked when they set the day aside.
+     */
+    if (
+      chapter?.status === "scheduled" &&
+      chapter.scheduledFor &&
+      isDueToWrite(chapter.scheduledFor, today) &&
+      now.homeCity
+    ) {
+      try {
+        const graph = await fetchMyGraph(accessToken);
+        if (graph.memoryCount > 0) {
+          const armed = await beginWriting({
+            now,
+            graph,
+            accessToken,
+            requestId,
+            signal: request.signal,
+          });
+          return Response.json({ value: { ...now, chapter: armed } });
+        }
+      } catch (error) {
+        // A schedule that could not be armed this time is still a schedule.
+        // It stays due, and the next read tries again.
+        console.error("[now:route] scheduled chapter could not start", {
+          requestId,
+          chapterId: chapter.id,
+          errorName: error instanceof Error ? error.name : "UnknownError",
+        });
+      }
+      return Response.json({ value: now });
+    }
+
     if (
       !chapter ||
       chapter.status !== "researching" ||
@@ -105,6 +226,8 @@ export async function GET(request: Request) {
         researchContent: result.content,
         citations: result.citations,
         homeCity: now.homeCity,
+        scheduledFor: chapter.scheduledFor,
+        timeWindows: chapter.timeWindows,
         requestId,
         signal: request.signal,
       });
@@ -144,9 +267,21 @@ type NowActionBody = {
   action?: unknown;
   homeCity?: unknown;
   scheduledFor?: unknown;
+  timeWindows?: unknown;
+  reach?: unknown;
+  today?: unknown;
   reason?: unknown;
   chapterId?: unknown;
 };
+
+function chosenWindows(value: unknown): NowTimeWindow[] {
+  const chosen = Array.isArray(value) ? value : [];
+  return NOW_TIME_WINDOWS.filter((window) => chosen.includes(window));
+}
+
+function chosenReach(value: unknown): NowReach | null {
+  return NOW_REACHES.find((reach) => reach === value) ?? null;
+}
 
 export async function POST(request: Request) {
   const requestId = crypto.randomUUID();
@@ -177,6 +312,44 @@ export async function POST(request: Request) {
       return Response.json({ value });
     }
 
+    /*
+     * Setting a day aside. Deliberately cheap: it books the slot and stops,
+     * so the research is paid for once, three days out, and only if the day
+     * is still standing then.
+     */
+    if (body.action === "schedule") {
+      const scheduledFor =
+        typeof body.scheduledFor === "string" ? body.scheduledFor : "";
+      const timeWindows = chosenWindows(body.timeWindows);
+      const reach = chosenReach(body.reach);
+      if (!canSchedule(scheduledFor, viewerToday(body.today))) {
+        return Response.json(
+          { error: "Pick a day that hasn’t gone yet.", code: "NOW_INPUT_INVALID" },
+          { status: 400 },
+        );
+      }
+      if (timeWindows.length === 0 || !reach) {
+        return Response.json(
+          {
+            error: "Tell Chapter when you’re free that day.",
+            code: "NOW_INPUT_INVALID",
+          },
+          { status: 400 },
+        );
+      }
+      const value = await scheduleNowChapter(
+        { scheduledFor, timeWindows, reach },
+        accessToken,
+      );
+      console.info("[now:route] day set aside", {
+        requestId,
+        chapterId: value.chapter.id,
+        windows: timeWindows.length,
+        reach,
+      });
+      return Response.json({ value });
+    }
+
     if (body.action === "start") {
       const now = await fetchMyNow(accessToken);
       if (!now.homeCity) {
@@ -204,36 +377,16 @@ export async function POST(request: Request) {
       }
 
       console.info("[now:route] generation started", { requestId });
-      const brief = await generateNowBrief({
+      // Asking now for a day already set aside writes for that day, rather
+      // than starting a second chapter beside it.
+      const chapter = await beginWriting({
+        now,
         graph,
-        homeCity: now.homeCity,
-        avoidVenues: now.avoidVenues,
-        declineReason:
-          now.chapter?.status === "declined"
-            ? now.chapter.declineReason
-            : undefined,
+        accessToken,
         requestId,
         signal: request.signal,
       });
-
-      const { runId } = await startParallelResearch({
-        input: brief.researchObjective,
-        outputSchema: NOW_RESEARCH_OUTPUT_SCHEMA as unknown as Record<
-          string,
-          unknown
-        >,
-        metadata: { app: "chapter", surface: "now" },
-      });
-
-      const created = await createNowChapter(
-        { researchRunId: runId, briefJson: JSON.stringify(brief) },
-        accessToken,
-      );
-      console.info("[now:route] research run created", {
-        requestId,
-        chapterId: created.chapter.id,
-      });
-      return Response.json({ value: { chapter: created.chapter } });
+      return Response.json({ value: { chapter } });
     }
 
     if (

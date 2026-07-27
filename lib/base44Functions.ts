@@ -365,6 +365,21 @@ function internalSecret() {
   return secret;
 }
 
+/** Sets a day aside. Nothing is researched, and nothing is spent, until it is due. */
+export function scheduleNowChapter(
+  args: {
+    scheduledFor: string;
+    timeWindows: readonly import("./nowChapterSchema").NowTimeWindow[];
+    reach: import("./nowChapterSchema").NowReach;
+  },
+  accessToken: string,
+) {
+  return invokeSidequestData<NowChapterValue>(
+    { action: "scheduleNowChapter", ...args },
+    accessToken,
+  );
+}
+
 export function createNowChapter(
   args: { researchRunId: string; briefJson: string },
   accessToken: string,
@@ -382,6 +397,7 @@ export function updateNowChapter(
     contentJson?: string;
     evidenceJson?: string;
     venueName?: string;
+    /** Optional once the chapter grew from a day that was already set aside. */
     scheduledFor?: string;
     declineReason?: string;
   },

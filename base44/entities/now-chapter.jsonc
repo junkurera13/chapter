@@ -6,6 +6,7 @@
     "status": {
       "type": "string",
       "enum": [
+        "scheduled",
         "researching",
         "proposed",
         "accepted",
@@ -37,7 +38,16 @@
     "decline_reason": { "type": "string" },
     "scheduled_for": {
       "type": "string",
-      "description": "ISO date (YYYY-MM-DD) the person accepted for"
+      "description": "ISO date (YYYY-MM-DD) the person set aside, chosen when the chapter is scheduled and carried through to the plan they accept"
+    },
+    "time_windows": {
+      "type": "string",
+      "description": "Comma-separated parts of that day the person is free in: morning, afternoon, evening, night"
+    },
+    "reach": {
+      "type": "string",
+      "enum": ["walk", "near", "city", "beyond"],
+      "description": "How far the person will travel for this one, as travel time rather than distance: walk (15 min on foot), near (~30 min), city (~1 hour), beyond (~2 hours, deliberately outside the home city)"
     },
     "created_at": { "type": "number" },
     "updated_at": { "type": "number" }

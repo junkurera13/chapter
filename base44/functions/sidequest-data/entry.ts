@@ -473,12 +473,38 @@ async function planningGraphFor(base44: Row, user: Row) {
   return { nodes };
 }
 
+const NOW_TIME_WINDOWS = ["morning", "afternoon", "evening", "night"];
+
+/**
+ * The parts of a day someone said they were free in, kept in the order a day
+ * runs and stripped of anything that is not one of the four. Stored as a plain
+ * comma list rather than JSON: it is a set of four known words, and a column
+ * you can read at a glance is worth more here than one that parses.
+ */
+function timeWindowList(value: unknown) {
+  const raw = Array.isArray(value)
+    ? value.map((entry) => stringValue(entry))
+    : stringValue(value).split(",");
+  const chosen = raw.map((entry) => entry.trim().toLowerCase());
+  return NOW_TIME_WINDOWS.filter((window) => chosen.includes(window));
+}
+
+const NOW_REACHES = ["walk", "near", "city", "beyond"];
+
+/** One of the four named reaches, or nothing when it was never asked. */
+function reachValue(value: unknown) {
+  const reach = stringValue(value).toLowerCase();
+  return NOW_REACHES.includes(reach) ? reach : undefined;
+}
+
 function nowChapterRecord(row: Row) {
   return {
     id: row.id,
     status: row.status,
     createdAt: Number(row.created_at),
     scheduledFor: stringValue(row.scheduled_for) || undefined,
+    timeWindows: timeWindowList(row.time_windows),
+    reach: reachValue(row.reach),
     researchRunId: stringValue(row.research_run_id) || undefined,
     brief: parsedJson(row.brief_json),
     content: parsedJson(row.content_json),
@@ -1575,6 +1601,67 @@ Deno.serve(async (req) => {
       return Response.json({ value: { homeCity } });
     }
 
+    /**
+     * A day set aside, before there is anything to put in it. The research it
+     * will be made of costs real money, so nothing is spent here — this only
+     * records that the person asked, and for when.
+     */
+    if (action === "scheduleNowChapter") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const scheduledFor = stringValue(data.scheduledFor);
+      const timeWindows = timeWindowList(data.timeWindows);
+      const reach = reachValue(data.reach);
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(scheduledFor) ||
+        timeWindows.length === 0 ||
+        !reach
+      ) {
+        return Response.json({ error: "invalid schedule" }, { status: 400 });
+      }
+
+      const chapters = base44.asServiceRole.entities.NowChapter;
+      const rows = await readWithRateLimitRetry(() =>
+        chapters.filter({ owner_user_id: user.id }, "-created_at", 1)
+      );
+      const latest = rows[0];
+      const now = Date.now();
+      const patch = {
+        status: "scheduled",
+        scheduled_for: scheduledFor,
+        time_windows: timeWindows.join(","),
+        reach,
+        updated_at: now,
+      };
+
+      // Changing your mind about the day rewrites the appointment rather than
+      // stacking a second one behind it.
+      if (latest && latest.status === "scheduled") {
+        const moved = await chapters.update(latest.id, patch);
+        return Response.json({ value: { chapter: nowChapterRecord(moved) } });
+      }
+      if (
+        latest &&
+        ["researching", "proposed", "accepted"].includes(latest.status)
+      ) {
+        return Response.json(
+          { error: "one chapter at a time", code: "NOW_CHAPTER_ACTIVE" },
+          { status: 409 },
+        );
+      }
+
+      const created = await chapters.create({
+        owner_user_id: user.id,
+        ...patch,
+        created_at: now,
+      });
+      return Response.json({ value: { chapter: nowChapterRecord(created) } });
+    }
+
     if (action === "createNowChapter") {
       const viewer = await authenticatedViewer(base44);
       if (!viewer) {
@@ -1593,6 +1680,23 @@ Deno.serve(async (req) => {
         chapters.filter({ owner_user_id: user.id }, "-created_at", 1)
       );
       const latest = rows[0];
+      const now = Date.now();
+
+      /*
+       * A scheduled day whose lead time has opened becomes the chapter now
+       * being written, keeping the day and the windows it was set aside with.
+       * It is the same appointment arriving, not a second one.
+       */
+      if (latest && latest.status === "scheduled") {
+        const armed = await chapters.update(latest.id, {
+          status: "researching",
+          research_run_id: researchRunId,
+          brief_json: briefJson,
+          updated_at: now,
+        });
+        return Response.json({ value: { chapter: nowChapterRecord(armed) } });
+      }
+
       if (
         latest &&
         ["researching", "proposed", "accepted"].includes(latest.status)
@@ -1603,7 +1707,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      const now = Date.now();
       const created = await chapters.create({
         owner_user_id: user.id,
         status: "researching",
@@ -1637,6 +1740,9 @@ Deno.serve(async (req) => {
 
       const nextStatus = stringValue(data.status);
       const allowed: Record<string, readonly string[]> = {
+        // Calling off a day you set aside declines the chapter it would have
+        // become. There is no third thing for it to be.
+        scheduled: ["declined"],
         researching: ["proposed", "failed"],
         proposed: ["accepted", "declined"],
         accepted: ["lived"],
@@ -1661,7 +1767,10 @@ Deno.serve(async (req) => {
         patch.venue_name = venueName;
       }
       if (nextStatus === "accepted") {
-        const scheduledFor = stringValue(data.scheduledFor);
+        // A chapter that grew out of a scheduled day already has its date.
+        // Saying yes may move it, but is not required to restate it.
+        const scheduledFor =
+          stringValue(data.scheduledFor) || stringValue(chapter.scheduled_for);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledFor)) {
           return Response.json({ error: "invalid date" }, { status: 400 });
         }

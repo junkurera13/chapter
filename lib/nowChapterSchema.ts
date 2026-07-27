@@ -13,6 +13,98 @@ export const NOW_STRETCH_DIMENSIONS = [
 
 export type NowStretchDimension = (typeof NOW_STRETCH_DIMENSIONS)[number];
 
+/**
+ * The parts of a day a person can say they are free in.
+ *
+ * Coarse on purpose. Someone knows they have Saturday evening long before
+ * they know whether that means seven or nine, and a research brief reads
+ * "evening, when the counter seats fill" better than a clock range it would
+ * only have to interpret back into words.
+ */
+export const NOW_TIME_WINDOWS = [
+  "morning",
+  "afternoon",
+  "evening",
+  "night",
+] as const;
+
+export type NowTimeWindow = (typeof NOW_TIME_WINDOWS)[number];
+
+export const nowTimeWindowSchema = z.enum(NOW_TIME_WINDOWS);
+
+/** What each window means in hours, for checking against opening times. */
+export const NOW_TIME_WINDOW_HOURS: Record<NowTimeWindow, string> = {
+  morning: "06:00–12:00",
+  afternoon: "12:00–17:00",
+  evening: "17:00–21:00",
+  night: "21:00–late",
+};
+
+/**
+ * How far someone will go for this one, in the only unit a city is honestly
+ * measured in. Five kilometres in Seoul is twenty minutes by subway or forty
+ * across the river at six, so a radius drawn in distance says nothing anyone
+ * can plan around.
+ *
+ * These are stops rather than a dial. The research has no routing engine, so
+ * it cannot honour thirty-seven minutes any more exactly than "about half an
+ * hour", and each stop is a different kind of evening rather than a wider
+ * circle around the same one.
+ */
+export const NOW_REACHES = ["walk", "near", "city", "beyond"] as const;
+
+export type NowReach = (typeof NOW_REACHES)[number];
+
+export const nowReachSchema = z.enum(NOW_REACHES);
+
+/** Where the form lands when nobody has said otherwise. */
+export const NOW_DEFAULT_REACH: NowReach = "near";
+
+export const NOW_REACH: Record<
+  NowReach,
+  {
+    /** Named on the slider, in the person's terms. */
+    label: string;
+    /** What that distance actually means where they live. */
+    note: string;
+    /** The same distance as the researcher has to act on it. */
+    travel: string;
+  }
+> = {
+  walk: {
+    label: "Walkable",
+    note: "Your own streets, on foot",
+    travel: "a fifteen minute walk",
+  },
+  near: {
+    label: "Half an hour",
+    note: "Your side of the city",
+    travel: "about thirty minutes by public transport or a short taxi",
+  },
+  city: {
+    label: "An hour",
+    note: "Anywhere in the city",
+    travel: "about an hour by public transport",
+  },
+  beyond: {
+    label: "Out past the city",
+    note: "A coast town, a mountain temple",
+    travel: "up to about two hours by train, bus or car",
+  },
+};
+
+/**
+ * How far ahead of the day itself Chapter starts writing.
+ *
+ * Deep research takes minutes, but a chapter takes a life to rearrange: three
+ * days is the gap between arriving in time to plan around and arriving so far
+ * out that it stops being news.
+ */
+export const NOW_LEAD_DAYS = 3;
+
+/** How far ahead a day can be chosen. Past that, a world has moved on. */
+export const NOW_SCHEDULE_HORIZON_DAYS = 120;
+
 export const nowAnchorSchema = z.object({
   nodeId: z.string().min(1),
   label: z.string().min(1).max(90),
@@ -110,7 +202,13 @@ export type NowEvidenceLink = { url: string; title?: string };
 
 export type NowChapterRecord = {
   id: string;
+  /**
+   * `scheduled` is a chapter that exists as an appointment before it exists as
+   * writing: the day is claimed, and the research it will be made of has not
+   * been paid for yet.
+   */
   status:
+    | "scheduled"
     | "researching"
     | "proposed"
     | "accepted"
@@ -119,6 +217,10 @@ export type NowChapterRecord = {
     | "failed";
   createdAt: number;
   scheduledFor?: string;
+  /** The parts of the chosen day the person said they were free in. */
+  timeWindows?: NowTimeWindow[];
+  /** How far they said they would go for it. */
+  reach?: NowReach;
   researchRunId?: string;
   brief?: NowBrief;
   content?: NowChapterContent;

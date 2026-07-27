@@ -57,6 +57,7 @@
 
 .stateScreen > button,
 .cityForm button[type="submit"],
+.scheduleForm button[type="submit"],
 .actions button {
   padding: 13px 22px;
   border: none;
@@ -70,6 +71,7 @@
 
 .stateScreen > button:disabled,
 .cityForm button[type="submit"]:disabled,
+.scheduleForm button[type="submit"]:disabled,
 .actions button:disabled {
   opacity: 0.45;
   cursor: default;
@@ -83,6 +85,11 @@
 
 /* Mirrors the You onboarding invitation: centred orb video over a balanced
    headline, with the single input beneath. */
+/*
+ * The standing card of the tab, in the same plate Together's people card is
+ * cut from: soft grey, no rim and no lift, so it settles into the page while
+ * the chapter in the middle of the screen is the thing that carries weight.
+ */
 .homeCard {
   position: absolute;
   z-index: 4;
@@ -90,35 +97,27 @@
   right: 22px;
   display: flex;
   flex-direction: column;
-  width: min(17rem, calc(100vw - 44px));
-  padding: 10px;
+  width: min(18rem, calc(100vw - 44px));
+  padding: 12px 12px 10px;
   border: 0;
-  border-radius: 18px;
-  background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.08),
-    0 12px 28px rgba(0, 0, 0, 0.18),
-    0 4px 8px rgba(0, 0, 0, 0.12);
-  cursor: pointer;
-  text-align: left;
+  border-radius: 20px;
+  background: #f8f7f5;
 }
 
-.homeCard:focus-visible {
-  outline: 2px solid #9e8265;
-  outline-offset: 2px;
-}
-
+/* The one rule in the card, running the full width of it. */
 .homeCardHeader {
   display: flex;
   align-items: center;
   min-width: 0;
   gap: 8px;
-  padding: 3px 3px 10px;
+  margin: 0 -12px;
+  padding: 3px 15px 11px;
+  border-bottom: 1px solid rgba(57, 48, 43, 0.1);
 }
 
 .homeCardOrb {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   flex: none;
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 50%;
@@ -133,9 +132,9 @@
   min-width: 0;
   color: #1c1c19;
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.03em;
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
@@ -147,11 +146,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
+  appearance: none;
+  border: 0;
   border-radius: 999px;
   background: rgba(28, 28, 25, 0.05);
   color: rgba(28, 28, 25, 0.6);
+  cursor: pointer;
   transition:
     background 150ms ease,
     color 150ms ease;
@@ -163,25 +165,191 @@
 }
 
 .homeCardAction:hover {
-  background: rgba(28, 28, 25, 0.08);
-  color: rgba(28, 28, 25, 0.78);
+  background: rgba(28, 28, 25, 0.09);
+  color: rgba(28, 28, 25, 0.82);
 }
 
-.homeCardImage {
-  position: relative;
+.homeCardAction:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 2px;
+}
+
+/* What the rows below are, said once and quietly. */
+.homeCardLabel {
+  margin: 0;
+  padding: 11px 3px 2px;
+  color: rgba(49, 44, 38, 0.34);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* The one row under "Coming up". Same skeleton whatever it is saying, so the
+   card doesn't reflow as a day turns into a chapter. */
+.standing {
+  display: grid;
   width: 100%;
-  aspect-ratio: 16 / 10;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 9px;
+  min-height: 38px;
+  margin: 0;
+  padding: 5px 3px;
+  align-items: center;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+/* Only a day you set aside is still yours to change, so only that one is a
+   button, and only that one says so under the cursor. */
+.standing[data-editable="true"] {
+  margin-inline: -6px;
+  padding-inline: 9px;
+  width: calc(100% + 12px);
+  border-radius: 13px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.standing[data-editable="true"]:hover {
+  background: rgba(28, 28, 25, 0.05);
+}
+
+.standing:focus-visible,
+.standingInvite:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 2px;
+}
+
+.standingOrb {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  box-shadow:
+    inset 2px 3px 4px rgba(255, 255, 255, 0.26),
+    inset -2px -2px 4px rgba(24, 17, 13, 0.18),
+    0 1px 4px rgba(47, 34, 24, 0.14);
+}
+
+/* Work in progress, at the speed of something thinking rather than loading. */
+.standing[data-busy="true"] .standingOrb {
+  animation: standingPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes standingPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.88);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .standing[data-busy="true"] .standingOrb {
+    animation: none;
+  }
+}
+
+.standingText {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.standingTitle {
   overflow: hidden;
-  border-radius: 10px;
-  background: #f3efe9;
+  color: rgba(37, 33, 29, 0.86);
+  font-size: 13px;
+  font-weight: 570;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.homeCardImageImg {
-  display: block;
+.standingNote {
+  overflow: hidden;
+  color: rgba(45, 39, 34, 0.44);
+  font-size: 11px;
+  letter-spacing: -0.005em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.standingTag {
+  flex: none;
+  color: rgba(45, 39, 34, 0.46);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The countdown sits under the row rather than beside it: it is about the row,
+   not another column of it. */
+.standingWait {
+  margin: 1px 0 3px;
+  padding: 0 3px;
+  color: rgba(45, 39, 34, 0.4);
+  font-size: 11px;
+  letter-spacing: -0.005em;
+}
+
+/* Nothing set aside yet. An empty slot that is obviously fillable, rather
+   than a sentence explaining that it is empty. */
+.standingInvite {
+  display: flex;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 3px;
+  padding: 9px 11px;
+  appearance: none;
+  border: 1px dashed rgba(57, 48, 43, 0.24);
+  border-radius: 14px;
+  background: transparent;
+  color: rgba(45, 39, 34, 0.6);
+  cursor: pointer;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 12.5px;
+  font-weight: 540;
+  letter-spacing: -0.012em;
+  text-align: left;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.standingInvite:hover {
+  border-color: rgba(57, 48, 43, 0.4);
+  background: rgba(28, 28, 25, 0.03);
+  color: rgba(37, 33, 29, 0.86);
+}
+
+.standingInviteMark {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(28, 28, 25, 0.07);
+}
+
+.standingInviteMark svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* The change dialog: the same card, grown up to hold the ask. */
@@ -244,6 +412,422 @@
 .homeDialogPanel .cityForm {
   min-height: 0;
   margin-top: clamp(1rem, 2.5vh, 1.5rem);
+}
+
+/* ------------------------------------------------------------------------ *
+ * Setting a day aside: two questions, one answer each.
+ * ------------------------------------------------------------------------ */
+
+/*
+ * The rail and the button are the two things that must never be scrolled to
+ * find, so the only part that gives way on a short screen is the list of
+ * windows between them.
+ */
+.scheduleForm {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  margin-top: clamp(0.85rem, 2vh, 1.15rem);
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
+
+/*
+ * The rail runs off both edges of the dialog on purpose: a calendar that ends
+ * neatly at the margin looks like the whole of what is on offer, and this one
+ * carries three weeks. The panel's own padding is given back as the rail's, so
+ * the first tile still lines up with everything above it.
+ */
+.dayRail {
+  display: flex;
+  width: 100%;
+  flex: none;
+  gap: 7px;
+  margin-inline: calc(-1 * clamp(1.1rem, 3.5vw, 2rem));
+  /* Room under the tiles for the chosen one's shadow to land in. */
+  padding: 4px clamp(1.1rem, 3.5vw, 2rem) 13px;
+  margin-bottom: -6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  /* The rail is wider than the panel it sits in, and takes its width back. */
+  width: calc(100% + 2 * clamp(1.1rem, 3.5vw, 2rem));
+  /* Days fade out at both ends rather than stopping at a hard edge, so a rail
+     that happens to fill the dialog still reads as having more behind it. */
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 20px,
+    #000 calc(100% - 20px),
+    transparent 100%
+  );
+}
+
+.dayRail::-webkit-scrollbar {
+  display: none;
+}
+
+.dayTile {
+  display: grid;
+  width: 54px;
+  flex: none;
+  gap: 1px;
+  padding: 9px 0 7px;
+  appearance: none;
+  border: 1px solid rgba(57, 48, 43, 0.13);
+  border-radius: 16px;
+  background: #fff;
+  cursor: pointer;
+  justify-items: center;
+  scroll-snap-align: center;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.dayTile:hover {
+  border-color: rgba(57, 48, 43, 0.3);
+  transform: translateY(-1px);
+}
+
+.dayTile:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 2px;
+}
+
+.dayTile[data-chosen="true"] {
+  border-color: #25211d;
+  background: #25211d;
+  box-shadow: 0 6px 16px rgba(35, 24, 14, 0.22);
+}
+
+.dayWeekday {
+  color: rgba(45, 39, 34, 0.42);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.dayNumber {
+  color: #25211d;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+/* Held open whether or not a month turns here, so the tiles stay one height. */
+.dayMonth {
+  min-height: 11px;
+  color: rgba(45, 39, 34, 0.34);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dayTile[data-chosen="true"] .dayWeekday {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.dayTile[data-chosen="true"] .dayNumber {
+  color: #fff;
+}
+
+.dayTile[data-chosen="true"] .dayMonth {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.scheduleLabel {
+  width: 100%;
+  flex: none;
+  margin: clamp(0.85rem, 2vh, 1.1rem) 0 0;
+  padding: 0 2px;
+  color: rgba(49, 44, 38, 0.34);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+/* A day quartered rather than a list of four. Two by two costs half the
+   height of a column, which is what makes room for the reach below it, and a
+   day happens to divide that way anyway. */
+.windowList {
+  display: grid;
+  width: 100%;
+  flex: 0 1 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  min-height: 0;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.window {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-columns: 24px minmax(0, 1fr) 18px;
+  gap: 8px;
+  padding: 9px 10px;
+  align-items: center;
+  appearance: none;
+  border: 1px solid rgba(57, 48, 43, 0.11);
+  border-radius: 17px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.window:hover {
+  border-color: rgba(57, 48, 43, 0.26);
+}
+
+.window:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 2px;
+}
+
+.window[data-chosen="true"] {
+  border-color: rgba(57, 48, 43, 0.26);
+  background: rgba(37, 33, 29, 0.04);
+}
+
+/* The four windows are one arc of a day, so an hour you have not claimed is
+   the same orb with the light off it — dimmed and drawn back, but still its
+   own colour, because that colour is how you tell them apart. */
+.windowOrb {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  box-shadow:
+    inset 2px 3px 5px rgba(255, 255, 255, 0.3),
+    inset -2px -2px 5px rgba(24, 17, 13, 0.2),
+    0 2px 6px rgba(47, 34, 24, 0.16);
+  opacity: 0.58;
+  transform: scale(0.86);
+  transition:
+    opacity 220ms ease,
+    transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.window[data-chosen="true"] .windowOrb {
+  opacity: 1;
+  transform: scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .windowOrb {
+    transition: opacity 220ms ease;
+  }
+}
+
+.windowText {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.windowName {
+  overflow: hidden;
+  color: #25211d;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 13.5px;
+  font-weight: 560;
+  letter-spacing: -0.025em;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.windowHours {
+  overflow: hidden;
+  color: rgba(45, 39, 34, 0.44);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.012em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Kept, small, because four of these are a multiple choice and the day rail
+   above them is not — the tick is what says you may have more than one. */
+.windowCheck {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1.5px solid rgba(57, 48, 43, 0.2);
+  border-radius: 50%;
+  color: transparent;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.windowCheck svg {
+  width: 11px;
+  height: 11px;
+}
+
+.window[data-chosen="true"] .windowCheck {
+  border-color: #25211d;
+  background: #25211d;
+  color: #fff;
+}
+
+/* How far you'll go: four stops on one track, named as you land on them. */
+.reach {
+  width: 100%;
+  flex: none;
+  margin-top: clamp(0.8rem, 1.9vh, 1.05rem);
+}
+
+.reachHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 0 2px;
+}
+
+.reachLabel {
+  color: rgba(49, 44, 38, 0.34);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.reachValue {
+  color: #25211d;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 570;
+  letter-spacing: -0.02em;
+}
+
+.reachTrack {
+  position: relative;
+  display: block;
+  margin-top: 8px;
+  padding: 0 2px;
+}
+
+/*
+ * The stops sit under the input, inset by half a thumb so they line up with
+ * where the thumb can actually come to rest, and darken as they are passed.
+ */
+.reachStops {
+  position: absolute;
+  display: flex;
+  inset: 0 15px;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.reachStop {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(45, 39, 34, 0.22);
+  transition: background 200ms ease;
+}
+
+.reachStop[data-passed="true"] {
+  background: rgba(45, 39, 34, 0.4);
+}
+
+.reachRange {
+  display: block;
+  width: 100%;
+  height: 26px;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.reachRange:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+.reachRange::-webkit-slider-runnable-track {
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(37, 33, 29, 0.075);
+}
+
+.reachRange::-moz-range-track {
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(37, 33, 29, 0.075);
+}
+
+/* A rounded slab rather than a dot: it reads as something you take hold of. */
+.reachRange::-webkit-slider-thumb {
+  width: 26px;
+  height: 22px;
+  margin-top: 2px;
+  appearance: none;
+  border: 0;
+  border-radius: 9px;
+  background: #25211d;
+  box-shadow: 0 2px 7px rgba(35, 24, 14, 0.26);
+}
+
+.reachRange::-moz-range-thumb {
+  width: 26px;
+  height: 22px;
+  border: 0;
+  border-radius: 9px;
+  background: #25211d;
+  box-shadow: 0 2px 7px rgba(35, 24, 14, 0.26);
+}
+
+/* Belongs to the label above it, not to the centred summary below. */
+.reachNote {
+  margin: 7px 0 0;
+  padding: 0 2px;
+  color: rgba(45, 39, 34, 0.44);
+  font-size: 11.5px;
+  letter-spacing: -0.005em;
+  text-align: left;
+}
+
+/* What the answers add up to, said before the button that commits them. */
+.scheduleLead {
+  flex: none;
+  min-height: 2.4em;
+  margin: clamp(0.85rem, 2vh, 1.1rem) 0 0.8rem;
+  color: rgba(45, 39, 34, 0.48);
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  text-wrap: balance;
+}
+
+.scheduleForm button[type="submit"] {
+  width: 100%;
+  max-width: 19rem;
+  flex: none;
 }
 
 .homeDialogClose {
