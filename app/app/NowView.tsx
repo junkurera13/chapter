@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import AgentOrbVideo from "../../components/landing/agent-orb-video";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import {
   createExperienceMemory,
@@ -237,34 +238,42 @@ export default function NowView({
 
   if (!now.homeCity) {
     return (
-      <section className={styles.stateScreen}>
-        <h1>Where does your life happen right now?</h1>
-        <p className={styles.stateCopy}>
-          Chapter proposes real experiences, so it needs to know your city.
-        </p>
-        <form
-          className={styles.cityForm}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void runAction(
-              () => saveHomeCity(cityDraft),
-              "Chapter couldn’t save that city.",
-            );
-          }}
-        >
-          <input
-            type="text"
-            value={cityDraft}
-            onChange={(event) => setCityDraft(event.target.value)}
-            placeholder="Seoul"
-            aria-label="Your city"
-            maxLength={80}
-          />
-          <button type="submit" disabled={busy || cityDraft.trim().length < 2}>
-            That’s home for now
-          </button>
-        </form>
-        {notice ? <p className={styles.notice}>{notice}</p> : null}
+      <section className={styles.cityScreen}>
+        <div className={styles.cityPrompt}>
+          <span className={styles.cityOrb} aria-hidden="true">
+            <AgentOrbVideo
+              src="/you-agent-orb.mp4"
+              poster="/you-agent-orb-poster.jpg"
+            />
+          </span>
+          <h1>Where does your life happen right now?</h1>
+          <form
+            className={styles.cityForm}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void runAction(
+                () => saveHomeCity(cityDraft),
+                "Chapter couldn’t save that city.",
+              );
+            }}
+          >
+            <input
+              type="text"
+              value={cityDraft}
+              onChange={(event) => setCityDraft(event.target.value)}
+              placeholder="Seoul"
+              aria-label="Your city"
+              maxLength={80}
+            />
+            <button
+              type="submit"
+              disabled={busy || cityDraft.trim().length < 2}
+            >
+              That’s home for now
+            </button>
+          </form>
+          {notice ? <p className={styles.notice}>{notice}</p> : null}
+        </div>
       </section>
     );
   }

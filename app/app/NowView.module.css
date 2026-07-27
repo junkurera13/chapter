@@ -83,12 +83,51 @@
   color: rgba(37, 33, 29, 0.72);
 }
 
+/* Mirrors the You onboarding invitation: centred orb video over a balanced
+   headline, with the single input beneath. */
+.cityScreen {
+  display: grid;
+  min-height: 100svh;
+  padding: clamp(2.5rem, 7vh, 4.75rem) clamp(1rem, 4vw, 3rem) 9rem;
+  background: #fff;
+  color: #1c1c19;
+  place-items: center;
+}
+
+.cityPrompt {
+  display: flex;
+  max-width: 32rem;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transform: translateY(-1.25rem);
+}
+
+.cityOrb {
+  display: block;
+  width: clamp(10rem, min(21.5vw, 25vh), 15.5rem);
+  aspect-ratio: 1;
+  line-height: 0;
+}
+
+.cityPrompt h1 {
+  margin: clamp(0.75rem, 1.8vh, 1.25rem) 0 0;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
 .cityForm {
   display: flex;
   width: 100%;
   max-width: 430px;
+  margin-top: clamp(1.4rem, 3.4vh, 2.2rem);
   gap: 10px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .cityForm input,
