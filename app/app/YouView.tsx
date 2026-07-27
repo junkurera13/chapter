@@ -466,6 +466,25 @@ export default function YouView({
       }
     }
 
+    // The drag boundary follows the graph's actual extent (plus breathing
+    // room) instead of a fixed box, so orbs on far-out branches remain fully
+    // draggable while still keeping the world visually contained.
+    const dragBoundary = new THREE.Vector3(5.2, 3.8, 2.8);
+    for (const restPosition of restPositions.values()) {
+      dragBoundary.x = Math.min(
+        28,
+        Math.max(dragBoundary.x, Math.abs(restPosition.x) + 2.6),
+      );
+      dragBoundary.y = Math.min(
+        28,
+        Math.max(dragBoundary.y, Math.abs(restPosition.y) + 2.6),
+      );
+      dragBoundary.z = Math.min(
+        28,
+        Math.max(dragBoundary.z, Math.abs(restPosition.z) + 1.4),
+      );
+    }
+
     const centreRestPosition = restPositions.get("self");
     for (const node of worldNodes) {
       const restPosition = restPositions.get(node.key);
@@ -788,9 +807,9 @@ export default function YouView({
             draggedWorldPosition.copy(dragIntersection).add(dragOffset);
             world.worldToLocal(draggedWorldPosition);
             draggedWorldPosition.set(
-              softenBoundary(draggedWorldPosition.x, 5.2),
-              softenBoundary(draggedWorldPosition.y, 3.8),
-              softenBoundary(draggedWorldPosition.z, 2.8),
+              softenBoundary(draggedWorldPosition.x, dragBoundary.x),
+              softenBoundary(draggedWorldPosition.y, dragBoundary.y),
+              softenBoundary(draggedWorldPosition.z, dragBoundary.z),
             );
             restPosition.copy(draggedWorldPosition);
             cursorOffset.set(0, 0, 0);
@@ -1332,7 +1351,14 @@ export default function YouView({
               verticalProjectionScale /
               depth
             : 0;
-        const labelHalfHeight = node.category === "self" ? 15.5 : 13.5;
+        // Labels can wrap onto multiple rows, so their real height decides
+        // how far below the orb they sit.
+        const labelHalfHeight =
+          label.offsetHeight > 0
+            ? label.offsetHeight / 2
+            : node.category === "self"
+              ? 15.5
+              : 13.5;
         const y =
           orbCenterY + projectedRadius + labelHalfHeight * labelScale + 6;
         const hideMinorOnMobile =

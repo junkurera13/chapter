@@ -108,7 +108,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  max-width: 210px;
+  width: max-content;
+  max-width: 170px;
   min-height: 27px;
   padding: 6px 10px;
   appearance: none;
@@ -125,7 +126,8 @@
   line-height: 1.1;
   opacity: 0;
   pointer-events: auto;
-  white-space: nowrap;
+  text-align: center;
+  text-wrap: balance;
   backdrop-filter: blur(12px) saturate(1.15);
   -webkit-tap-highlight-color: transparent;
   will-change: transform, opacity;
