@@ -63,13 +63,28 @@ People node -> hashed private invite -> verified friend -> reciprocal nodes
 
 ## Local development
 
-Requires Node.js 24, a Base44 account, an OpenRouter API key, and the deployed
-backend’s shared `SIDEQUEST_INTERNAL_SECRET` compatibility secret.
+Requires Node.js 24, a Base44 account, an OpenRouter API key, and a
+`SIDEQUEST_INTERNAL_SECRET` for Eve’s internal channel. Authenticated web memory
+requests use the signed-in Base44 session; production-only phone and internal
+requests still require the deployed backend’s matching compatibility secret.
 
 ```bash
 npm install
 npm run dev
 ```
+
+Ordinary local development intentionally leaves Eve disabled. Onboarding memory
+extraction calls OpenRouter directly and does not require Eve. Local Eve must
+only be enabled explicitly while diagnosing or testing its sandbox runtime:
+
+```bash
+CHAPTER_ENABLE_LOCAL_EVE=1 npm run dev
+```
+
+Production builds continue to include Eve for experience planning and
+messaging. For local release verification without Eve or its sandbox runtime,
+use `npm run build:safe`. The local dev command uses webpack because the
+Turbopack compiler is not stable with Chapter's current landing bundle.
 
 The app defaults to the deployed competition backend. To point it at another
 Base44 app:

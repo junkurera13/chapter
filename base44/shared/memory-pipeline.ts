@@ -125,11 +125,32 @@ async function removeFailedAttempt(base44: Row, memoryId: string) {
   await service.ExperienceMemorySource.deleteMany({ memory_id: memoryId });
 }
 
+async function removeMemoryAttempt(base44: Row, memoryId: string) {
+  await removeFailedAttempt(base44, memoryId);
+  await base44.asServiceRole.entities.ExperienceMemory.delete(memoryId);
+}
+
 async function findOrCreateMemory(
   base44: Row,
   input: ExperienceMemoryInput,
 ) {
   const memories = base44.asServiceRole.entities.ExperienceMemory;
+  const stalePending = await memories.filter(
+    {
+      owner_user_id: input.user.id,
+      status: "pending",
+    },
+    "-created_at",
+    100,
+  );
+  for (const pending of stalePending) {
+    const startedAt = Number(
+      pending.processing_started_at ?? pending.created_at ?? 0,
+    );
+    if (Date.now() - startedAt >= 5 * 60 * 1000) {
+      await removeMemoryAttempt(base44, pending.id);
+    }
+  }
   const rows = await memories.filter(
     {
       owner_user_id: input.user.id,
@@ -230,7 +251,7 @@ async function preserveSources(
       source_ref: image.sourceRef,
       source_type: "image",
       position: image.position,
-      file_uri: image.fileUri,
+      file_uri: image.fileUri || undefined,
       file_name: image.fileName,
       media_type: image.mediaType,
       byte_size: image.byteSize,
@@ -289,6 +310,14 @@ async function loadPriorContext(
       .filter((memory: Row) => memory.id !== memoryId)
       .map((memory: Row) => memory.id),
   );
+  const previousMemorySummaries = memories
+    .filter((memory: Row) => memory.id !== memoryId)
+    .map((memory: Row) => stringValue(memory.summary))
+    .filter(Boolean)
+    .slice(0, 16);
+  if (completeMemoryIds.size === 0) {
+    return { existingConcepts: [], previousMemorySummaries };
+  }
   const nodes = await service.ExperienceGraphNode.filter(
     {
       $or: [
@@ -333,12 +362,6 @@ async function loadPriorContext(
       description: concept.description,
       occurrenceCount: concept.occurrenceCount,
     }));
-  const previousMemorySummaries = memories
-    .filter((memory: Row) => memory.id !== memoryId)
-    .map((memory: Row) => stringValue(memory.summary))
-    .filter(Boolean)
-    .slice(0, 16);
-
   return { existingConcepts, previousMemorySummaries };
 }
 
@@ -346,27 +369,47 @@ export async function signedImageUrls(
   base44: Row,
   images: readonly MemoryImageInput[],
 ) {
-  const urls: string[] = [];
-  for (const image of [...images].sort(
+  const orderedImages = [...images].sort(
     (first, second) => first.position - second.position,
-  )) {
-    try {
-      const result = await base44.integrations.Core.CreateFileSignedUrl({
-        file_uri: image.fileUri,
-        expires_in: 3600,
-      });
-      const signedUrl = stringValue(result?.signed_url);
-      if (!signedUrl) throw new Error("Signed URL was empty.");
-      urls.push(signedUrl);
-    } catch {
-      throw new MemoryPipelineError(
-        `I couldn’t securely open ${image.fileName}. I’ll upload it again when you retry.`,
-        422,
-        "IMAGE_REFERENCE_INVALID",
-      );
+  );
+  const signedUrls: string[] = [];
+
+  for (const image of orderedImages) {
+    let signedUrl = "";
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        const result = await base44.integrations.Core.CreateFileSignedUrl({
+          file_uri: image.fileUri,
+          expires_in: 3600,
+        });
+        signedUrl = stringValue(result?.signed_url);
+        if (!signedUrl) throw new Error("Signed URL was empty.");
+        break;
+      } catch (error) {
+        const value = error && typeof error === "object"
+          ? (error as Row)
+          : {};
+        const response = value.response && typeof value.response === "object"
+          ? value.response as Row
+          : {};
+        const status = Number(value.status ?? response.status);
+        const retryable =
+          status === 429 || [500, 502, 503, 504].includes(status);
+        if (retryable && attempt < 3) {
+          await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+          continue;
+        }
+        throw new MemoryPipelineError(
+          `Chapter couldn’t securely open ${image.fileName}. Add it again when you start over.`,
+          422,
+          "IMAGE_REFERENCE_INVALID",
+        );
+      }
     }
+    signedUrls.push(signedUrl);
   }
-  return urls;
+
+  return signedUrls;
 }
 
 async function ownedMemory(
@@ -463,15 +506,8 @@ export async function prepareExperienceMemory(
       })),
     };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Memory preparation failed.";
     try {
-      await memories.update(memory.id, {
-        status: "failed",
-        processing_stage: "failed",
-        error: message.slice(0, 500),
-        processed_at: Date.now(),
-      });
+      await removeMemoryAttempt(base44, memory.id);
     } catch {
       // Preserve the original preparation error.
     }
@@ -605,15 +641,8 @@ export async function completeExperienceMemory(
       created: true,
     };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Memory analysis failed.";
     try {
-      await memories.update(memory.id, {
-        status: "failed",
-        processing_stage: "failed",
-        error: message.slice(0, 500),
-        processed_at: Date.now(),
-      });
+      await removeMemoryAttempt(base44, memory.id);
     } catch {
       // Preserve the original extraction error.
     }
@@ -625,16 +654,9 @@ export async function failExperienceMemory(
   base44: Row,
   input: ExperienceMemoryInput,
   memoryId: string,
-  errorMessage: string,
 ) {
-  const memories = base44.asServiceRole.entities.ExperienceMemory;
   const memory = await ownedMemory(base44, input, memoryId);
   if (memory.status === "complete") return { failed: false };
-  await memories.update(memory.id, {
-    status: "failed",
-    processing_stage: "failed",
-    error: stringValue(errorMessage, 500) || "Memory extraction failed.",
-    processed_at: Date.now(),
-  });
+  await removeMemoryAttempt(base44, memory.id);
   return { failed: true };
 }

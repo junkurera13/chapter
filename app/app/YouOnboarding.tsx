@@ -33,6 +33,7 @@ import styles from "./YouOnboarding.module.css";
 import MemoryProcessingScreen from "./MemoryProcessingScreen";
 
 const MAX_PHOTOS = 8;
+const PHOTO_UPLOAD_CONCURRENCY = 3;
 
 type MemoryPhoto = {
   id: number;
@@ -66,7 +67,7 @@ export default function YouOnboarding({
     useState<MemorySubmissionFailure | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
+  const memoryInputRef = useRef<HTMLTextAreaElement>(null);
   const nextPhotoId = useRef(0);
   const requestId = useRef<string | null>(null);
   const objectUrls = useRef(new Set<string>());
@@ -180,6 +181,23 @@ export default function YouOnboarding({
     setStarted(false);
   }
 
+  function clearFailedComposer() {
+    objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    objectUrls.current.clear();
+    setMemoryText("");
+    setPhotos([]);
+    setEditingPhotoId(null);
+    requestId.current = null;
+    if (memoryInputRef.current) {
+      memoryInputRef.current.style.height = "auto";
+    }
+  }
+
+  function startAgain() {
+    setSubmissionFailure(null);
+    requestAnimationFrame(() => focusWithoutScrolling(memoryInputRef.current));
+  }
+
   async function handleComposerSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting || (!memoryText.trim() && photos.length === 0)) return;
@@ -191,20 +209,30 @@ export default function YouOnboarding({
 
     try {
       const uploadedPhotos: UploadedMemoryPhoto[] = [];
-      for (const photo of photos) {
-        const uploaded = photo.uploaded
-          ? { ...photo.uploaded, context: photo.note.trim() }
-          : await uploadMemoryPhoto(photo.file, photo.note);
-        uploadedPhotos.push(uploaded);
-        if (!photo.uploaded) {
-          setPhotos((current) =>
-            current.map((candidate) =>
-              candidate.id === photo.id
-                ? { ...candidate, uploaded }
-                : candidate,
-            ),
-          );
-        }
+      for (
+        let start = 0;
+        start < photos.length;
+        start += PHOTO_UPLOAD_CONCURRENCY
+      ) {
+        const batch = photos.slice(start, start + PHOTO_UPLOAD_CONCURRENCY);
+        const uploadedBatch = await Promise.all(
+          batch.map(async (photo) => {
+            const uploaded = photo.uploaded
+              ? { ...photo.uploaded, context: photo.note.trim() }
+              : await uploadMemoryPhoto(photo.file, photo.note);
+            if (!photo.uploaded) {
+              setPhotos((current) =>
+                current.map((candidate) =>
+                  candidate.id === photo.id
+                    ? { ...candidate, uploaded }
+                    : candidate,
+                ),
+              );
+            }
+            return uploaded;
+          }),
+        );
+        uploadedPhotos.push(...uploadedBatch);
       }
 
       requestId.current ??= crypto.randomUUID();
@@ -218,17 +246,7 @@ export default function YouOnboarding({
     } catch (error) {
       console.error("Could not create the memory map", error);
       const failure = describeMemorySubmissionFailure(error);
-      if (failure.reuploadImages) {
-        setPhotos((current) =>
-          current.map((photo) => ({
-            id: photo.id,
-            name: photo.name,
-            note: photo.note,
-            url: photo.url,
-            file: photo.file,
-          })),
-        );
-      }
+      clearFailedComposer();
       setSubmissionFailure(failure);
       setSubmitting(false);
     }
@@ -360,7 +378,6 @@ export default function YouOnboarding({
               >
                 <div className={styles.composerShell}>
                   <form
-                    ref={formRef}
                     className={styles.memoryComposer}
                     onSubmit={handleComposerSubmit}
                     aria-busy={submitting}
@@ -376,6 +393,7 @@ export default function YouOnboarding({
                       <div className={styles.textColumn}>
                         <div className={styles.textWindow}>
                           <textarea
+                            ref={memoryInputRef}
                             className={styles.memoryInput}
                             value={memoryText}
                             maxLength={6000}
@@ -383,6 +401,7 @@ export default function YouOnboarding({
                             aria-label="Tell Chapter about this memory"
                             placeholder="Start anywhere. The place, the people, what happened, how it felt… You can also add up to 8 photos, with a little context for each."
                             onChange={(event) => {
+                              setSubmissionFailure(null);
                               setMemoryText(event.target.value);
                               resizeMemoryInput(event.currentTarget);
                             }}
@@ -760,9 +779,9 @@ export default function YouOnboarding({
                           <button
                             className={styles.retryButton}
                             type="button"
-                            onClick={() => formRef.current?.requestSubmit()}
+                            onClick={startAgain}
                           >
-                            Try again
+                            Start again
                           </button>
                         )}
                       </motion.div>

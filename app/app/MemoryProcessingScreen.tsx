@@ -68,6 +68,7 @@ export default function MemoryProcessingScreen() {
           <AgentOrbVideo
             src="/you-agent-orb.mp4"
             poster="/you-agent-orb-poster.jpg"
+            playWhileMounted
           />
         </div>
         <div className={styles.phrase} aria-hidden="true">

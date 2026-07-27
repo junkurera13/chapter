@@ -1,7 +1,6 @@
 import "server-only";
 
 import { Client, type SessionState } from "eve/client";
-import type { UserContent } from "ai";
 
 import {
   completeMemory,
@@ -11,10 +10,7 @@ import {
   prepareMemory,
   type MemoryImagePayload,
 } from "./sidequestAgentBackend";
-import {
-  memoryExtractionSchema,
-  type MemoryExtraction,
-} from "./memoryExtractionSchema";
+import { extractMemory } from "./memoryExtractor";
 
 const AGENT_USERNAME = "sidequest";
 
@@ -74,30 +70,6 @@ function sessionState(cursor?: EveSessionCursor): SessionState | undefined {
   };
 }
 
-function extractionFromMessage(message?: string) {
-  const trimmed = message?.trim();
-  if (!trimmed) return undefined;
-
-  const candidates = [trimmed];
-  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)?.[1];
-  if (fenced) candidates.push(fenced.trim());
-  const objectStart = trimmed.indexOf("{");
-  const objectEnd = trimmed.lastIndexOf("}");
-  if (objectStart >= 0 && objectEnd > objectStart) {
-    candidates.push(trimmed.slice(objectStart, objectEnd + 1));
-  }
-
-  for (const candidate of new Set(candidates)) {
-    try {
-      const parsed = memoryExtractionSchema.safeParse(JSON.parse(candidate));
-      if (parsed.success) return parsed.data;
-    } catch {
-      // Try the next bounded representation.
-    }
-  }
-  return undefined;
-}
-
 export async function runSidequestTurn(args: {
   authUserId?: string;
   phone?: string;
@@ -141,6 +113,7 @@ export async function extractAndPersistMemory(args: {
   images: MemoryImagePayload[];
   accessToken: string;
   origin?: string;
+  signal?: AbortSignal;
 }): Promise<CompletedMemory> {
   const prepared = await prepareMemory(args, args.accessToken);
   if (prepared.alreadyComplete) {
@@ -156,47 +129,12 @@ export async function extractAndPersistMemory(args: {
   }
 
   try {
-    const message: UserContent = [
-      { type: "text", text: prepared.prompt },
-      ...(prepared.attachments || []).map((attachment) => ({
-        type: "file" as const,
-        data: attachment.url,
-        mediaType: attachment.mediaType,
-        filename: attachment.fileName,
-      })),
-    ];
-    let extraction: MemoryExtraction | undefined;
-    let terminalStatus = "";
-    for (let attempt = 0; attempt < 2 && !extraction; attempt += 1) {
-      const client = agentClient(
-        {
-          authUserId: args.authUserId,
-          phone: args.phone,
-          channel: "memory",
-        },
-        args.origin,
-      );
-      const response = await client.session().send<MemoryExtraction>({
-        message,
-        outputSchema: memoryExtractionSchema,
-        clientContext:
-          attempt === 0
-            ? "This is a dedicated structured memory-extraction turn. Call final_output exactly once with the requested result. Do not call application tools or answer conversationally."
-            : "Retry this dedicated extraction from the supplied sources. You must satisfy the structured output schema by calling final_output exactly once. Do not call application tools or answer conversationally.",
-      });
-      const result = await response.result();
-      terminalStatus = result.status;
-      if (result.data) {
-        extraction = memoryExtractionSchema.parse(result.data);
-      } else {
-        extraction = extractionFromMessage(result.message);
-      }
-    }
-    if (!extraction) {
-      throw new Error(
-        `Eve did not return a valid memory extraction after two attempts (${terminalStatus || "unknown"}).`,
-      );
-    }
+    const extraction = await extractMemory({
+      prompt: prepared.prompt,
+      attachments: prepared.attachments || [],
+      requestId: args.clientRequestId,
+      signal: args.signal,
+    });
     return await completeMemory(
       {
         authUserId: args.authUserId,
