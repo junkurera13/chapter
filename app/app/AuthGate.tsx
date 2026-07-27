@@ -30,8 +30,10 @@ type GateState =
 
 export default function AuthGate({
   initialTab,
+  justConnected,
 }: {
   initialTab?: ChapterTabIndex;
+  justConnected?: boolean;
 }) {
   const router = useRouter();
   const [state, setState] = useState<GateState>({ status: "checking" });
@@ -110,6 +112,7 @@ export default function AuthGate({
         initialGraph={state.graph}
         onConnectPhone={() => setPhoneConnectionOpen(true)}
         initialTab={initialTab}
+        justConnected={justConnected}
       />
     );
   }

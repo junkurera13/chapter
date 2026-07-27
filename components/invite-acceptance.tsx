@@ -83,8 +83,10 @@ export default function InviteAcceptance({ code }: { code: string }) {
     try {
       await acceptConnectionInvite(code);
       // Straight into Together. A screen announcing the connection is one more
-      // tap between someone and the thing they came here to do.
-      router.replace("/app?view=together");
+      // tap between someone and the thing they came here to do. The flag is
+      // for anyone arriving without a memory yet, who gets sent to write one
+      // and deserves to know why.
+      router.replace("/app?view=together&joined=1");
     } catch (error) {
       if (isBase44AuthError(error)) {
         clearBase44Session();

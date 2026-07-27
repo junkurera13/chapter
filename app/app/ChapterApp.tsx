@@ -27,11 +27,14 @@ export default function ChapterApp({
   initialGraph,
   onConnectPhone,
   initialTab = 0,
+  justConnected = false,
 }: {
   viewer: AuthenticatedViewer;
   initialGraph: ExperienceGraphRecord;
   onConnectPhone: () => void;
   initialTab?: ChapterTabIndex;
+  /** Arrived here by accepting an invitation moments ago. */
+  justConnected?: boolean;
 }) {
   const [activeIndex, setActiveIndex] = useState<ChapterTabIndex>(initialTab);
   const [addingMemory, setAddingMemory] = useState(false);
@@ -110,7 +113,16 @@ export default function ChapterApp({
       </div>
     );
   } else if (graphState.graph.memoryCount === 0) {
-    youPanel = <YouOnboarding onMemoryCreated={queueGraphLoad} />;
+    youPanel = (
+      <YouOnboarding
+        onMemoryCreated={queueGraphLoad}
+        welcome={
+          justConnected
+            ? "You’re connected. Share one memory and Chapter can start planning something for the two of you."
+            : undefined
+        }
+      />
+    );
   } else if (addingMemory) {
     youPanel = (
       <YouOnboarding

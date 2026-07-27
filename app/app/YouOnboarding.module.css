@@ -27,6 +27,17 @@
   right: 0;
 }
 
+/* Sits above the question, quiet enough not to compete with it. */
+.welcome {
+  max-width: 26rem;
+  margin: 0 auto 1.25rem;
+  color: rgba(45, 39, 34, 0.55);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  text-align: center;
+  text-wrap: balance;
+}
+
 .stage {
   width: min(100%, 84rem);
   min-height: 100%;
