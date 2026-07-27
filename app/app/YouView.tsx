@@ -168,6 +168,9 @@ export default function YouView({
   const labelRefs = useRef(new Map<string, HTMLButtonElement>());
   const selectedKeyRef = useRef<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // Open on arrival: the legend is what makes the colours mean anything the
+  // first time. It folds away for people who already know what they're seeing.
+  const [legendOpen, setLegendOpen] = useState(true);
   const connectedNodeIds = useMemo(
     () =>
       worldNodes
@@ -1435,19 +1438,43 @@ export default function YouView({
         className={styles.legend}
         aria-label="Orb legend"
       >
-        <h2>Legend</h2>
-        <ul className={styles.legendList}>
-          {legendCategories.map((category) => (
-            <li key={category}>
-              <span
-                className={styles.legendOrb}
-                aria-hidden="true"
-                style={{ background: categoryOrbGradient(category) }}
-              />
-              <span>{worldCategoryName(category)}</span>
-            </li>
-          ))}
-        </ul>
+        <h2>
+          <button
+            type="button"
+            className={styles.legendToggle}
+            aria-expanded={legendOpen}
+            onClick={() => setLegendOpen((open) => !open)}
+          >
+            Legend
+            <svg
+              className={styles.legendChevron}
+              data-open={legendOpen ? "true" : "false"}
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m6 8 4 4 4-4" />
+            </svg>
+          </button>
+        </h2>
+        {legendOpen ? (
+          <ul className={styles.legendList}>
+            {legendCategories.map((category) => (
+              <li key={category}>
+                <span
+                  className={styles.legendOrb}
+                  aria-hidden="true"
+                  style={{ background: categoryOrbGradient(category) }}
+                />
+                <span>{worldCategoryName(category)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </aside>
 
       <div className={styles.labels} aria-label="Memory graph nodes">

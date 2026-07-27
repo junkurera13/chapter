@@ -28,10 +28,17 @@ export default function AgentOrbVideo({
   src = "/you-agent-orb.mp4",
   poster = "/you-agent-orb-poster.jpg",
   playWhileMounted = false,
+  preload = "metadata",
 }: {
   src?: string;
   poster?: string;
   playWhileMounted?: boolean;
+  /**
+   * "auto" where the orb is small and short-lived. Metadata alone means the
+   * poster holds the frame until the file arrives, and an orb that is only on
+   * screen for a few seconds spends all of them looking like a still image.
+   */
+  preload?: "none" | "metadata" | "auto";
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -75,6 +82,10 @@ export default function AgentOrbVideo({
       },
     );
 
+    // An orb told to play while it is mounted should not wait to be told it is
+    // on screen first. It never depended on that answer.
+    if (playWhileMounted) updatePlayback();
+
     observer.observe(video);
     reducedMotion.addEventListener("change", updatePlayback);
     document.addEventListener("visibilitychange", updatePlayback);
@@ -95,7 +106,7 @@ export default function AgentOrbVideo({
       loop
       playsInline
       autoPlay={playWhileMounted}
-      preload="metadata"
+      preload={preload}
       poster={poster}
       aria-hidden="true"
       tabIndex={-1}

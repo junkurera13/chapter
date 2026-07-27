@@ -7,6 +7,7 @@ import BottomNavigation, {
 import type { AuthenticatedViewer } from "../../lib/base44Auth";
 import { loadMyExperienceGraph } from "../../lib/base44Graph";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
+import AgentOrbVideo from "../../components/landing/agent-orb-video";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import { isDemoAccount } from "../../lib/togetherSamples";
 import { buildWorldGraph } from "./graphData";
@@ -43,6 +44,12 @@ export default function ChapterApp({
 }) {
   const [activeIndex, setActiveIndex] = useState<ChapterTabIndex>(initialTab);
   const [addingMemory, setAddingMemory] = useState(false);
+  /**
+   * A memory that has been sent and is still being read. It is a state of the
+   * world, not of a screen, so it lives out here where the world does — the
+   * composer that sent it is long gone by the time this clears.
+   */
+  const [extracting, setExtracting] = useState(false);
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [graphState, setGraphState] = useState<GraphState>({
     status: "ready",
@@ -108,6 +115,22 @@ export default function ChapterApp({
     };
   }, [graphState.status]);
 
+  /*
+   * Escape closes the composer, and nothing else does except the button that
+   * says so. A half-written memory is too easy to lose to a stray click on the
+   * world behind it.
+   */
+  useEffect(() => {
+    if (!addingMemory) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAddingMemory(false);
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [addingMemory]);
+
   useEffect(() => {
     if (graphState.status !== "error") return;
 
@@ -133,15 +156,6 @@ export default function ChapterApp({
     );
   } else if (graphState.graph.memoryCount === 0) {
     youPanel = <YouOnboarding onMemoryCreated={queueGraphLoad} />;
-  } else if (addingMemory) {
-    youPanel = (
-      <YouOnboarding
-        onMemoryCreated={() => {
-          setAddingMemory(false);
-          queueGraphLoad();
-        }}
-      />
-    );
   } else if (!worldGraph) {
     youPanel = (
       <div className={styles.graphLoading} aria-busy="true">
@@ -152,13 +166,66 @@ export default function ChapterApp({
     youPanel = (
       <>
         <YouView nodes={worldGraph.nodes} edges={worldGraph.edges} />
-        <button
-          type="button"
-          className={styles.addMemoryButton}
-          onClick={() => setAddingMemory(true)}
-        >
-          + Memory
-        </button>
+        {/*
+          The two things you do to your own world, together in the middle of
+          it: look for something already there, or put something new in.
+        */}
+        <div className={styles.worldControls}>
+          <button
+            type="button"
+            className={styles.worldSearch}
+            aria-label="Search your world"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+            >
+              <circle cx="9" cy="9" r="5.25" />
+              <path d="m12.9 12.9 3.1 3.1" />
+            </svg>
+          </button>
+
+          {/*
+            One or the other, never both. While Chapter is still reading the
+            last one there is nothing to press: the orb standing where the
+            button was is the answer to "did that send?".
+          */}
+          {extracting ? (
+            <p className={styles.extracting} role="status" aria-live="polite">
+              <span className={styles.extractingOrb} aria-hidden="true">
+                <AgentOrbVideo
+                  src="/you-agent-orb.mp4"
+                  poster="/you-agent-orb-poster.jpg"
+                  playWhileMounted
+                  preload="auto"
+                />
+              </span>
+              Extracting
+            </p>
+          ) : (
+            <button
+              type="button"
+              className={styles.addMemoryButton}
+              onClick={() => setAddingMemory(true)}
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              >
+                <path d="M10 4.5v11M4.5 10h11" />
+              </svg>
+              New Memory
+            </button>
+          )}
+        </div>
       </>
     );
   }
@@ -187,6 +254,58 @@ export default function ChapterApp({
       >
         {activePanel}
       </section>
+
+      {/*
+        Adding to a world that already exists doesn't send you back to the
+        beginning of one. The world stays where it was, blurred behind a
+        window with nothing in it but the composer.
+      */}
+      {addingMemory ? (
+        <div
+          className={styles.memoryScrim}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add a memory"
+        >
+          {/* Outside the window, so a long memory can never scroll it away. */}
+          <button
+            type="button"
+            className={styles.memoryClose}
+            aria-label="Close"
+            onClick={() => setAddingMemory(false)}
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+            >
+              <path d="m5.5 5.5 9 9M14.5 5.5l-9 9" />
+            </svg>
+          </button>
+
+          <div className={styles.memoryWindow}>
+            <YouOnboarding
+              composerOnly
+              onMemoryCreated={queueGraphLoad}
+              onSubmitStarted={(work) => {
+                setAddingMemory(false);
+                setExtracting(true);
+                void work
+                  .catch((error) => {
+                    console.error("Could not create the memory map", error);
+                  })
+                  .finally(() => {
+                    setExtracting(false);
+                    queueGraphLoad();
+                  });
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {/*
         Someone who just accepted an invitation and has no memory yet is sent

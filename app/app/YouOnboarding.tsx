@@ -32,7 +32,7 @@ import {
 import styles from "./YouOnboarding.module.css";
 import MemoryProcessingScreen from "./MemoryProcessingScreen";
 
-const MAX_PHOTOS = 8;
+const MAX_PHOTOS = 4;
 const PHOTO_UPLOAD_CONCURRENCY = 3;
 
 type MemoryPhoto = {
@@ -55,10 +55,24 @@ function resizeMemoryInput(element: HTMLTextAreaElement) {
 
 export default function YouOnboarding({
   onMemoryCreated,
+  composerOnly = false,
+  onSubmitStarted,
 }: {
   onMemoryCreated: () => void;
+  /**
+   * Opened from a world that already exists, so there is no question to ask
+   * first: the composer is the whole of it, and there is no way back to the
+   * invitation because the invitation was the button that opened this.
+   */
+  composerOnly?: boolean;
+  /**
+   * Hands the send up the moment it leaves, instead of holding the screen
+   * until Chapter has finished reading it. Whoever takes it owns what happens
+   * next; this component is finished the instant it is called.
+   */
+  onSubmitStarted?: (work: Promise<unknown>) => void;
 }) {
-  const [started, setStarted] = useState(false);
+  const [started, setStarted] = useState(composerOnly);
   const [memoryText, setMemoryText] = useState("");
   const [photos, setPhotos] = useState<MemoryPhoto[]>([]);
   const [editingPhotoId, setEditingPhotoId] = useState<number | null>(null);
@@ -131,7 +145,7 @@ export default function YouOnboarding({
     setPhotos((current) => [...current, ...nextPhotos]);
 
     if (validFiles.length > remaining) {
-      setNotice("You can add up to 8 photos.");
+      setNotice(`You can add up to ${MAX_PHOTOS} photos.`);
     } else if (validationMessage) {
       setNotice(validationMessage);
     } else {
@@ -162,6 +176,7 @@ export default function YouOnboarding({
 
   function handleSurfaceClick(event: ReactMouseEvent<HTMLDivElement>) {
     if (
+      composerOnly ||
       submitting ||
       !started ||
       photos.length > 0 ||
@@ -207,7 +222,13 @@ export default function YouOnboarding({
     setNotice("");
     setSubmissionFailure(null);
 
-    try {
+    /**
+     * Everything the send has to do, as one piece of work that does not need
+     * this screen to stay open for it. The photo state it writes back into is
+     * only there to save a re-upload on retry, so it is free to land on a
+     * component that has already gone.
+     */
+    const send = async () => {
       const uploadedPhotos: UploadedMemoryPhoto[] = [];
       for (
         let start = 0;
@@ -242,6 +263,18 @@ export default function YouOnboarding({
         images: uploadedPhotos,
         source: "onboarding",
       });
+    };
+
+    // Sent from a world that already exists: the send goes on without this
+    // screen, and the screen goes away. Nobody waits at a spinner for a thing
+    // that has already left.
+    if (onSubmitStarted) {
+      onSubmitStarted(send());
+      return;
+    }
+
+    try {
+      await send();
       onMemoryCreated();
     } catch (error) {
       console.error("Could not create the memory map", error);
@@ -274,9 +307,10 @@ export default function YouOnboarding({
       <div
         className={styles.onboarding}
         data-started={started}
+        data-inline={composerOnly ? "true" : "false"}
         onClick={handleSurfaceClick}
       >
-        {started ? (
+        {started && !composerOnly ? (
           <>
             <button
               className={`${styles.edgeBack} ${styles.edgeBackLeft}`}
@@ -302,6 +336,8 @@ export default function YouOnboarding({
             <motion.button
               className={styles.orb}
               type="button"
+              aria-hidden={composerOnly || undefined}
+              tabIndex={composerOnly ? -1 : undefined}
               aria-label={
                 started
                   ? "Return to the memory question"
@@ -310,12 +346,19 @@ export default function YouOnboarding({
               layout
               layoutDependency={started}
               transition={layoutTransition}
-              disabled={submitting}
+              disabled={submitting || composerOnly}
               onClick={() => setStarted((current) => !current)}
             >
+              {/*
+                In the window it plays unconditionally. The orb decides for
+                itself whether it is on screen by watching its nearest <main>,
+                and inside a fixed overlay above a clipped canvas that check
+                answers "no" forever — so the orb would sit on its poster.
+              */}
               <AgentOrbVideo
                 src="/you-agent-orb.mp4"
                 poster="/you-agent-orb-poster.jpg"
+                playWhileMounted={composerOnly}
               />
             </motion.button>
 
@@ -399,7 +442,7 @@ export default function YouOnboarding({
                             maxLength={6000}
                             disabled={submitting}
                             aria-label="Tell Chapter about this memory"
-                            placeholder="Start anywhere. The place, the people, what happened, how it felt… You can also add up to 8 photos, with a little context for each."
+                            placeholder="Start anywhere. The place, the people, what happened, how it felt… You can also add up to four photos, with a little context for each."
                             onChange={(event) => {
                               setSubmissionFailure(null);
                               setMemoryText(event.target.value);

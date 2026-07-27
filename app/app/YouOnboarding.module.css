@@ -6,6 +6,86 @@
   background: #fff;
 }
 
+/*
+ * The same composer, inside a window instead of a screen. It gives up the
+ * height, the ground and the padding it takes when it is the whole page, and
+ * the orb comes down to the size of a thing that is speaking rather than the
+ * size of the thing you came here for.
+ */
+.onboarding[data-inline="true"] {
+  height: auto;
+  overflow: visible;
+  background: transparent;
+}
+
+.onboarding[data-inline="true"] .stage {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+}
+
+/* Moved, not spaced: a transform leaves the composer below it where it is. */
+.onboarding[data-inline="true"] .prompt {
+  gap: 0.7rem;
+  margin: 0;
+  transform: translateY(0.85rem);
+}
+
+.onboarding[data-inline="true"] .orb {
+  width: 4.75rem;
+  cursor: default;
+}
+
+.onboarding[data-inline="true"] .promptCopy p {
+  font-size: clamp(1.95rem, 3.7vw, 2.6rem);
+  letter-spacing: -0.042em;
+}
+
+/* A window is not a screen: the furniture comes down to the room it is in. */
+.onboarding[data-inline="true"] .memoryInput {
+  font-size: clamp(1rem, 1.3vw, 1.12rem);
+}
+
+/* Nudged off the left edge. Moved, not resized, so nothing reflows with it. */
+.onboarding[data-inline="true"] .textWindow {
+  transform: translateX(0.5rem);
+}
+
+/*
+ * How tall the window stands. Nothing here sets the window's height directly:
+ * it is only ever as tall as the two columns inside it, so this is the number
+ * that moves it.
+ */
+.onboarding[data-inline="true"] .composerSplit,
+.onboarding[data-inline="true"] .textWindow,
+.onboarding[data-inline="true"] .memoryInput,
+.onboarding[data-inline="true"] .composerPhotos,
+.onboarding[data-inline="true"] .photoStarter {
+  min-height: 30rem;
+}
+
+.onboarding[data-inline="true"] .sampleCard {
+  width: clamp(5.5rem, 9vw, 6.75rem);
+  border-width: 0.28rem;
+  border-radius: 0.7rem;
+}
+
+.onboarding[data-inline="true"] .photoGrid {
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 12.5rem));
+  gap: clamp(1rem, 1.8vw, 1.25rem);
+}
+
+.onboarding[data-inline="true"] .addButton {
+  height: 2.75rem;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.88rem;
+}
+
+.onboarding[data-inline="true"] .addButton svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
 .edgeBack {
   position: fixed;
   z-index: 10;

@@ -69,23 +69,179 @@
   outline-offset: 3px;
 }
 
-.addMemoryButton {
+/*
+ * The world's own controls, centred over it rather than pinned to a corner.
+ * Same material as the buttons in Together's header, so a control is the same
+ * object wherever Chapter puts one.
+ */
+.worldControls {
   position: absolute;
   z-index: 4;
   top: 22px;
-  right: 22px;
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid rgba(57, 48, 43, 0.12);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(10px);
-  color: rgba(37, 33, 29, 0.78);
-  cursor: pointer;
-  font: 580 13px/38px var(--font-chapter-instrument), system-ui, sans-serif;
+  left: 50%;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  transform: translateX(-50%);
 }
 
+.worldSearch,
+.addMemoryButton {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: #f8f7f5;
+  color: rgba(45, 39, 34, 0.66);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.worldSearch {
+  width: 38px;
+  justify-content: center;
+  padding: 0;
+}
+
+.worldSearch svg {
+  width: 18px;
+  height: 18px;
+}
+
+.addMemoryButton {
+  gap: 6px;
+  padding: 0 16px 0 13px;
+  font: 620 13px/38px var(--font-chapter-instrument), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.addMemoryButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.worldSearch:hover,
+.addMemoryButton:hover {
+  background: #f0eeea;
+  color: #25211d;
+}
+
+.worldSearch:focus-visible,
 .addMemoryButton:focus-visible {
   outline: 2px solid #9e8265;
   outline-offset: 2px;
+}
+
+/* Where the button was, saying what became of what it sent. */
+.extracting {
+  display: flex;
+  min-height: 38px;
+  margin: 0;
+  padding: 0 16px 0 8px;
+  gap: 8px;
+  align-items: center;
+  border-radius: 999px;
+  background: #f8f7f5;
+  color: rgba(45, 39, 34, 0.72);
+  font: 620 13px/38px var(--font-chapter-instrument), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.extractingOrb {
+  display: block;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  line-height: 0;
+}
+
+/*
+ * The world, still there and out of focus. Adding a memory is a thing you do
+ * on top of your world, not a place you go instead of it.
+ */
+.memoryScrim {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  padding: 24px;
+  /*
+   * The scrim scrolls, the way the page did when the composer was the page.
+   * "safe" so a window taller than the screen starts at its own top instead
+   * of being centred with its head cut off above the scroll.
+   */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  align-content: safe center;
+  justify-items: center;
+  background: rgba(28, 24, 20, 0.22);
+  backdrop-filter: blur(14px) saturate(1.04);
+  animation: scrimIn 200ms ease both;
+}
+
+@keyframes scrimIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.memoryWindow {
+  position: relative;
+  width: min(63rem, 100%);
+  padding: 30px clamp(20px, 3vw, 34px) clamp(20px, 3vw, 30px);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 24px 60px rgba(20, 16, 12, 0.2);
+  animation: windowIn 260ms cubic-bezier(0.16, 0.84, 0.28, 1) both;
+}
+
+@keyframes windowIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+
+.memoryClose {
+  position: fixed;
+  z-index: 2;
+  top: 20px;
+  right: 20px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: #f4f3f1;
+  color: rgba(45, 39, 34, 0.6);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.memoryClose svg {
+  width: 16px;
+  height: 16px;
+}
+
+.memoryClose:hover {
+  background: #ebe9e5;
+  color: #25211d;
+}
+
+.memoryClose:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memoryScrim,
+  .memoryWindow {
+    animation: none;
+  }
 }
