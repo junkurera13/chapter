@@ -3,17 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   canSchedule,
+  comingWeekend,
   daysBetween,
-  describeWait,
   describeWindows,
   formatDay,
   hasPassed,
-  isDueToWrite,
   isIsoDay,
   sortWindows,
   upcomingDays,
-  writingDayPhrase,
-  writingStartsOn,
 } from "./nowSchedule";
 
 describe("day arithmetic", () => {
@@ -40,36 +37,48 @@ describe("day arithmetic", () => {
   });
 });
 
-describe("when Chapter starts writing", () => {
-  it("starts three days before the day itself", () => {
-    expect(writingStartsOn("2026-08-08")).toBe("2026-08-05");
+describe("the day the offer names on your behalf", () => {
+  // 2026-08-03 is a Monday, so this week runs Mon 3rd to Sun 9th.
+  it("points at the coming Saturday from anywhere in the working week", () => {
+    expect(comingWeekend("2026-08-03")).toBe("2026-08-08");
+    expect(comingWeekend("2026-08-05")).toBe("2026-08-08");
+    expect(comingWeekend("2026-08-07")).toBe("2026-08-08");
   });
 
-  it("is not due until the lead time opens", () => {
-    expect(isDueToWrite("2026-08-08", "2026-08-04")).toBe(false);
-    expect(isDueToWrite("2026-08-08", "2026-08-05")).toBe(true);
+  it("names today once the weekend has already started", () => {
+    // Asking a person on Saturday whether they are free next Saturday is a
+    // week of waiting nobody asked for.
+    expect(comingWeekend("2026-08-08")).toBe("2026-08-08");
+    expect(comingWeekend("2026-08-09")).toBe("2026-08-09");
   });
 
-  it("stays due when nobody opened the app during the lead time", () => {
-    expect(isDueToWrite("2026-08-08", "2026-08-07")).toBe(true);
-    expect(isDueToWrite("2026-08-08", "2026-08-08")).toBe(true);
+  it("crosses a month end without leaving August in July", () => {
+    // 2026-07-27 is a Monday; its Saturday is the 1st of the next month.
+    expect(comingWeekend("2026-07-27")).toBe("2026-08-01");
   });
 
-  it("stops being due once the day is gone", () => {
-    expect(isDueToWrite("2026-08-08", "2026-08-09")).toBe(false);
+  it("always names a day that can still be scheduled", () => {
+    for (const today of ["2026-08-03", "2026-08-08", "2026-08-09"]) {
+      expect(canSchedule(comingWeekend(today), today)).toBe(true);
+    }
+  });
+});
+
+describe("the day a plan is allowed to name", () => {
+  it("takes today and refuses yesterday", () => {
+    expect(canSchedule("2026-08-08", "2026-08-08")).toBe(true);
+    expect(canSchedule("2026-08-07", "2026-08-08")).toBe(false);
     expect(hasPassed("2026-08-08", "2026-08-09")).toBe(true);
     expect(hasPassed("2026-08-08", "2026-08-08")).toBe(false);
   });
 
-  it("accepts a day chosen inside the horizon and nothing outside it", () => {
-    expect(canSchedule("2026-08-08", "2026-08-08")).toBe(true);
-    expect(canSchedule("2026-08-07", "2026-08-08")).toBe(false);
+  it("reaches to the horizon and stops", () => {
     expect(canSchedule("2026-12-05", "2026-08-08")).toBe(true);
     expect(canSchedule("2027-08-08", "2026-08-08")).toBe(false);
   });
 });
 
-describe("how a schedule reads", () => {
+describe("how a day reads", () => {
   it("names the near days rather than dating them", () => {
     expect(formatDay("2026-08-08", "2026-08-08")).toBe("Today");
     expect(formatDay("2026-08-09", "2026-08-08")).toBe("Tomorrow");
@@ -87,28 +96,6 @@ describe("how a schedule reads", () => {
       describeWindows(["night", "morning", "evening", "afternoon"]),
     ).toBe("All day");
     expect(describeWindows([])).toBe("");
-  });
-
-  it("names the writing day so it can sit inside a sentence", () => {
-    expect(writingDayPhrase("2026-08-08", "2026-08-05")).toBe("today");
-    expect(writingDayPhrase("2026-08-08", "2026-08-04")).toBe("tomorrow");
-    // Never "Tomorrow" with a capital halfway through a line.
-    expect(writingDayPhrase("2026-08-08", "2026-08-01")).toMatch(/^on \w/);
-  });
-
-  it("counts down to the writing day, then says it is happening", () => {
-    expect(describeWait("2026-08-08", "2026-08-01")).toBe(
-      "Chapter starts writing in 4 days",
-    );
-    expect(describeWait("2026-08-08", "2026-08-04")).toBe(
-      "Chapter starts writing tomorrow",
-    );
-    expect(describeWait("2026-08-08", "2026-08-05")).toBe(
-      "Chapter is writing it now",
-    );
-    expect(describeWait("2026-08-08", "2026-08-07")).toBe(
-      "Chapter is writing it now",
-    );
   });
 });
 

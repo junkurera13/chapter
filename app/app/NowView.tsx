@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   type ReactNode,
   useCallback,
@@ -17,14 +18,12 @@ import {
 } from "../../lib/base44Memory";
 import {
   acceptNowChapter,
-  cancelNowSchedule,
   declineNowChapter,
   loadNow,
   markNowChapterLived,
-  nextSaturdayIso,
   NowRequestError,
   saveHomeCity,
-  scheduleNowChapter,
+  saveNowPreferences,
   searchPlaceSuggestions,
   type PlaceSuggestion,
   startNowChapter,
@@ -33,7 +32,8 @@ import {
 import {
   type NowAnchor,
   NOW_DEFAULT_REACH,
-  NOW_LEAD_DAYS,
+  NOW_DEFAULT_WINDOW,
+  type NowEvidenceLink,
   NOW_REACH,
   NOW_REACHES,
   NOW_TIME_WINDOW_HOURS,
@@ -42,16 +42,15 @@ import {
   type NowTimeWindow,
 } from "../../lib/nowChapterSchema";
 import {
+  addDays,
+  comingWeekend,
   daysBetween,
-  describeWait,
   describeWindows,
   formatDay,
   formatWeekday,
   isoDay,
   sortWindows,
   upcomingDays,
-  writingDayPhrase,
-  writingStartsOn,
 } from "../../lib/nowSchedule";
 import { lastOpened, OPENED_NOW } from "../../lib/openedViews";
 import { categoryOrbGradient } from "./categoryAppearance";
@@ -160,23 +159,26 @@ function AnchoredCopy({
 }
 
 /**
- * The home-city ask: an open line to write on rather than a box, with
- * type-ahead places beneath it and the commit button last.
+ * Where you live: an open line to write on rather than a box, with type-ahead
+ * places beneath it.
  *
  * One question, answered by one pick — a whole city is accepted as it stands.
  * Deep research does better with somewhere walkable, so a city sets the centre
  * of the next lookup and invites a neighbourhood without demanding one.
+ *
+ * Renders as a fragment so whatever holds it decides the layout: it is the
+ * whole of the first-run screen and one row of the settings sheet, and those
+ * two want different room around it.
  */
-function HomeCityAsk({
-  busy,
-  notice,
-  onSubmit,
+function HomeCityField({
+  initial = "",
+  onChange,
 }: {
-  busy: boolean;
-  notice: string;
-  onSubmit: (homeCity: string) => void;
+  initial?: string;
+  /** Called with the city as it stands, "" while it is not yet an answer. */
+  onChange: (homeCity: string) => void;
 }) {
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initial);
   const [chosen, setChosen] = useState<PlaceSuggestion | null>(null);
   const [narrowing, setNarrowing] = useState<PlaceSuggestion | null>(null);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
@@ -232,14 +234,14 @@ function HomeCityAsk({
     inputRef.current?.focus();
   }
 
+  // Whatever is holding this decides what a city is worth: the first-run
+  // screen waits for a button, the settings sheet folds it in with the rest.
+  useEffect(() => {
+    onChange(homeCity);
+  }, [homeCity, onChange]);
+
   return (
-    <form
-      className={styles.cityForm}
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (homeCity.length >= 2) onSubmit(homeCity);
-      }}
-    >
+    <>
       <div className={styles.cityField}>
         <input
           ref={inputRef}
@@ -323,7 +325,31 @@ function HomeCityAsk({
           </li>
         ))}
       </ul>
+    </>
+  );
+}
 
+/** The first-run screen: the one question, and a button to answer it with. */
+function HomeCityAsk({
+  busy,
+  notice,
+  onSubmit,
+}: {
+  busy: boolean;
+  notice: string;
+  onSubmit: (homeCity: string) => void;
+}) {
+  const [homeCity, setHomeCity] = useState("");
+
+  return (
+    <form
+      className={styles.cityForm}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (homeCity.length >= 2) onSubmit(homeCity);
+      }}
+    >
+      <HomeCityField onChange={setHomeCity} />
       <button type="submit" disabled={busy || homeCity.length < 2}>
         That’s home for now
       </button>
@@ -334,6 +360,148 @@ function HomeCityAsk({
 
 /** How far ahead the rail runs before it has to stretch for a chosen day. */
 const RAIL_DAYS = 21;
+
+/**
+ * A rail of real days rather than a date field.
+ *
+ * Picking a Saturday three weeks out should feel like pointing at it on a
+ * calendar, and a day you can see the weekday of is a day you can tell the
+ * truth about being free on.
+ *
+ * It appears twice, for the two moments a day is worth asking about: setting
+ * one aside before there is anything to do on it, and answering "when are you
+ * going" once there is. The second is the honest one, so it gets the shorter
+ * horizon — nobody accepts a chapter for eleven weeks from now.
+ */
+function DayRail({
+  day,
+  label,
+  span = RAIL_DAYS,
+  onChange,
+}: {
+  day: string;
+  label: string;
+  /** How far ahead the rail runs before a chosen day stretches it. */
+  span?: number;
+  onChange: (day: string) => void;
+}) {
+  const today = useMemo(() => isoDay(), []);
+  const railRef = useRef<HTMLDivElement>(null);
+
+  // Normally runs its span, and stretches only as far as it must to keep a
+  // day that was already chosen inside it.
+  const days = useMemo(() => {
+    const reach = day ? daysBetween(today, day) + 3 : 0;
+    return upcomingDays(Math.max(span, reach), today);
+  }, [day, span, today]);
+
+  // A day chosen weeks ago opens under the thumb rather than off the edge.
+  // Deferred a frame because this can mount before the dialog around it is
+  // shown, and nothing can be scrolled into a view that has no layout yet.
+  useEffect(() => {
+    if (!day) return;
+    const frame = requestAnimationFrame(() => {
+      railRef.current
+        ?.querySelector(`[data-day="${day}"]`)
+        ?.scrollIntoView({ block: "nearest", inline: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+    // Only on the way in: re-centring on every tap fights the person scrolling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div
+      className={styles.dayRail}
+      ref={railRef}
+      role="radiogroup"
+      aria-label={label}
+    >
+      {days.map((entry) => (
+        <button
+          type="button"
+          key={entry.iso}
+          data-day={entry.iso}
+          className={styles.dayTile}
+          data-chosen={entry.iso === day}
+          role="radio"
+          aria-checked={entry.iso === day}
+          onClick={() => onChange(entry.iso)}
+        >
+          <span className={styles.dayWeekday}>{entry.weekday}</span>
+          <span className={styles.dayNumber}>{entry.dayOfMonth}</span>
+          {/* The month is named where one turns, and on whichever day is
+              chosen, so the answer never depends on scrolling back. */}
+          <span className={styles.dayMonth}>
+            {entry.startsMonth || entry.iso === day ? entry.month : ""}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Where the find came from, named.
+ *
+ * Minutes of live research reduced to "proof 1" reads like a footnote on a
+ * generated paragraph. A source carrying its own name reads like somewhere
+ * someone actually went and looked.
+ */
+function sourceLabel(link: NowEvidenceLink) {
+  const title = link.title?.trim();
+  if (title) return title;
+  try {
+    return new URL(link.url).hostname.replace(/^www\./, "");
+  } catch {
+    return "source";
+  }
+}
+
+function Sources({ links }: { links: readonly NowEvidenceLink[] }) {
+  if (links.length === 0) return null;
+  return (
+    <p className={styles.sources}>
+      <span className={styles.sourcesLabel}>Checked against</span>
+      {links.map((link) => (
+        <a
+          key={link.url}
+          className={styles.source}
+          href={link.url}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          {sourceLabel(link)}
+        </a>
+      ))}
+    </p>
+  );
+}
+
+/**
+ * The day and hours Chapter would write for, as they read inside a sentence:
+ * "Saturday evening", "this evening", "all day Sunday".
+ *
+ * The resting screen never says this out loud. The card already carries it,
+ * and the orb only has to be pressed.
+ */
+function offerPhrase(
+  day: string,
+  windows: readonly NowTimeWindow[],
+  today: string,
+) {
+  const hours = describeWindows(windows).toLowerCase();
+  const when =
+    day === today
+      ? "this"
+      : day === addDays(today, 1)
+        ? "tomorrow"
+        : formatWeekday(day);
+  if (hours === "all day") {
+    return `all day ${day === today ? "today" : when}`;
+  }
+  return `${when} ${hours}`;
+}
 
 /**
  * How far you'll go, as four stops rather than a dial.
@@ -393,31 +561,35 @@ function ReachSlider({
 }
 
 /**
- * The whole of the ask, in two questions with one answer each: which day, and
- * which parts of it. Everything else Chapter works out — the day it starts
- * writing is arithmetic, so the form states it rather than asking.
+ * Everything Chapter works from: where you live, when you are usually free,
+ * and how far you will go. Three standing facts about a person, not a plan.
  *
- * A rail of real days rather than a date field. Picking a Saturday three weeks
- * out should feel like pointing at it on a calendar, and a day you can see the
- * weekday of is a day you can tell the truth about being free on.
+ * There is no day in here. A day is a thing you commit to, and nobody commits
+ * to one for a chapter they have not read yet, so that question waits until
+ * there is something worth answering it about.
+ *
+ * Nothing in here is a gate either. Every row already has an answer before the
+ * sheet opens, because the orb behind it is busy offering to write from those
+ * answers. This is where someone comes to correct one.
  */
-function ScheduleForm({
+function AgentSettingsForm({
   busy,
   notice,
-  day,
+  homeCity,
   windows,
   reach,
-  onChangeDay,
+  onChangeHomeCity,
   onToggleWindow,
   onChangeReach,
   onSubmit,
+  children,
 }: {
   busy: boolean;
   notice: string;
-  day: string;
+  homeCity: string;
   windows: readonly NowTimeWindow[];
   reach: NowReach;
-  onChangeDay: (day: string) => void;
+  onChangeHomeCity: (homeCity: string) => void;
   onChangeReach: (reach: NowReach) => void;
   /**
    * A toggle rather than a new list: two taps inside one frame would both be
@@ -425,78 +597,52 @@ function ScheduleForm({
    */
   onToggleWindow: (window: NowTimeWindow) => void;
   onSubmit: () => void;
+  /** Whatever sits under the save. */
+  children?: ReactNode;
 }) {
-  const today = useMemo(() => isoDay(), []);
-  const railRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [bodyScrolls, setBodyScrolls] = useState(false);
 
-  // The rail normally runs three weeks out, and stretches only as far as it
-  // must to keep a day that was already chosen inside it.
-  const days = useMemo(() => {
-    const reach = day ? daysBetween(today, day) + 3 : 0;
-    return upcomingDays(Math.max(RAIL_DAYS, reach), today);
-  }, [day, today]);
-
-  // A day chosen weeks ago opens under the thumb rather than off the edge.
-  // Deferred a frame because the form mounts before the dialog around it is
-  // shown, and nothing can be scrolled into a view that has no layout yet.
+  /*
+   * Whether the settings run past the bottom of the window they are in. Only
+   * then does the fade at the foot mean anything: on a tall screen it would
+   * just be dimming the last row for no reason.
+   */
   useEffect(() => {
-    if (!day) return;
-    const frame = requestAnimationFrame(() => {
-      railRef.current
-        ?.querySelector(`[data-day="${day}"]`)
-        ?.scrollIntoView({ block: "nearest", inline: "center" });
-    });
-    return () => cancelAnimationFrame(frame);
-    // Only on the way in: re-centring on every tap fights the person scrolling.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const body = bodyRef.current;
+    if (!body) return;
+    const check = () =>
+      setBodyScrolls(body.scrollHeight > body.clientHeight + 1);
+    check();
+    // The children too, because a list of places opening is what most often
+    // turns a sheet that fitted into one that does not.
+    const observer = new ResizeObserver(check);
+    observer.observe(body);
+    for (const child of Array.from(body.children)) observer.observe(child);
+    return () => observer.disconnect();
   }, []);
 
-  const ready = Boolean(day) && windows.length > 0;
-  const lead = !day
-    ? `Pick a day. Chapter works back ${NOW_LEAD_DAYS} days from it.`
-    : daysBetween(today, writingStartsOn(day)) <= 0
-      ? "That’s inside three days, so Chapter starts writing the moment you set it."
-      : `Chapter starts writing ${writingDayPhrase(day, today)}.`;
+  // A day with no hours in it is not an answer the research can use, so the
+  // one thing this form insists on is that at least one part of a day stands.
+  const ready = homeCity.length >= 2 && windows.length > 0;
 
   return (
     <form
-      className={styles.scheduleForm}
+      className={styles.sheetForm}
       onSubmit={(event) => {
         event.preventDefault();
         if (ready && !busy) onSubmit();
       }}
     >
       <div
-        className={styles.dayRail}
-        ref={railRef}
-        role="radiogroup"
-        aria-label="Which day"
+        className={styles.sheetBody}
+        ref={bodyRef}
+        data-scrolls={bodyScrolls}
       >
-        {days.map((entry) => (
-          <button
-            type="button"
-            key={entry.iso}
-            data-day={entry.iso}
-            className={styles.dayTile}
-            data-chosen={entry.iso === day}
-            role="radio"
-            aria-checked={entry.iso === day}
-            onClick={() => onChangeDay(entry.iso)}
-          >
-            <span className={styles.dayWeekday}>{entry.weekday}</span>
-            <span className={styles.dayNumber}>{entry.dayOfMonth}</span>
-            {/* The month is named where one turns, and on whichever day is
-                chosen, so the answer never depends on scrolling back. */}
-            <span className={styles.dayMonth}>
-              {entry.startsMonth || entry.iso === day ? entry.month : ""}
-            </span>
-          </button>
-        ))}
-      </div>
+      <p className={styles.sheetLabel}>Where you are</p>
+      <HomeCityField initial={homeCity} onChange={onChangeHomeCity} />
 
-      <p className={styles.scheduleLabel}>
-        {day ? `Free on ${formatWeekday(day)}` : "When you’re free"}
-      </p>
+      <p className={styles.sheetLabel}>When you’re usually free</p>
 
       <ul className={styles.windowList}>
         {NOW_TIME_WINDOWS.map((window) => {
@@ -538,24 +684,25 @@ function ScheduleForm({
       </ul>
 
       <ReachSlider reach={reach} onChange={onChangeReach} />
+      </div>
 
-      <p className={styles.scheduleLead} aria-live="polite">
-        {lead}
-      </p>
-      <button type="submit" disabled={busy || !ready}>
-        {day ? `Set ${formatDay(day, today)}` : "Set the day"}
-      </button>
-      {notice ? <p className={styles.notice}>{notice}</p> : null}
+      <div className={styles.sheetFoot}>
+        <button type="submit" disabled={busy || !ready}>
+          Save
+        </button>
+        {children}
+        {notice ? <p className={styles.notice}>{notice}</p> : null}
+      </div>
     </form>
   );
 }
 
 /**
- * The form in a modal. Controlled rather than imperative: Escape closes a
+ * The sheet in a modal. Controlled rather than imperative: Escape closes a
  * <dialog> without telling React, so the close event is wired back to the
  * state that opened it and the two cannot end up disagreeing.
  */
-function ScheduleDialog({
+function SettingsDialog({
   open,
   onClose,
   children,
@@ -590,266 +737,171 @@ function ScheduleDialog({
 }
 
 /**
- * What the corner card says is coming. Exactly one of these is true at a time,
- * because Chapter runs one chapter at a time.
+ * The way in to everything Chapter works from.
+ *
+ * There used to be a card here holding all of it on screen at once: city, day,
+ * hours, reach, a row each, with a pencil in the corner. It was accurate and
+ * it was the wrong object. Four labelled rows and an edit button is the shape
+ * of a thing you administer, and this is not a thing you administer. It is a
+ * thing you press.
+ *
+ * So the panel is gone and this is what is left of it: one mark, held at the
+ * edge of the page and nearly invisible until somebody reaches for it. What
+ * used to be its rows now lives in the sheet it opens, and what used to be its
+ * status line is said out loud under the orb, on the occasions there is
+ * anything to say.
  */
-type NowStanding =
-  | { kind: "open" }
-  | { kind: "scheduled"; day: string; windows: readonly NowTimeWindow[] }
-  | { kind: "writing" }
-  | { kind: "ready"; title: string }
-  | { kind: "accepted"; title: string; day?: string };
-
-function StandingBody({
-  orb,
-  primary,
-  secondary,
-  tag,
-}: {
-  orb: string;
-  primary: string;
-  secondary?: string;
-  tag?: string;
-}) {
+function SettingsEntry({ onOpen }: { onOpen: () => void }) {
   return (
-    <>
-      <span
-        className={styles.standingOrb}
-        style={{ background: orb }}
+    <button
+      type="button"
+      className={styles.settingsEntry}
+      onClick={onOpen}
+      aria-label="Edit what Chapter works from"
+    >
+      <svg
         aria-hidden="true"
-      />
-      <span className={styles.standingText}>
-        <span className={styles.standingTitle}>{primary}</span>
-        {secondary ? (
-          <span className={styles.standingNote}>{secondary}</span>
-        ) : null}
-      </span>
-      {tag ? <span className={styles.standingTag}>{tag}</span> : null}
-    </>
-  );
-}
-
-/**
- * The single row under "Coming up", saying the truest thing there is to say.
- *
- * Only a day that has been set aside is a button: it is the one state that is
- * still the card's to change. Once Chapter is writing, the screen behind the
- * card owns what happens next.
- */
-function StandingRow({
-  standing,
-  onSchedule,
-}: {
-  standing: NowStanding;
-  onSchedule: () => void;
-}) {
-  if (standing.kind === "open") {
-    return (
-      <button
-        type="button"
-        className={styles.standingInvite}
-        onClick={onSchedule}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       >
-        <span className={styles.standingInviteMark} aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path
-              d="M12 5v14M5 12h14"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </span>
-        Set a day you’re free
-      </button>
-    );
-  }
-
-  if (standing.kind === "scheduled") {
-    const windows = describeWindows(standing.windows);
-    return (
-      <>
-        <button
-          type="button"
-          className={styles.standing}
-          data-editable="true"
-          onClick={onSchedule}
-          aria-label={`${formatDay(standing.day)}, ${windows}. Change the day.`}
-        >
-          <StandingBody
-            orb={WINDOW_ORB[standing.windows[0] ?? "evening"]}
-            primary={formatDay(standing.day)}
-            secondary={windows}
-          />
-        </button>
-        <p className={styles.standingWait}>{describeWait(standing.day)}</p>
-      </>
-    );
-  }
-
-  if (standing.kind === "writing") {
-    return (
-      <p className={styles.standing} data-busy="true">
-        <StandingBody
-          orb={categoryOrbGradient("experience")}
-          primary="Chapter is writing it"
-          secondary="A few minutes of deep research"
-        />
-      </p>
-    );
-  }
-
-  if (standing.kind === "ready") {
-    return (
-      <p className={styles.standing}>
-        <StandingBody
-          orb={categoryOrbGradient("experience")}
-          primary={standing.title}
-          secondary="Waiting on your yes"
-        />
-      </p>
-    );
-  }
-
-  return (
-    <p className={styles.standing}>
-      <StandingBody
-        orb={categoryOrbGradient("activity")}
-        primary={standing.title}
-        tag={standing.day ? formatDay(standing.day) : "No date yet"}
-      />
-    </p>
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+      </svg>
+    </button>
   );
 }
 
 /**
- * Where Now is looking, and what is already coming.
+ * The middle of the tab, which is the agent itself.
  *
- * Built from the same plate as Together's people card — soft grey, an orb and
- * a title across the top, one rule under it and no lines between the rows —
- * so the standing card in the corner is the same object in both tabs.
+ * At rest there is nothing here but the orb, turning. No headline, no copy,
+ * no buttons: everything you could tell it lives in the card, so the screen
+ * has nothing to be except the thing you are talking to.
  *
- * The place is the card's title rather than a row in it: it is the one thing
- * that is always true of this card, and everything below it is a consequence
- * of being there.
+ * When there is something to be asked for, the orb is what you ask. It is the
+ * only control on the screen, and it says nothing about itself: what it would
+ * write for is already sitting in the card, so the press can stay a press. The
+ * hint underneath surfaces on approach and is gone again at rest, which is the
+ * whole of the compromise between bare and unguessable.
+ *
+ * When Chapter has actually written something the same orb comes down to the
+ * size of a thing that is speaking, moves up beside its own headline, and the
+ * chapter opens underneath it. One element, two states, laid out by Motion so
+ * it travels rather than cutting.
  */
-function HomeCityCard({
-  homeCity,
-  standing,
-  notice,
-  onChange,
-  onSchedule,
+function NowStage({
+  headline,
+  note,
+  press,
+  children,
 }: {
-  homeCity: string;
-  standing: NowStanding;
-  notice: string;
-  /** Resolves true once the new place is saved, which closes the dialog. */
-  onChange: (homeCity: string) => Promise<boolean>;
-  /** Opens the day form. Only offered while a day is still the card's to set. */
-  onSchedule: () => void;
+  /** Present only when there is a chapter. Its arrival is what opens the stage. */
+  headline?: string;
+  /** A quiet line under the resting orb, for when it is busy thinking. */
+  note?: string;
+  /** Makes the orb the one thing on this screen that can be pressed. */
+  press?: { onPress: () => void; busy: boolean; label: string; hint: string };
+  children?: ReactNode;
 }) {
-  const [saving, setSaving] = useState(false);
-  // Counts visits rather than tracking openness: <dialog> already knows whether
-  // it's open, and Escape closes it without telling React. Mirroring that in
-  // state only creates a way for the two to disagree and strand the card shut.
-  const [visit, setVisit] = useState(0);
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const near = homeCity.split(",")[0].trim() || homeCity;
+  const reduceMotion = useReducedMotion();
+  const open = Boolean(headline);
+  const layoutTransition = reduceMotion
+    ? { duration: 0 }
+    : { type: "spring" as const, bounce: 0, duration: 0.68 };
 
-  function openDialog() {
-    const dialog = dialogRef.current;
-    if (!dialog || dialog.open) return;
-    dialog.showModal();
-    setVisit((count) => count + 1);
-  }
-
-  function closeDialog() {
-    dialogRef.current?.close();
-  }
+  const orb = (
+    <motion.span
+      className={styles.stageOrb}
+      layout
+      layoutDependency={open}
+      transition={layoutTransition}
+    >
+      {/*
+        Plays regardless. The orb decides for itself whether it is on
+        screen by watching its nearest <main>, and in this tab that check
+        can answer no forever, leaving it sat on its poster.
+      */}
+      <AgentOrbVideo playWhileMounted preload="auto" />
+    </motion.span>
+  );
 
   return (
-    <>
-      <aside className={styles.homeCard} aria-label="Where Now is looking">
-        <p className={styles.homeCardHeader}>
-          <span
-            className={styles.homeCardOrb}
-            style={{ background: categoryOrbGradient("place") }}
-            aria-hidden="true"
-          />
-          <span className={styles.homeCardName} title={homeCity}>
-            {near}
-          </span>
-          <button
-            type="button"
-            className={styles.homeCardAction}
-            onClick={openDialog}
-            aria-label={`Now is looking in ${homeCity}. Change it.`}
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+    <section className={styles.stage} data-open={open}>
+      <div className={styles.stageHead}>
+        {press ? (
+          <>
+            <button
+              type="button"
+              className={styles.orbPress}
+              onClick={press.onPress}
+              disabled={press.busy}
+              aria-label={press.label}
             >
-              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
-            </svg>
-          </button>
-        </p>
+              {orb}
+            </button>
+            {/* Sibling rather than child, so the target stays the orb and
+                hovering the words does not count as reaching for it. */}
+            <span className={styles.orbHint} aria-hidden="true">
+              {press.hint}
+            </span>
+          </>
+        ) : (
+          orb
+        )}
 
-        {/*
-          What is already on its way. A card that only ever says where you are
-          is a label; this is the half that makes it worth looking at.
-        */}
-        <p className={styles.homeCardLabel}>Coming up</p>
-        <StandingRow standing={standing} onSchedule={onSchedule} />
-      </aside>
-
-      <dialog
-        ref={dialogRef}
-        className={styles.homeDialog}
-        onClick={(event) => {
-          // Clicks land on the dialog itself only when they miss the panel.
-          if (event.target === dialogRef.current) closeDialog();
-        }}
-      >
-        <div className={styles.homeDialogPanel}>
-          <h2>Where does your life happen now?</h2>
-          <p className={styles.homeDialogNow}>
-            Currently <strong>{homeCity}</strong>
-          </p>
-          {/* Keyed on the visit, so each opening starts on a blank line. */}
-          <HomeCityAsk
-            key={visit}
-            busy={saving}
-            notice={notice}
-            onSubmit={(next) => {
-              setSaving(true);
-              void onChange(next)
-                .then((saved) => {
-                  if (saved) closeDialog();
-                })
-                .finally(() => setSaving(false));
-            }}
-          />
-          <button
-            type="button"
-            className={styles.homeDialogClose}
-            onClick={closeDialog}
+        {headline ? (
+          <motion.h1
+            className={styles.stageHeadline}
+            layout="position"
+            layoutDependency={open}
+            transition={layoutTransition}
           >
-            Keep {near}
-          </button>
-        </div>
-      </dialog>
-    </>
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={headline}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: reduceMotion ? 0.12 : 0.34,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                {headline}
+              </motion.span>
+            </AnimatePresence>
+          </motion.h1>
+        ) : null}
+      </div>
+
+      {note ? (
+        <p className={styles.stageNote} aria-live="polite">
+          {note}
+        </p>
+      ) : null}
+
+      {/*
+        The entrance is a CSS keyframe, not a Motion animate. A chapter that
+        has been written is the whole point of the screen, and an element that
+        starts at opacity 0 and waits for JavaScript to raise it is one paused
+        frameloop away from being invisible. CSS lands on its final frame on
+        its own.
+      */}
+      {children ? <div className={styles.stageBody}>{children}</div> : null}
+    </section>
   );
 }
 
 export default function NowView({
   onGraphAdvanced,
+  onOpenYou,
 }: {
   onGraphAdvanced: () => void;
+  /** Somewhere to send a person whose world just grew, to go and see it. */
+  onOpenYou: () => void;
 }) {
   /**
    * Now unmounts when you leave the tab, so without this every return trip
@@ -862,13 +914,20 @@ export default function NowView({
   );
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const [dateDraft, setDateDraft] = useState(nextSaturdayIso());
+  const [dateDraft, setDateDraft] = useState(comingWeekend());
   const [declining, setDeclining] = useState(false);
   const [declineDraft, setDeclineDraft] = useState("");
   const [reflectionDraft, setReflectionDraft] = useState("");
   const [stageIndex, setStageIndex] = useState(0);
-  const [scheduling, setScheduling] = useState(false);
-  const [dayDraft, setDayDraft] = useState("");
+  /**
+   * A chapter that has just become a memory. The record is already `lived`, so
+   * without this the screen would drop straight back to offering another one,
+   * and the thing that makes the whole loop worth running — a world that is
+   * bigger than it was this morning — would happen off screen.
+   */
+  const [justLived, setJustLived] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [cityDraft, setCityDraft] = useState("");
   const [windowDraft, setWindowDraft] = useState<NowTimeWindow[]>([]);
   const [reachDraft, setReachDraft] = useState<NowReach>(NOW_DEFAULT_REACH);
   const pollRef = useRef<number | null>(null);
@@ -960,40 +1019,17 @@ export default function NowView({
   );
 
   /**
-   * Opens the day form on whatever is already set aside, so changing your mind
-   * about Saturday evening starts from Saturday evening rather than from
-   * nothing.
+   * Opens the sheet on what is already true, so changing your mind about
+   * Saturday evening starts from Saturday evening rather than from nothing.
    */
-  const openSchedule = useCallback(() => {
-    const scheduled = chapter?.status === "scheduled" ? chapter : null;
+  const openSettings = useCallback(() => {
+    const now = state.status === "ready" ? state.now : null;
     setNotice("");
-    setDayDraft(scheduled?.scheduledFor ?? "");
-    setWindowDraft(scheduled?.timeWindows ?? []);
-    // How far someone will go is a standing habit rather than a fact about one
-    // Saturday, so it carries over from the last chapter instead of resetting.
-    setReachDraft(scheduled?.reach ?? chapter?.reach ?? NOW_DEFAULT_REACH);
-    setScheduling(true);
-  }, [chapter]);
-
-  /** Like runAction, but the caller needs to know whether it took. */
-  const changeHomeCity = useCallback(
-    async (homeCity: string) => {
-      setNotice("");
-      try {
-        await saveHomeCity(homeCity);
-        await refresh();
-        return true;
-      } catch (error) {
-        setNotice(
-          error instanceof NowRequestError
-            ? error.message
-            : "Chapter couldn’t save that place.",
-        );
-        return false;
-      }
-    },
-    [refresh],
-  );
+    setCityDraft(now?.homeCity ?? "");
+    setWindowDraft([...(now?.timeWindows ?? [NOW_DEFAULT_WINDOW])]);
+    setReachDraft(now?.reach ?? NOW_DEFAULT_REACH);
+    setEditing(true);
+  }, [state]);
 
   if (state.status === "loading") {
     return (
@@ -1005,18 +1041,19 @@ export default function NowView({
 
   if (state.status === "error") {
     return (
-      <section className={styles.stateScreen}>
-        <h1>{state.message}</h1>
-        <button
-          type="button"
-          onClick={() => {
-            setState({ status: "loading" });
-            void refresh();
-          }}
-        >
-          Try again
-        </button>
-      </section>
+      <NowStage headline={state.message}>
+        <div className={styles.actions}>
+          <button
+            type="button"
+            onClick={() => {
+              setState({ status: "loading" });
+              void refresh();
+            }}
+          >
+            Try again
+          </button>
+        </div>
+      </NowStage>
     );
   }
 
@@ -1048,53 +1085,57 @@ export default function NowView({
     );
   }
 
-  /*
-   * What the card says is coming. A chapter that has been said yes to, or a
-   * day that has been set aside, stops being the screen's business and becomes
-   * the card's; anything still asking a question stays on the screen, which is
-   * already the place where questions get answered.
-   */
-  const standing: NowStanding =
-    chapter?.status === "scheduled" && chapter.scheduledFor
-      ? {
-          kind: "scheduled",
-          day: chapter.scheduledFor,
-          windows: chapter.timeWindows ?? [],
-        }
-      : chapter?.status === "researching"
-        ? { kind: "writing" }
-        : chapter?.status === "proposed" && chapter.content
-          ? { kind: "ready", title: chapter.content.title }
-          : chapter?.status === "accepted" && chapter.content
-            ? {
-                kind: "accepted",
-                title: chapter.content.title,
-                day: chapter.scheduledFor,
-              }
-            : { kind: "open" };
+  const today = isoDay();
 
-  // Every screen past the ask carries the corner card, whatever it's showing.
-  const withHomeCard = (screen: ReactNode) => (
+  /*
+   * What the orb would write for if pressed this second, as it reads on screen.
+   *
+   * Only ever said in the hover hint: the server reads the real thing off the
+   * account when the press arrives, so this is a description of what will
+   * happen rather than the instruction that makes it happen. There is always
+   * an answer, which is the whole design — nobody has to fill anything in to
+   * be handed a chapter.
+   *
+   * A day claimed by an older build of this app still wins, on the few
+   * accounts that have one. Nothing can create another.
+   */
+  const offerDay =
+    chapter?.status === "scheduled" && chapter.scheduledFor
+      ? chapter.scheduledFor
+      : comingWeekend(today);
+  const offerWindows: readonly NowTimeWindow[] = now.timeWindows?.length
+    ? now.timeWindows
+    : [NOW_DEFAULT_WINDOW];
+
+  const idle =
+    !chapter ||
+    ["declined", "lived", "failed", "scheduled"].includes(chapter.status);
+
+  /** One press, from wherever it is offered. */
+  const writeOne = () =>
+    void runAction(async () => {
+      await startNowChapter();
+      setEditing(false);
+    }, "Chapter couldn’t start writing.");
+
+  /*
+   * The one mark and its sheet stand over every screen past the first-run ask.
+   * There is one way in to all of it, and this is it.
+   */
+  const shell = (screen: ReactNode) => (
     <>
-      <HomeCityCard
-        homeCity={now.homeCity}
-        standing={standing}
-        notice={notice}
-        onChange={changeHomeCity}
-        onSchedule={openSchedule}
-      />
-      <ScheduleDialog open={scheduling} onClose={() => setScheduling(false)}>
-        <h2>When are you free?</h2>
-        <p className={styles.homeDialogNow}>
-          Chapter goes looking {NOW_LEAD_DAYS} days before the day itself.
-        </p>
-        <ScheduleForm
+      <SettingsEntry onOpen={openSettings} />
+
+      <SettingsDialog open={editing} onClose={() => setEditing(false)}>
+        <h2>Chapter</h2>
+        <p className={styles.sheetIntro}>Everything it works from.</p>
+        <AgentSettingsForm
           busy={busy}
           notice={notice}
-          day={dayDraft}
+          homeCity={cityDraft}
           windows={windowDraft}
           reach={reachDraft}
-          onChangeDay={setDayDraft}
+          onChangeHomeCity={setCityDraft}
           onChangeReach={setReachDraft}
           onToggleWindow={(window) =>
             setWindowDraft((chosen) =>
@@ -1107,179 +1148,187 @@ export default function NowView({
           }
           onSubmit={() =>
             void runAction(async () => {
-              await scheduleNowChapter(dayDraft, windowDraft, reachDraft);
-              setScheduling(false);
-            }, "Chapter couldn’t hold that day.")
+              if (cityDraft.length >= 2 && cityDraft !== now.homeCity) {
+                await saveHomeCity(cityDraft);
+              }
+              const moved =
+                windowDraft.join(",") !== (now.timeWindows ?? []).join(",") ||
+                reachDraft !== now.reach;
+              if (moved) await saveNowPreferences(windowDraft, reachDraft);
+              setEditing(false);
+            }, "Chapter couldn’t save that.")
           }
-        />
-        <button
-          type="button"
-          className={styles.homeDialogClose}
-          onClick={() => setScheduling(false)}
         >
-          {standing.kind === "scheduled" ? "Keep it as it is" : "Not yet"}
-        </button>
-      </ScheduleDialog>
+          <div className={styles.sheetActions}>
+            <button
+              type="button"
+              className={styles.quiet}
+              onClick={() => setEditing(false)}
+            >
+              Close
+            </button>
+          </div>
+        </AgentSettingsForm>
+      </SettingsDialog>
+
       {screen}
     </>
   );
 
-  if (!chapter || ["declined", "lived", "failed"].includes(chapter.status)) {
-    return withHomeCard(
-      <section className={styles.stateScreen}>
-        <h1>Tell Chapter when you’re free.</h1>
-        <p className={styles.stateCopy}>
-          {chapter?.status === "declined"
-            ? "Understood. Chapter will take a different angle on the next one."
-            : chapter?.status === "lived"
-              ? "That one’s part of your world now. Ready when you are."
-              : chapter?.status === "failed"
-                ? "The last search came home empty-handed. Rare, but it happens."
-                : `Pick a day and the parts of it you have. ${NOW_LEAD_DAYS} days before, Chapter reads your world and goes looking for one real, uncommon experience in ${now.homeCity} — something that grew out of your memories, with one step into the unknown.`}
-        </p>
-        <div className={styles.actions}>
-          <button type="button" disabled={busy} onClick={openSchedule}>
-            Choose a day
-          </button>
-          <button
-            type="button"
-            className={styles.quiet}
-            disabled={busy}
-            onClick={() =>
-              void runAction(
-                () => startNowChapter(),
-                "Chapter couldn’t start writing.",
-              )
-            }
-          >
-            Or write one now
-          </button>
+  /*
+   * A chapter that has just become a memory.
+   *
+   * The record is already `lived` and the screen would otherwise drop straight
+   * back to offering another one. This is the only place the loop is visible
+   * from: you went, and the world Chapter reads from is bigger for it.
+   */
+  if (justLived) {
+    return shell(
+      <NowStage>
+        <div className={styles.offer}>
+          <p className={styles.offerAsk}>That’s in your world now.</p>
+          <p className={styles.offerNote}>
+            What happened is part of what Chapter knows about you. The next
+            chapter starts from here.
+          </p>
+          <div className={styles.offerActions}>
+            <button
+              type="button"
+              onClick={() => {
+                setJustLived(false);
+                onOpenYou();
+              }}
+            >
+              See what grew
+            </button>
+            <button
+              type="button"
+              className={styles.plain}
+              onClick={() => setJustLived(false)}
+            >
+              Stay here
+            </button>
+          </div>
         </div>
-        {notice ? <p className={styles.notice}>{notice}</p> : null}
-      </section>,
+      </NowStage>,
     );
   }
 
   /*
-   * A day set aside, still ahead of its lead time. There is nothing to do and
-   * nothing to wait at: the screen says so, and says when that changes.
+   * The resting screen, which is where most visits start and end: the orb, and
+   * nothing else. Press it and Chapter goes and writes one.
+   *
+   * The one line underneath exists only when there is something a person could
+   * not otherwise know. Being ready is not news, so most of the time there is
+   * no line at all.
    */
-  if (chapter.status === "scheduled" && chapter.scheduledFor) {
-    const day = chapter.scheduledFor;
-    const soon = daysBetween(isoDay(), writingStartsOn(day)) <= 0;
-    return withHomeCard(
-      <section className={styles.stateScreen}>
-        <h1>{formatWeekday(day)} is yours.</h1>
-        <p className={styles.stateCopy}>
-          {describeWindows(chapter.timeWindows ?? [])} on {formatDay(day)}.{" "}
-          {soon
-            ? "Chapter is starting on it now — check back in a few minutes."
-            : `It starts reading your world ${writingDayPhrase(day)} and goes looking from there. Nothing to do until then.`}
-        </p>
-        <div className={styles.actions}>
-          <button type="button" disabled={busy} onClick={openSchedule}>
-            Change the day
-          </button>
-          <button
-            type="button"
-            className={styles.quiet}
-            disabled={busy}
-            onClick={() =>
-              void runAction(
-                () => startNowChapter(),
-                "Chapter couldn’t start writing.",
-              )
-            }
-          >
-            Write it now
-          </button>
-          <button
-            type="button"
-            className={styles.quiet}
-            disabled={busy}
-            onClick={() =>
-              void runAction(
-                () => cancelNowSchedule(chapter.id),
-                "Chapter couldn’t call that off.",
-              )
-            }
-          >
-            Call it off
-          </button>
-        </div>
+  if (idle) {
+    const phrase = offerPhrase(offerDay, offerWindows, today);
+    return shell(
+      <NowStage
+        press={{
+          onPress: writeOne,
+          busy,
+          label: `Write me a chapter for ${phrase}`,
+          hint: `Write me one for ${phrase}`,
+        }}
+        note={
+          busy
+            ? // Between the press and the first research stage a model is
+              // reading a whole world. Said out loud, because a bare screen
+              // that has just been pressed and does nothing looks broken.
+              "Reading your world"
+            : chapter?.status === "failed"
+              ? "The last search came home empty."
+              : undefined
+        }
+      >
         {notice ? <p className={styles.notice}>{notice}</p> : null}
-      </section>,
+      </NowStage>,
     );
   }
 
   if (chapter.status === "researching") {
-    return withHomeCard(
-      <div className={styles.researching} aria-busy="true" aria-live="polite">
-        <ChapterLoadingMark label={RESEARCH_STAGES[stageIndex]} />
-        <p className={styles.researchNote}>
-          Deep research takes a few minutes. It’s looking past the obvious.
-        </p>
-      </div>,
+    return shell(
+      <NowStage note={RESEARCH_STAGES[stageIndex]}>
+        {/* Five stages, so the wait has a length rather than just a spinner. */}
+        <ul className={styles.progress} aria-hidden="true">
+          {RESEARCH_STAGES.map((stage, index) => (
+            <li
+              key={stage}
+              className={styles.progressStep}
+              data-passed={index <= stageIndex}
+            />
+          ))}
+        </ul>
+      </NowStage>,
     );
   }
 
   const content = chapter.content;
   const anchors = chapter.brief?.anchors ?? [];
   if (!content) {
-    return withHomeCard(
-      <section className={styles.stateScreen}>
-        <h1>This chapter went missing.</h1>
-        <button type="button" onClick={() => void refresh()}>
-          Reload
-        </button>
-      </section>,
+    return shell(
+      <NowStage headline="This chapter went missing.">
+        <div className={styles.actions}>
+          <button type="button" onClick={() => void refresh()}>
+            Reload
+          </button>
+        </div>
+      </NowStage>,
     );
   }
 
   if (chapter.status === "proposed") {
-    return withHomeCard(
-      <section className={styles.chapterScreen}>
-        <article className={styles.card}>
-          <p className={styles.kicker}>Your next chapter</p>
-          <h1>{content.title}</h1>
+    /*
+     * The proposal, dealt out rather than laid down all at once.
+     *
+     * The order is the point. What Chapter already knew about this person
+     * comes first and alone, because that recognition is the only thing on
+     * the screen they could not have got from any other app. The stretch
+     * follows it, then the writing, and the place itself lands last: by then
+     * it reads as the answer to something rather than as a listing.
+     */
+    return shell(
+      <NowStage headline={content.title}>
+        <article className={styles.card} data-beats="true">
+          {/* One. What it already knew. The orbs are its working shown: every
+              one of them is a node out of this person's own world. */}
+          <p className={styles.known}>
+            <AnchoredCopy text={content.knownLine} anchors={anchors} />
+          </p>
+
+          {/* Two. The one thing here that isn't already true about them. */}
+          <p className={styles.unknown}>{content.unknownLine}</p>
+
+          {/* Three. The writing. */}
           <p className={styles.invitation}>
             <AnchoredCopy text={content.invitation} anchors={anchors} />
           </p>
 
-          <div className={styles.knownUnknown}>
-            <p className={styles.knownLine}>
-              <AnchoredCopy text={content.knownLine} anchors={anchors} />
-            </p>
-            <p className={styles.unknownLine}>{content.unknownLine}</p>
-          </div>
-
+          {/* Four. The find, on its own plate, because it is the object the
+              research went and came back with. */}
           <div className={styles.venue}>
             <p className={styles.venueName}>{content.venueName}</p>
             <p className={styles.venueMeta}>
               {content.venueArea}
               {content.address ? ` · ${content.address}` : ""}
             </p>
-            <p className={styles.venueMeta}>{content.bestTime}</p>
-            {content.priceNote ? (
-              <p className={styles.venueMeta}>{content.priceNote}</p>
-            ) : null}
+            <p className={styles.venueMeta}>
+              {content.bestTime}
+              {content.priceNote ? ` · ${content.priceNote}` : ""}
+            </p>
             <p className={styles.whyUncommon}>{content.whyUncommon}</p>
-            {chapter.evidence && chapter.evidence.length > 0 ? (
-              <p className={styles.evidence}>
-                {chapter.evidence.map((link, index) => (
-                  <a
-                    key={link.url}
-                    href={link.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                  >
-                    proof {index + 1}
-                  </a>
-                ))}
-              </p>
-            ) : null}
+            <Sources links={chapter.evidence ?? []} />
           </div>
 
+          {/* Five. The only question left, asked once the answer is worth
+              something: a day, chosen now that there is a reason to.
+
+              The slot around it is what stays put. Saying "not this one"
+              swaps what is inside it, and a beat that remounted there would
+              wait out the arrival delay of a chapter that arrived long ago. */}
+          <div className={styles.acceptSlot}>
           {declining ? (
             <form
               className={styles.declineForm}
@@ -1314,16 +1363,13 @@ export default function NowView({
             </form>
           ) : (
             <div className={styles.acceptRow}>
-              <label className={styles.dateField}>
-                <span>When</span>
-                <input
-                  type="date"
-                  value={dateDraft}
-                  min={isoDay()}
-                  onChange={(event) => setDateDraft(event.target.value)}
-                  aria-label="Choose a day"
-                />
-              </label>
+              <p className={styles.acceptLabel}>When are you going?</p>
+              <DayRail
+                day={dateDraft}
+                label="When you’re going"
+                span={14}
+                onChange={setDateDraft}
+              />
               <div className={styles.actions}>
                 <button
                   type="button"
@@ -1349,27 +1395,31 @@ export default function NowView({
             </div>
           )}
           {notice ? <p className={styles.notice}>{notice}</p> : null}
+          </div>
         </article>
-      </section>,
+      </NowStage>,
     );
   }
 
   // Accepted: the plan, then the reflection loop once the day has passed.
   const dayArrived =
-    Boolean(chapter.scheduledFor) && chapter.scheduledFor! <= isoDay();
+    Boolean(chapter.scheduledFor) && chapter.scheduledFor! <= today;
 
-  return withHomeCard(
-    <section className={styles.chapterScreen}>
+  return shell(
+    <NowStage headline={dayArrived ? "How was it?" : content.title}>
       <article className={styles.card}>
-        <p className={styles.kicker}>
-          {dayArrived ? "How was it?" : "Your plan"}
-        </p>
-        <h1>{content.title}</h1>
-        <p className={styles.venueName}>{content.venueName}</p>
-        <p className={styles.venueMeta}>
-          {content.venueArea} · {chapter.scheduledFor}
-        </p>
-        <p className={styles.venueMeta}>{content.bestTime}</p>
+        <div className={styles.venue}>
+          <p className={styles.venueName}>{content.venueName}</p>
+          <p className={styles.venueMeta}>
+            {content.venueArea}
+            {content.address ? ` · ${content.address}` : ""}
+          </p>
+          <p className={styles.venueMeta}>
+            {chapter.scheduledFor
+              ? `${formatDay(chapter.scheduledFor, today)} · ${content.bestTime}`
+              : content.bestTime}
+          </p>
+        </div>
 
         {dayArrived ? (
           <form
@@ -1393,6 +1443,10 @@ export default function NowView({
                 }
                 await markNowChapterLived(chapter.id);
                 onGraphAdvanced();
+                // Held so the world growing is something a person watches
+                // happen, rather than something the next offer paints over.
+                setReflectionDraft("");
+                setJustLived(true);
               }, "Chapter couldn’t keep that memory.");
             }}
           >
@@ -1427,13 +1481,13 @@ export default function NowView({
             </div>
           </form>
         ) : (
-          <p className={styles.stateCopy}>
-            When the day passes, Chapter will ask how it went — and that story
+          <p className={styles.waitCopy}>
+            When the day passes, Chapter will ask how it went, and that story
             joins your world.
           </p>
         )}
         {notice ? <p className={styles.notice}>{notice}</p> : null}
       </article>
-    </section>,
+    </NowStage>,
   );
 }

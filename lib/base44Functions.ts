@@ -160,6 +160,9 @@ type NowChapterValue = {
 export function fetchMyNow(accessToken: string) {
   return invokeSidequestData<{
     homeCity: string;
+    /** Absent on an account that has never been asked. */
+    timeWindows?: import("./nowChapterSchema").NowTimeWindow[];
+    reach?: import("./nowChapterSchema").NowReach;
     chapter: import("./nowChapterSchema").NowChapterRecord | null;
     avoidVenues: string[];
   }>({ action: "getMyNow" }, accessToken);
@@ -170,6 +173,20 @@ export function setMyHomeCity(homeCity: string, accessToken: string) {
     { action: "setMyHomeCity", homeCity },
     accessToken,
   );
+}
+
+/** When someone is usually free, and how far they will usually go. */
+export function setMyNowPreferences(
+  args: {
+    timeWindows: readonly import("./nowChapterSchema").NowTimeWindow[];
+    reach: import("./nowChapterSchema").NowReach;
+  },
+  accessToken: string,
+) {
+  return invokeSidequestData<{
+    timeWindows: import("./nowChapterSchema").NowTimeWindow[];
+    reach: import("./nowChapterSchema").NowReach;
+  }>({ action: "setMyNowPreferences", ...args }, accessToken);
 }
 
 type TogetherChapterValue = {

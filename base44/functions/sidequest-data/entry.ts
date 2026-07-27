@@ -1572,12 +1572,53 @@ Deno.serve(async (req) => {
       return Response.json({
         value: {
           homeCity: stringValue(user.home_city) || stringValue(user.current_city),
+          /*
+           * The two standing habits every chapter is written from. They travel
+           * with the account rather than the chapter that used them, because a
+           * chapter is written *from* them: reading them back off one would
+           * leave a person's first ever request with nothing to read.
+           */
+          timeWindows: timeWindowList(user.now_time_windows),
+          reach: reachValue(user.now_reach),
           chapter: rows[0] ? nowChapterRecord(rows[0]) : null,
           avoidVenues: rows
             .map((row: Row) => stringValue(row.venue_name))
             .filter(Boolean),
         },
       });
+    }
+
+    /**
+     * When someone is usually free, and how far they will usually go.
+     *
+     * Separate from the city because they are answered at different moments:
+     * the city is the one thing the first run insists on, and these two have
+     * working defaults and are only ever corrections.
+     */
+    if (action === "setMyNowPreferences") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const timeWindows = timeWindowList(data.timeWindows);
+      const reach = reachValue(data.reach);
+      // Both or neither. Writing an undefined reach beside a good set of hours
+      // would leave the account half-answered in a way nothing reading it back
+      // could tell from never having been asked.
+      if (timeWindows.length === 0 || !reach) {
+        return Response.json(
+          { error: "when you are free and how far you will go are both required" },
+          { status: 400 },
+        );
+      }
+
+      await users.update(user.id, {
+        now_time_windows: timeWindows.join(","),
+        now_reach: reach,
+      });
+      return Response.json({ value: { timeWindows, reach } });
     }
 
     if (action === "setMyHomeCity") {

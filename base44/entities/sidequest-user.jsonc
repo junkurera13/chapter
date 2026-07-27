@@ -26,6 +26,15 @@
       "type": "string",
       "description": "Normalised home_city, so two people who wrote their city differently are still in one place. The introduction pool is queried on this."
     },
+    "now_time_windows": {
+      "type": "string",
+      "description": "Comma-separated parts of a day this person is usually free in: morning, afternoon, evening, night. A standing habit rather than a plan for one day, so it steers every chapter written for them until they say otherwise. Absent means evening."
+    },
+    "now_reach": {
+      "type": "string",
+      "enum": ["walk", "near", "city", "beyond"],
+      "description": "How far this person will usually travel for a chapter, as travel time rather than distance: walk (15 min on foot), near (~30 min), city (~1 hour), beyond (~2 hours, deliberately outside the home city). Absent means near."
+    },
     "notes": { "type": "string" },
     "memory_updated_at": { "type": "number" },
     "eve_session_id": {

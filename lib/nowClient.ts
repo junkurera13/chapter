@@ -13,6 +13,13 @@ export type { PlaceSuggestion };
 
 export type NowState = {
   homeCity: string;
+  /**
+   * The two standing habits every chapter is written from. Absent on an
+   * account that has never been asked, which is a complete answer in itself:
+   * the defaults are real answers, so nothing is ever waiting on them.
+   */
+  timeWindows?: NowTimeWindow[];
+  reach?: NowReach;
   chapter: NowChapterRecord | null;
   avoidVenues?: string[];
 };
@@ -68,38 +75,22 @@ async function nowFetch<T>(init?: {
   return payload.value;
 }
 
-/**
- * Reading Now is also what advances it, so it carries the day the person is
- * standing in: a Saturday set aside in Seoul comes due on Seoul's calendar,
- * not on whichever one the server happens to keep.
- */
+/** Reading Now, which never starts anything. Only a press does that. */
 export function loadNow() {
-  return nowFetch<NowState>({ query: { today: isoDay() } }).then((value) =>
+  return nowFetch<NowState>().then((value) =>
     rememberOpened(OPENED_NOW, value),
   );
 }
 
-/** Sets a day aside. Chapter starts writing for it three days before. */
-export function scheduleNowChapter(
-  scheduledFor: string,
+/** When you are usually free, and how far you will go. Kept on the account. */
+export function saveNowPreferences(
   timeWindows: readonly NowTimeWindow[],
   reach: NowReach,
 ) {
-  return nowFetch<{ chapter: NowChapterRecord }>({
+  return nowFetch<{ timeWindows: NowTimeWindow[]; reach: NowReach }>({
     method: "POST",
-    body: {
-      action: "schedule",
-      scheduledFor,
-      timeWindows,
-      reach,
-      today: isoDay(),
-    },
+    body: { action: "setPreferences", timeWindows, reach },
   });
-}
-
-/** Calling off a day before anything has been written for it. */
-export function cancelNowSchedule(chapterId: string) {
-  return declineNowChapter(chapterId, "");
 }
 
 export function saveHomeCity(homeCity: string) {
@@ -143,17 +134,31 @@ export async function searchPlaceSuggestions(
   return payload.value?.places ?? [];
 }
 
+/**
+ * Write one, now. The whole of what the orb does.
+ *
+ * Carries only the day the person is standing in. When they are usually free
+ * and how far they will go are read off the account by the server, so there is
+ * one copy of them and a stale tab cannot research against an old answer.
+ */
 export function startNowChapter() {
   return nowFetch<{ chapter: NowChapterRecord }>({
     method: "POST",
-    body: { action: "start" },
+    body: { action: "start", today: isoDay() },
   });
 }
 
+/**
+ * Saying you are going, and when.
+ *
+ * Carries the day the person is standing in, because the day they picked is
+ * only in the future on their own calendar: a Saturday in Seoul is not this
+ * server's Saturday.
+ */
 export function acceptNowChapter(chapterId: string, scheduledFor: string) {
   return nowFetch<{ chapter: NowChapterRecord }>({
     method: "POST",
-    body: { action: "accept", chapterId, scheduledFor },
+    body: { action: "accept", chapterId, scheduledFor, today: isoDay() },
   });
 }
 

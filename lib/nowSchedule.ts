@@ -1,5 +1,4 @@
 import {
-  NOW_LEAD_DAYS,
   NOW_SCHEDULE_HORIZON_DAYS,
   NOW_TIME_WINDOWS,
   type NowTimeWindow,
@@ -39,20 +38,6 @@ export function daysBetween(from: string, to: string) {
   return Math.round((end - start) / 86_400_000);
 }
 
-/** The day Chapter starts writing for a day someone said they were free. */
-export function writingStartsOn(scheduledFor: string) {
-  return addDays(scheduledFor, -NOW_LEAD_DAYS);
-}
-
-/**
- * True once the writing day has arrived. Past-due counts: a schedule that sat
- * through its own lead time because nobody opened the app is still owed its
- * chapter, right up until the day itself.
- */
-export function isDueToWrite(scheduledFor: string, today = isoDay()) {
-  return writingStartsOn(scheduledFor) <= today && today <= scheduledFor;
-}
-
 /** A day already gone. Nothing can be written for it, and nothing should be. */
 export function hasPassed(scheduledFor: string, today = isoDay()) {
   return scheduledFor < today;
@@ -82,6 +67,20 @@ export function upcomingDays(count: number, from = isoDay()) {
       startsMonth: index === 0 || date.getDate() === 1,
     };
   });
+}
+
+/**
+ * The next day worth offering to write for: today if today is already the
+ * weekend, otherwise the coming Saturday.
+ *
+ * Nobody sets a day aside for a chapter they have not read yet, so the offer
+ * has to name a day on the person's behalf. This is the day it names, and it
+ * is a guess rather than a booking: nothing is claimed until they say yes.
+ */
+export function comingWeekend(today = isoDay()) {
+  const weekday = new Date(`${today}${NOON}`).getDay();
+  if (weekday === 0 || weekday === 6) return today;
+  return addDays(today, 6 - weekday);
 }
 
 export function formatDay(iso: string, today = isoDay()) {
@@ -121,22 +120,3 @@ export function describeWindows(windows: readonly string[]) {
   return joined[0].toUpperCase() + joined.slice(1);
 }
 
-/**
- * The writing day as it reads inside a sentence rather than standing alone:
- * "tomorrow", not "Tomorrow" with a capital in the middle of a line.
- */
-export function writingDayPhrase(scheduledFor: string, today = isoDay()) {
-  const startsOn = writingStartsOn(scheduledFor);
-  const away = daysBetween(today, startsOn);
-  if (away <= 0) return "today";
-  if (away === 1) return "tomorrow";
-  return `on ${formatDay(startsOn, today)}`;
-}
-
-/** How the wait reads on the card while a scheduled chapter is still ahead. */
-export function describeWait(scheduledFor: string, today = isoDay()) {
-  const until = daysBetween(today, writingStartsOn(scheduledFor));
-  if (until <= 0) return "Chapter is writing it now";
-  if (until === 1) return "Chapter starts writing tomorrow";
-  return `Chapter starts writing in ${until} days`;
-}

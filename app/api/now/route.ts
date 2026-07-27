@@ -3,11 +3,13 @@ import {
   createNowChapter,
   fetchMyGraph,
   fetchMyNow,
-  scheduleNowChapter,
   setMyHomeCity,
+  setMyNowPreferences,
   updateNowChapter,
 } from "@/lib/base44Functions";
 import {
+  NOW_DEFAULT_REACH,
+  NOW_DEFAULT_WINDOW,
   NOW_REACHES,
   NOW_RESEARCH_OUTPUT_SCHEMA,
   NOW_TIME_WINDOWS,
@@ -22,8 +24,8 @@ import {
 } from "@/lib/nowGeneration";
 import {
   canSchedule,
+  comingWeekend,
   daysBetween,
-  isDueToWrite,
   isIsoDay,
   isoDay,
 } from "@/lib/nowSchedule";
@@ -54,10 +56,10 @@ function unauthenticated() {
 }
 
 /**
- * The caller's own calendar day, which is the only one a schedule means
- * anything in: a Saturday set aside in Seoul is not this server's Saturday.
- * Clamped to a day either side of the server's, so the worst a bad value can
- * do is arm a chapter the person could have armed by hand anyway.
+ * The caller's own calendar day, which is the only one a plan means anything
+ * in: a Saturday in Seoul is not this server's Saturday. Clamped to a day
+ * either side of the server's, so the worst a bad value can do is let through
+ * a day the person could have picked anyway.
  */
 function viewerToday(value: unknown) {
   const claimed = typeof value === "string" ? value : "";
@@ -72,18 +74,39 @@ type NowSnapshot = Awaited<ReturnType<typeof fetchMyNow>>;
  * Stages one and two of a chapter: read the world, write the one-stretch
  * brief, hand it to deep research, and record the run against the person.
  *
- * This is the only path that spends money, so it stays behind a person asking
- * — either by pressing the button, or by having set this day aside themselves.
+ * This is the only path that spends money, and the only thing that reaches it
+ * is a person pressing the orb.
+ *
+ * It researches against the caller's next free day rather than against no day
+ * at all: research with nothing to check opening hours against comes home with
+ * hours nobody can plan around. That day is a frame for the search, not a
+ * booking. What gets booked is whatever they pick after reading the thing.
  */
 async function beginWriting(args: {
   now: NowSnapshot;
   graph: Awaited<ReturnType<typeof fetchMyGraph>>;
   accessToken: string;
   requestId: string;
+  /** The day to research against when none has been set aside. */
+  horizon?: string;
   signal?: AbortSignal;
 }): Promise<NowChapterRecord> {
   const { now, requestId } = args;
   const scheduled = now.chapter?.status === "scheduled" ? now.chapter : null;
+
+  /*
+   * The hours and the reach are read off the account rather than taken from
+   * whoever called this. They are what the person saved, so there is no second
+   * copy that could disagree with it, and no way for a stale tab to research
+   * against something they have already changed their mind about.
+   */
+  const scheduledFor = scheduled?.scheduledFor ?? args.horizon;
+  const timeWindows = scheduled?.timeWindows?.length
+    ? scheduled.timeWindows
+    : now.timeWindows?.length
+      ? now.timeWindows
+      : [NOW_DEFAULT_WINDOW];
+  const reach = scheduled?.reach ?? now.reach ?? NOW_DEFAULT_REACH;
 
   const brief = await generateNowBrief({
     graph: args.graph,
@@ -91,9 +114,9 @@ async function beginWriting(args: {
     avoidVenues: now.avoidVenues,
     declineReason:
       now.chapter?.status === "declined" ? now.chapter.declineReason : undefined,
-    scheduledFor: scheduled?.scheduledFor,
-    timeWindows: scheduled?.timeWindows,
-    reach: scheduled?.reach,
+    scheduledFor,
+    timeWindows,
+    reach,
     requestId,
     signal: args.signal,
   });
@@ -146,57 +169,20 @@ function failure(error: unknown, requestId: string) {
 }
 
 /**
- * Returns the current Now state, and moves it along on the way past.
+ * Returns the current Now state, and composes a finished research run into a
+ * proposal on the way past.
  *
- * Two things can advance here. A day someone set aside reaches its lead time
- * and starts being written; a research run that has come back is composed into
- * the proposal. Both live on this one endpoint so the client only ever polls
- * the one it is already polling.
+ * Reading never starts a run. Writing a chapter costs real money, and the only
+ * thing that spends it is somebody pressing the orb.
  */
 export async function GET(request: Request) {
   const requestId = crypto.randomUUID();
   const accessToken = accessTokenFrom(request);
   if (!accessToken) return unauthenticated();
-  const today = viewerToday(new URL(request.url).searchParams.get("today"));
 
   try {
     const now = await fetchMyNow(accessToken);
     const chapter = now.chapter;
-
-    /*
-     * The automation itself. A scheduled day whose three days of lead time
-     * have opened becomes a chapter being written, without anyone asking
-     * again — they asked when they set the day aside.
-     */
-    if (
-      chapter?.status === "scheduled" &&
-      chapter.scheduledFor &&
-      isDueToWrite(chapter.scheduledFor, today) &&
-      now.homeCity
-    ) {
-      try {
-        const graph = await fetchMyGraph(accessToken);
-        if (graph.memoryCount > 0) {
-          const armed = await beginWriting({
-            now,
-            graph,
-            accessToken,
-            requestId,
-            signal: request.signal,
-          });
-          return Response.json({ value: { ...now, chapter: armed } });
-        }
-      } catch (error) {
-        // A schedule that could not be armed this time is still a schedule.
-        // It stays due, and the next read tries again.
-        console.error("[now:route] scheduled chapter could not start", {
-          requestId,
-          chapterId: chapter.id,
-          errorName: error instanceof Error ? error.name : "UnknownError",
-        });
-      }
-      return Response.json({ value: now });
-    }
 
     if (
       !chapter ||
@@ -313,40 +299,22 @@ export async function POST(request: Request) {
     }
 
     /*
-     * Setting a day aside. Deliberately cheap: it books the slot and stops,
-     * so the research is paid for once, three days out, and only if the day
-     * is still standing then.
+     * The two standing habits, saved against the account so they follow a
+     * person to whatever they next open Chapter on.
      */
-    if (body.action === "schedule") {
-      const scheduledFor =
-        typeof body.scheduledFor === "string" ? body.scheduledFor : "";
+    if (body.action === "setPreferences") {
       const timeWindows = chosenWindows(body.timeWindows);
       const reach = chosenReach(body.reach);
-      if (!canSchedule(scheduledFor, viewerToday(body.today))) {
-        return Response.json(
-          { error: "Pick a day that hasn’t gone yet.", code: "NOW_INPUT_INVALID" },
-          { status: 400 },
-        );
-      }
       if (timeWindows.length === 0 || !reach) {
         return Response.json(
           {
-            error: "Tell Chapter when you’re free that day.",
+            error: "Tell Chapter when you’re free.",
             code: "NOW_INPUT_INVALID",
           },
           { status: 400 },
         );
       }
-      const value = await scheduleNowChapter(
-        { scheduledFor, timeWindows, reach },
-        accessToken,
-      );
-      console.info("[now:route] day set aside", {
-        requestId,
-        chapterId: value.chapter.id,
-        windows: timeWindows.length,
-        reach,
-      });
+      const value = await setMyNowPreferences({ timeWindows, reach }, accessToken);
       return Response.json({ value });
     }
 
@@ -378,12 +346,15 @@ export async function POST(request: Request) {
 
       console.info("[now:route] generation started", { requestId });
       // Asking now for a day already set aside writes for that day, rather
-      // than starting a second chapter beside it.
+      // than starting a second chapter beside it. Asking with nothing set
+      // aside researches against the coming weekend, which is what the button
+      // that sent this offered to write for.
       const chapter = await beginWriting({
         now,
         graph,
         accessToken,
         requestId,
+        horizon: comingWeekend(viewerToday(body.today)),
         signal: request.signal,
       });
       return Response.json({ value: { chapter } });
@@ -406,6 +377,17 @@ export async function POST(request: Request) {
       if (body.action === "accept") {
         const scheduledFor =
           typeof body.scheduledFor === "string" ? body.scheduledFor : "";
+        // The one day this product still takes, so it is the one worth
+        // checking: saying you are going on a day already gone is not a plan.
+        if (!canSchedule(scheduledFor, viewerToday(body.today))) {
+          return Response.json(
+            {
+              error: "Pick a day that hasn’t gone yet.",
+              code: "NOW_INPUT_INVALID",
+            },
+            { status: 400 },
+          );
+        }
         const value = await updateNowChapter(
           { chapterId, status: "accepted", scheduledFor },
           accessToken,

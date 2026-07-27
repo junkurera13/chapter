@@ -1,63 +1,15 @@
-.chapterScreen,
-.stateScreen,
-.researching,
 .loading {
+  display: grid;
   min-height: 100svh;
-  padding: 84px 24px 132px;
+  padding: 24px 24px 132px;
+  place-items: center;
   background: #fff;
   color: #25211d;
 }
 
-.loading,
-.researching {
-  display: grid;
-  place-items: center;
-  padding-top: 24px;
-}
-
-.researching {
-  align-content: center;
-  gap: 18px;
-  justify-items: center;
-  text-align: center;
-}
-
-.researchNote {
-  max-width: 300px;
-  margin: 0;
-  color: rgba(45, 39, 34, 0.45);
-  font-size: 13px;
-}
-
-.stateScreen {
-  display: grid;
-  width: min(560px, 100%);
-  margin: 0 auto;
-  align-content: center;
-  gap: 16px;
-  justify-items: start;
-}
-
-.stateScreen h1 {
-  margin: 0;
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: clamp(34px, 6vw, 54px);
-  font-weight: 500;
-  letter-spacing: -0.045em;
-  line-height: 0.99;
-}
-
-.stateCopy {
-  max-width: 430px;
-  margin: 0;
-  color: rgba(45, 39, 34, 0.55);
-  font-size: 15px;
-  line-height: 1.45;
-}
-
-.stateScreen > button,
 .cityForm button[type="submit"],
-.scheduleForm button[type="submit"],
+.sheetForm button[type="submit"],
+.offerActions button,
 .actions button {
   padding: 13px 22px;
   border: none;
@@ -69,9 +21,9 @@
   font-weight: 560;
 }
 
-.stateScreen > button:disabled,
 .cityForm button[type="submit"]:disabled,
-.scheduleForm button[type="submit"]:disabled,
+.sheetForm button[type="submit"]:disabled,
+.offerActions button:disabled,
 .actions button:disabled {
   opacity: 0.45;
   cursor: default;
@@ -83,281 +35,419 @@
   color: rgba(37, 33, 29, 0.72);
 }
 
-/* Mirrors the You onboarding invitation: centred orb video over a balanced
-   headline, with the single input beneath. */
 /*
- * The standing card of the tab, in the same plate Together's people card is
- * cut from: soft grey, no rim and no lift, so it settles into the page while
- * the chapter in the middle of the screen is the thing that carries weight.
+ * Quieter than quiet: no edge at all.
+ *
+ * It sits beside the one thing this screen is arguing for, and an outlined
+ * button next to a filled one reads as a second option of the same weight.
+ * This one has to read as a way out rather than as an alternative.
  */
-.homeCard {
+.offerActions .plain {
+  background: transparent;
+  color: rgba(45, 39, 34, 0.5);
+  font-weight: 520;
+  transition: color 150ms ease;
+}
+
+.offerActions .plain:hover {
+  color: rgba(37, 33, 29, 0.85);
+}
+
+/*
+ * The way in to everything Chapter works from, and all that is left of the
+ * panel that used to hold it.
+ *
+ * A card of labelled rows with an edit button in the corner is the shape of a
+ * console, and standing permanently over a screen whose whole argument is
+ * "press the orb", it made the orb look like the read-out of a job someone had
+ * configured. So it is one mark now, kept at the edge and kept faint, and it
+ * comes up only when somebody goes looking for it.
+ */
+.settingsEntry {
   position: absolute;
   z-index: 4;
-  top: 22px;
-  right: 22px;
-  display: flex;
-  flex-direction: column;
-  width: min(18rem, calc(100vw - 44px));
-  padding: 12px 12px 10px;
-  border: 0;
-  border-radius: 20px;
-  background: #f8f7f5;
-}
-
-/* The one rule in the card, running the full width of it. */
-.homeCardHeader {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 8px;
-  margin: 0 -12px;
-  padding: 3px 15px 11px;
-  border-bottom: 1px solid rgba(57, 48, 43, 0.1);
-}
-
-.homeCardOrb {
-  width: 26px;
-  height: 26px;
-  flex: none;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 50%;
-  box-shadow:
-    inset 3px 4px 5px rgba(255, 255, 255, 0.24),
-    inset -2px -3px 5px rgba(24, 17, 13, 0.18),
-    0 2px 5px rgba(47, 34, 24, 0.13);
-}
-
-.homeCardName {
-  flex: 1;
-  min-width: 0;
-  color: #1c1c19;
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.homeCardAction {
-  flex: none;
+  top: 20px;
+  right: 20px;
   display: inline-flex;
+  width: 34px;
+  height: 34px;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
   appearance: none;
   border: 0;
   border-radius: 999px;
-  background: rgba(28, 28, 25, 0.05);
-  color: rgba(28, 28, 25, 0.6);
+  background: transparent;
+  color: rgba(45, 39, 34, 0.3);
   cursor: pointer;
   transition:
-    background 150ms ease,
-    color 150ms ease;
+    background 160ms ease,
+    color 160ms ease;
 }
 
-.homeCardAction svg {
-  width: 13px;
-  height: 13px;
-}
-
-.homeCardAction:hover {
-  background: rgba(28, 28, 25, 0.09);
-  color: rgba(28, 28, 25, 0.82);
-}
-
-.homeCardAction:focus-visible {
-  outline: 2px solid #9e8265;
-  outline-offset: 2px;
-}
-
-/* What the rows below are, said once and quietly. */
-.homeCardLabel {
-  margin: 0;
-  padding: 11px 3px 2px;
-  color: rgba(49, 44, 38, 0.34);
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-/* The one row under "Coming up". Same skeleton whatever it is saying, so the
-   card doesn't reflow as a day turns into a chapter. */
-.standing {
-  display: grid;
-  width: 100%;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
-  gap: 9px;
-  min-height: 38px;
-  margin: 0;
-  padding: 5px 3px;
-  align-items: center;
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-}
-
-/* Only a day you set aside is still yours to change, so only that one is a
-   button, and only that one says so under the cursor. */
-.standing[data-editable="true"] {
-  margin-inline: -6px;
-  padding-inline: 9px;
-  width: calc(100% + 12px);
-  border-radius: 13px;
-  cursor: pointer;
-  transition: background 150ms ease;
-}
-
-.standing[data-editable="true"]:hover {
-  background: rgba(28, 28, 25, 0.05);
-}
-
-.standing:focus-visible,
-.standingInvite:focus-visible {
-  outline: 2px solid #9e8265;
-  outline-offset: 2px;
-}
-
-.standingOrb {
+.settingsEntry svg {
   width: 15px;
   height: 15px;
+}
+
+.settingsEntry:hover {
+  background: rgba(28, 28, 25, 0.05);
+  color: rgba(28, 28, 25, 0.72);
+}
+
+.settingsEntry:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 2px;
+  color: rgba(28, 28, 25, 0.72);
+}
+
+/* ------------------------------------------------------------------------ *
+ * The middle of the tab: the agent, and nothing else until it has written.
+ * ------------------------------------------------------------------------ */
+
+.stage {
+  display: grid;
+  width: min(38rem, 100%);
+  min-height: 100svh;
+  margin: 0 auto;
+  /* Rows sit at the top rather than sharing out the leftover screen: a stage
+     taller than its content would otherwise push the chapter off its orb. */
+  align-content: start;
+  padding: clamp(5.5rem, 12vh, 7.5rem) clamp(1rem, 4vw, 2rem) 9rem;
+  background: #fff;
+  color: #25211d;
+}
+
+/* At rest the orb is the whole screen, centred and turning. */
+.stage[data-open="false"] {
+  align-content: center;
+  justify-items: center;
+  padding-top: clamp(1rem, 4vh, 2rem);
+  padding-bottom: clamp(6rem, 13vh, 9rem);
+}
+
+.stageHead {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.stage[data-open="false"] .stageHead {
+  flex-direction: column;
+  transform: translateY(-1.5rem);
+}
+
+/* Orb and headline travel as one centred group, the way the memory composer
+   does when it comes up out of its question. */
+.stage[data-open="true"] .stageHead {
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  gap: clamp(0.7rem, 1.8vw, 1rem);
+  justify-content: center;
+}
+
+/* One element in two sizes. Motion carries it between them. */
+.stageOrb {
+  display: block;
+  width: 4.5rem;
   flex: none;
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  aspect-ratio: 1;
   border-radius: 50%;
-  box-shadow:
-    inset 2px 3px 4px rgba(255, 255, 255, 0.26),
-    inset -2px -2px 4px rgba(24, 17, 13, 0.18),
-    0 1px 4px rgba(47, 34, 24, 0.14);
+  line-height: 0;
 }
 
-/* Work in progress, at the speed of something thinking rather than loading. */
-.standing[data-busy="true"] .standingOrb {
-  animation: standingPulse 2.4s ease-in-out infinite;
+.stage[data-open="false"] .stageOrb {
+  width: clamp(11rem, min(24vw, 30vh), 17rem);
 }
 
-@keyframes standingPulse {
+.stageOrb video,
+.stageOrb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/*
+ * The orb, as the one thing on this screen that can be pressed.
+ *
+ * No label on it and no button beside it. Pressing it is the whole
+ * interaction, and anything added here would be a second thing to read before
+ * the first thing could be done.
+ *
+ * The scale lives on the button and the breathing lives on the halo behind
+ * it, so neither ever writes a transform onto the orb itself: that element
+ * belongs to Motion, which lays it out when a chapter arrives.
+ */
+.orbPress {
+  position: relative;
+  /* Always its own stacking context, so the halo behind the orb is behind the
+     orb and not behind the white page the orb is sitting on. Without this it
+     would only appear once :hover added a transform and made one by accident. */
+  isolation: isolate;
+  display: block;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+  transition: transform 280ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+/* Alive, and therefore worth reaching for. The only invitation on the page. */
+.orbPress::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -9%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(196, 138, 92, 0.22),
+    rgba(196, 138, 92, 0) 68%
+  );
+  animation: orbHalo 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.orbPress:hover {
+  transform: scale(1.03);
+}
+
+.orbPress:active {
+  transform: scale(0.985);
+}
+
+.orbPress:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 10px;
+}
+
+.orbPress:disabled {
+  cursor: default;
+  transform: none;
+}
+
+/* Pressed, and now thinking. It stops asking to be pressed again. */
+.orbPress:disabled::before {
+  animation: none;
+  opacity: 0.3;
+}
+
+@keyframes orbHalo {
   0%,
   100% {
-    opacity: 1;
-    transform: scale(1);
+    opacity: 0.4;
+    transform: scale(0.97);
   }
   50% {
-    opacity: 0.55;
-    transform: scale(0.88);
+    opacity: 0.85;
+    transform: scale(1.05);
+  }
+}
+
+/*
+ * What the press would do, held back until somebody reaches for it.
+ *
+ * Absolute so it costs the resting screen no height at all: the orb sits
+ * where it would sit with nothing under it, and stays there when the words
+ * arrive. Bare at rest is the point, and a line that had to be made room for
+ * would not be bare, only faint.
+ */
+.orbHint {
+  position: absolute;
+  top: calc(100% + clamp(0.85rem, 2.2vh, 1.25rem));
+  left: 50%;
+  width: max-content;
+  max-width: min(20rem, 80vw);
+  color: rgba(45, 39, 34, 0.42);
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 240ms ease,
+    transform 240ms ease;
+  pointer-events: none;
+}
+
+.orbPress:hover + .orbHint,
+.orbPress:focus-visible + .orbHint {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* Nothing to hover with, so nothing to reveal. The orb is simply pressed. */
+@media (hover: none) {
+  .orbHint {
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .standing[data-busy="true"] .standingOrb {
+  .orbPress,
+  .orbPress::before {
+    animation: none;
+    transition: none;
+  }
+}
+
+.stageHeadline {
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(1.75rem, 3.4vw, 2.6rem);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+/* Thinking out loud. The only words the resting screen ever says. */
+.stageNote {
+  margin: clamp(1.1rem, 2.6vh, 1.6rem) 0 0;
+  color: rgba(45, 39, 34, 0.42);
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  text-align: center;
+}
+
+.stageBody {
+  margin-top: clamp(1.4rem, 3.4vh, 2.1rem);
+  animation: stageBodyIn 440ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+}
+
+/* A proposal deals itself out beat by beat, and one entrance is enough: the
+   container rising underneath five things that are already rising reads as
+   two animations fighting. Keyed off something that never changes while the
+   proposal is up — a rule that switches on and off would restart the
+   animation it was suppressing, and re-fade a chapter already being read. */
+.stageBody:has(.card[data-beats="true"]) {
+  animation: none;
+}
+
+/* Under the resting orb, the offer is a centred column rather than a page. */
+.stage[data-open="false"] .stageBody {
+  width: min(27rem, 100%);
+  margin-top: clamp(0.5rem, 1.6vh, 0.9rem);
+  text-align: center;
+}
+
+@keyframes stageBodyIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stageBody {
     animation: none;
   }
 }
 
-.standingText {
+/* ------------------------------------------------------------------------ *
+ * The offer: one question about a real day, and the press that answers it.
+ *
+ * This is the whole of what Chapter asks of anybody. Everything the research
+ * needs has an answer already, so the resting screen is never a form waiting
+ * to be filled in — it is a thing being held out.
+ * ------------------------------------------------------------------------ */
+
+.offer {
   display: grid;
-  min-width: 0;
-  gap: 1px;
+  justify-items: center;
 }
 
-.standingTitle {
-  overflow: hidden;
-  color: rgba(37, 33, 29, 0.86);
-  font-size: 13px;
-  font-weight: 570;
-  letter-spacing: -0.012em;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.standingNote {
-  overflow: hidden;
-  color: rgba(45, 39, 34, 0.44);
-  font-size: 11px;
-  letter-spacing: -0.005em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.standingTag {
-  flex: none;
-  color: rgba(45, 39, 34, 0.46);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* The countdown sits under the row rather than beside it: it is about the row,
-   not another column of it. */
-.standingWait {
-  margin: 1px 0 3px;
-  padding: 0 3px;
-  color: rgba(45, 39, 34, 0.4);
-  font-size: 11px;
-  letter-spacing: -0.005em;
-}
-
-/* Nothing set aside yet. An empty slot that is obviously fillable, rather
-   than a sentence explaining that it is empty. */
-.standingInvite {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 8px;
-  margin: 2px 0 3px;
-  padding: 9px 11px;
-  appearance: none;
-  border: 1px dashed rgba(57, 48, 43, 0.24);
-  border-radius: 14px;
-  background: transparent;
-  color: rgba(45, 39, 34, 0.6);
-  cursor: pointer;
+.offerAsk {
+  margin: 0;
+  color: #25211d;
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 12.5px;
-  font-weight: 540;
-  letter-spacing: -0.012em;
-  text-align: left;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 500;
+  letter-spacing: -0.042em;
+  line-height: 1.08;
+  text-wrap: balance;
 }
 
-.standingInvite:hover {
-  border-color: rgba(57, 48, 43, 0.4);
-  background: rgba(28, 28, 25, 0.03);
-  color: rgba(37, 33, 29, 0.86);
+/* What pressing it costs and what comes back, said before it is pressed. A
+   wait somebody was told about is patience; the same wait unannounced is a
+   screen that has stopped working. */
+.offerNote {
+  max-width: 24rem;
+  margin: 0.75rem 0 0;
+  color: rgba(45, 39, 34, 0.45);
+  font-size: 13px;
+  line-height: 1.5;
+  text-wrap: balance;
 }
 
-.standingInviteMark {
-  display: grid;
-  width: 19px;
-  height: 19px;
-  flex: none;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(28, 28, 25, 0.07);
+.offerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: clamp(1.15rem, 2.8vh, 1.6rem);
 }
 
-.standingInviteMark svg {
-  width: 12px;
-  height: 12px;
+.offer .notice {
+  margin-top: 0.9rem;
 }
 
-/* The change dialog: the same card, grown up to hold the ask. */
+/* Five stages, so the wait has a length rather than only a spinner. */
+.progress {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 0.95rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progressStep {
+  width: 20px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(45, 39, 34, 0.12);
+  transition: background 500ms ease;
+}
+
+.progressStep[data-passed="true"] {
+  background: rgba(122, 90, 166, 0.55);
+}
+
+/*
+ * Nothing floats over this screen any more, so a chapter starts where the page
+ * starts at every width. The panel that used to be parked in the corner was
+ * what forced eight rems of empty page above the headline on a laptop, and a
+ * whole separate stacked layout on a phone.
+ */
+@media (max-width: 700px) {
+  .stage,
+  .stage[data-open="true"] {
+    min-height: 0;
+    padding-top: clamp(1.5rem, 4vh, 2.5rem);
+  }
+
+  .stage[data-open="false"] {
+    min-height: 72svh;
+  }
+}
+
+/* The settings sheet: the corner card opened up, holding all of it at once. */
 .homeDialog {
   /* The app's reset zeroes margins, which un-centres a modal <dialog>. */
   margin: auto;
   width: min(31rem, calc(100vw - 2rem));
-  max-height: min(40rem, calc(100svh - 3rem));
+  max-height: min(44rem, calc(100svh - 2rem));
   padding: 0;
   border: 0;
   border-radius: 26px;
@@ -381,8 +471,8 @@
   min-height: 0;
   flex-direction: column;
   align-items: center;
-  padding: clamp(1.6rem, 4vw, 2.25rem) clamp(1.1rem, 3.5vw, 2rem)
-    clamp(1.3rem, 3vw, 1.75rem);
+  padding: clamp(1.3rem, 3vw, 1.7rem) clamp(1.1rem, 3.5vw, 2rem)
+    clamp(0.8rem, 2vw, 1.1rem);
   text-align: center;
 }
 
@@ -396,22 +486,123 @@
   text-wrap: balance;
 }
 
-.homeDialogNow {
-  margin: 0.55rem 0 0;
+.sheetIntro {
+  max-width: 26rem;
+  margin: 0.4rem 0 0;
   color: rgba(28, 28, 25, 0.45);
   font-size: 13px;
   letter-spacing: -0.01em;
+  line-height: 1.45;
 }
 
-.homeDialogNow strong {
-  color: rgba(28, 28, 25, 0.66);
-  font-weight: 560;
-}
-
-/* The ask arrives with its own top margin; the dialog supplies the rest. */
-.homeDialogPanel .cityForm {
+/*
+ * The sheet is taller than most screens by design, so it scrolls in the
+ * middle only: the save and what it will do never leave the bottom, and the
+ * title never leaves the top.
+ */
+.sheetForm {
+  display: flex;
+  width: 100%;
   min-height: 0;
-  margin-top: clamp(1rem, 2.5vh, 1.5rem);
+  margin-top: clamp(0.7rem, 1.6vh, 0.95rem);
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
+
+.sheetBody {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  /* Room for a focus ring on the first and last things in here. */
+  padding: 3px 3px 6px;
+  /* On a short screen this scrolls, and a hard edge would read as the end of
+     the settings rather than the edge of the window they are in. */
+  mask-image: linear-gradient(
+    180deg,
+    #000 calc(100% - 34px),
+    rgba(0, 0, 0, 0.15) 100%
+  );
+}
+
+/* Nothing to fade past when nothing is cut off. */
+.sheetBody:not([data-scrolls="true"]) {
+  mask-image: none;
+}
+
+.sheetFoot {
+  display: flex;
+  width: 100%;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4px;
+}
+
+/* Says what the next stretch of the sheet is asking. */
+.sheetLabel {
+  width: 100%;
+  flex: none;
+  margin: clamp(0.8rem, 1.8vh, 1rem) 0 0;
+  padding: 0 2px;
+  color: rgba(49, 44, 38, 0.34);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+/* The first one has the sheet's own top margin above it already. */
+.sheetBody > .sheetLabel:first-child {
+  margin-top: 0;
+}
+
+.sheetActions {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.sheetActions .quiet {
+  padding: 9px 15px;
+  border: 1px solid rgba(57, 48, 43, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(37, 33, 29, 0.66);
+  cursor: pointer;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 12.5px;
+  font-weight: 540;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.sheetActions .quiet:hover {
+  border-color: rgba(57, 48, 43, 0.3);
+  color: rgba(37, 33, 29, 0.9);
+}
+
+.sheetActions .quiet:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* The city line sits in the sheet as one row among several. */
+.sheetBody .cityField {
+  margin-top: 9px;
+}
+
+.sheetBody .cityHint:empty {
+  display: none;
 }
 
 /* ------------------------------------------------------------------------ *
@@ -419,47 +610,27 @@
  * ------------------------------------------------------------------------ */
 
 /*
- * The rail and the button are the two things that must never be scrolled to
- * find, so the only part that gives way on a short screen is the list of
- * windows between them.
- */
-.scheduleForm {
-  display: flex;
-  width: 100%;
-  min-height: 0;
-  margin-top: clamp(0.85rem, 2vh, 1.15rem);
-  flex-direction: column;
-  align-items: center;
-  overflow: hidden;
-}
-
-/*
- * The rail runs off both edges of the dialog on purpose: a calendar that ends
- * neatly at the margin looks like the whole of what is on offer, and this one
- * carries three weeks. The panel's own padding is given back as the rail's, so
- * the first tile still lines up with everything above it.
+ * Days fade out at both ends rather than stopping at a hard edge, so a rail
+ * that happens to fill its row still reads as having more behind it. It can't
+ * bleed past the sheet any more: the body it sits in scrolls, and a scroll
+ * container clips anything hung outside it.
  */
 .dayRail {
   display: flex;
   width: 100%;
   flex: none;
   gap: 7px;
-  margin-inline: calc(-1 * clamp(1.1rem, 3.5vw, 2rem));
   /* Room under the tiles for the chosen one's shadow to land in. */
-  padding: 4px clamp(1.1rem, 3.5vw, 2rem) 13px;
-  margin-bottom: -6px;
+  margin: 9px 0 -6px;
+  padding: 4px 14px 13px;
   overflow-x: auto;
   scroll-snap-type: x proximity;
   scrollbar-width: none;
-  /* The rail is wider than the panel it sits in, and takes its width back. */
-  width: calc(100% + 2 * clamp(1.1rem, 3.5vw, 2rem));
-  /* Days fade out at both ends rather than stopping at a hard edge, so a rail
-     that happens to fill the dialog still reads as having more behind it. */
   mask-image: linear-gradient(
     90deg,
     transparent 0,
-    #000 20px,
-    #000 calc(100% - 20px),
+    #000 18px,
+    #000 calc(100% - 18px),
     transparent 100%
   );
 }
@@ -473,7 +644,7 @@
   width: 54px;
   flex: none;
   gap: 1px;
-  padding: 9px 0 7px;
+  padding: 8px 0 6px;
   appearance: none;
   border: 1px solid rgba(57, 48, 43, 0.13);
   border-radius: 16px;
@@ -514,7 +685,7 @@
 .dayNumber {
   color: #25211d;
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 560;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.035em;
@@ -543,7 +714,7 @@
   color: rgba(255, 255, 255, 0.45);
 }
 
-.scheduleLabel {
+.sheetLabel {
   width: 100%;
   flex: none;
   margin: clamp(0.85rem, 2vh, 1.1rem) 0 0;
@@ -562,13 +733,13 @@
 .windowList {
   display: grid;
   width: 100%;
-  flex: 0 1 auto;
+  /* The sheet body is what scrolls now, so nothing inside it shrinks or
+     scrolls on its own. A half-height window row reads as a broken one. */
+  flex: none;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
-  min-height: 0;
   margin: 8px 0 0;
   padding: 0;
-  overflow-y: auto;
   list-style: none;
 }
 
@@ -812,40 +983,10 @@
   text-align: left;
 }
 
-/* What the answers add up to, said before the button that commits them. */
-.scheduleLead {
-  flex: none;
-  min-height: 2.4em;
-  margin: clamp(0.85rem, 2vh, 1.1rem) 0 0.8rem;
-  color: rgba(45, 39, 34, 0.48);
-  font-size: 12.5px;
-  letter-spacing: -0.01em;
-  line-height: 1.4;
-  text-wrap: balance;
-}
-
-.scheduleForm button[type="submit"] {
+.sheetForm button[type="submit"] {
   width: 100%;
   max-width: 19rem;
   flex: none;
-}
-
-.homeDialogClose {
-  flex: none;
-  margin-top: 0.35rem;
-  padding: 8px 14px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: rgba(28, 28, 25, 0.45);
-  cursor: pointer;
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 540;
-}
-
-.homeDialogClose:hover {
-  color: rgba(28, 28, 25, 0.72);
 }
 
 /* The ask holds one screen exactly — a growing list of suggestions scrolls
@@ -1031,40 +1172,114 @@
   outline-offset: 1px;
 }
 
-.chapterScreen {
-  display: grid;
-  place-items: start center;
-}
-
+/*
+ * The chapter itself, under the orb that wrote it. It gave up its rim and its
+ * lift when it moved into the stage: the headline above already says this is
+ * the thing, so the card underneath only has to be readable.
+ */
 .card {
   display: grid;
-  width: min(600px, 100%);
-  gap: 18px;
-  padding: 30px 28px 26px;
-  border: 1px solid rgba(57, 48, 43, 0.09);
-  border-radius: 26px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 18px 44px rgba(56, 42, 28, 0.07);
+  width: 100%;
+  gap: 20px;
 }
 
-.kicker {
-  margin: 0;
-  color: rgba(160, 108, 66, 0.85);
-  font-size: 12px;
-  font-weight: 640;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+/*
+ * A proposal is dealt out rather than laid down.
+ *
+ * Each beat arrives after the one above it has had time to be read, which is
+ * what turns a card of facts into something being told to you. Keyframes
+ * rather than a JavaScript animate: a chapter that has been written is the
+ * whole point of this screen, and it must never be one paused frameloop away
+ * from being invisible. CSS lands on its final frame on its own.
+ */
+.card[data-beats="true"] > * {
+  animation: beatIn 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.card h1 {
+.card[data-beats="true"] > *:nth-child(1) {
+  animation-delay: 60ms;
+}
+
+.card[data-beats="true"] > *:nth-child(2) {
+  animation-delay: 300ms;
+}
+
+.card[data-beats="true"] > *:nth-child(3) {
+  animation-delay: 520ms;
+}
+
+.card[data-beats="true"] > *:nth-child(4) {
+  animation-delay: 720ms;
+}
+
+/* The last beat, and anything that turns up after it — a notice, say. */
+.card[data-beats="true"] > *:nth-child(n + 5) {
+  animation-delay: 900ms;
+}
+
+@keyframes beatIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card[data-beats="true"] > * {
+    animation: none;
+  }
+}
+
+/*
+ * Beat one: what Chapter already knew.
+ *
+ * The loudest thing under the headline, because it is the only sentence on
+ * this screen that could not have come from anywhere but this person's own
+ * world. The orbs in it are the working shown.
+ */
+.known {
   margin: 0;
+  color: #25211d;
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: clamp(30px, 5.4vw, 44px);
-  font-weight: 500;
-  letter-spacing: -0.04em;
-  line-height: 1.02;
+  font-size: clamp(1.15rem, 2.1vw, 1.4rem);
+  font-weight: 480;
+  letter-spacing: -0.028em;
+  line-height: 1.38;
+  text-wrap: pretty;
 }
 
+.known .anchorOrb {
+  width: 14px;
+  height: 14px;
+}
+
+/* Beat two: the one thing here that is not already true about them. */
+.unknown {
+  display: flex;
+  align-items: baseline;
+  gap: 11px;
+  margin: 0;
+  color: rgba(150, 96, 55, 0.95);
+  font-size: 15px;
+  font-weight: 555;
+  letter-spacing: -0.012em;
+  line-height: 1.5;
+}
+
+.unknown::before {
+  content: "";
+  width: 18px;
+  height: 1px;
+  flex: none;
+  background: rgba(160, 108, 66, 0.5);
+  transform: translateY(-0.42em);
+}
+
+/* Beat three: the writing. */
 .invitation {
   margin: 0;
   color: rgba(37, 33, 29, 0.85);
@@ -1092,90 +1307,126 @@
     0 1px 3px rgba(50, 36, 22, 0.22);
 }
 
-.knownUnknown {
-  display: grid;
-  gap: 7px;
-  padding: 14px 16px;
-  border-left: 2px solid rgba(160, 108, 66, 0.35);
-}
-
-.knownLine,
-.unknownLine {
-  margin: 0;
-  font-size: 13.5px;
-  line-height: 1.5;
-}
-
-.knownLine {
-  color: rgba(45, 39, 34, 0.62);
-}
-
-.unknownLine {
-  color: rgba(160, 108, 66, 0.95);
-  font-weight: 570;
-}
-
+/*
+ * Beat four: the find, on its own plate.
+ *
+ * Everything above it is Chapter writing. This is the thing the research went
+ * out and came back with, so it is given an edge and a surface and reads as an
+ * object handed over rather than as another paragraph. Same grey as the card
+ * in the corner, because both are Chapter's own.
+ */
 .venue {
   display: grid;
-  gap: 5px;
-  padding-top: 15px;
-  border-top: 1px solid rgba(57, 48, 43, 0.09);
+  gap: 4px;
+  padding: 17px 18px 16px;
+  border-radius: 20px;
+  background: #f8f7f5;
 }
 
 .venueName {
   margin: 0;
-  font-size: 18px;
-  font-weight: 620;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
 }
 
 .venueMeta {
   margin: 0;
   color: rgba(45, 39, 34, 0.58);
   font-size: 13.5px;
+  line-height: 1.45;
 }
 
 .whyUncommon {
-  margin: 7px 0 0;
+  margin: 10px 0 0;
   color: rgba(37, 33, 29, 0.72);
   font-size: 14px;
   line-height: 1.55;
 }
 
-.evidence {
+/* Where it came from, named. Minutes of live searching reduced to "proof 1"
+   reads like a footnote on something that was generated. */
+.sources {
   display: flex;
-  margin: 4px 0 0;
-  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
 }
 
-.evidence a {
-  color: rgba(160, 108, 66, 0.9);
-  font-size: 12.5px;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.sourcesLabel {
+  color: rgba(45, 39, 34, 0.36);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.source {
+  max-width: 14rem;
+  overflow: hidden;
+  padding: 4px 10px;
+  border: 1px solid rgba(57, 48, 43, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: rgba(45, 39, 34, 0.66);
+  font-size: 11.5px;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.source:hover {
+  border-color: rgba(160, 108, 66, 0.45);
+  color: rgba(150, 96, 55, 0.95);
+}
+
+/*
+ * Beat five: the only question left.
+ *
+ * The same rail the sheet sets a day aside with, asked here instead, where
+ * there is finally something to be free for. This is the honest place for it:
+ * nobody blocks out a Saturday for a chapter they have not read.
+ */
+/* Holds the last beat's place while what is inside it changes. */
+.acceptSlot {
+  display: grid;
+  gap: 12px;
 }
 
 .acceptRow {
   display: grid;
-  gap: 14px;
-  padding-top: 4px;
-}
-
-.dateField {
-  display: inline-flex;
-  align-items: center;
   gap: 10px;
-  color: rgba(45, 39, 34, 0.6);
-  font-size: 13px;
-  font-weight: 580;
+  padding-top: 2px;
 }
 
-.dateField input {
-  padding: 10px 13px;
-  border: 1px solid rgba(57, 48, 43, 0.16);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #25211d;
-  font-size: 14px;
+.acceptLabel {
+  margin: 0;
+  color: rgba(49, 44, 38, 0.34);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.acceptRow .dayRail {
+  margin: 0 0 -8px;
+  padding-left: 4px;
+  padding-right: 4px;
+  mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 18px),
+    transparent 100%
+  );
+}
+
+.acceptRow .actions {
+  margin-top: 6px;
 }
 
 .actions {
@@ -1220,4 +1471,12 @@
     padding: 24px 18px 20px;
     border-radius: 22px;
   }
+}
+
+/* What is coming, while the day it is coming on has not arrived. */
+.waitCopy {
+  margin: 0;
+  color: rgba(45, 39, 34, 0.55);
+  font-size: 15px;
+  line-height: 1.45;
 }

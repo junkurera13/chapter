@@ -32,6 +32,15 @@ export type NowTimeWindow = (typeof NOW_TIME_WINDOWS)[number];
 
 export const nowTimeWindowSchema = z.enum(NOW_TIME_WINDOWS);
 
+/**
+ * The hour Chapter offers when nobody has said otherwise.
+ *
+ * Evening because that is when a free day is actually spent, and because a
+ * default has to be a real answer: the whole point of asking nothing is that
+ * the research still gets something specific to hold itself to.
+ */
+export const NOW_DEFAULT_WINDOW: NowTimeWindow = "evening";
+
 /** What each window means in hours, for checking against opening times. */
 export const NOW_TIME_WINDOW_HOURS: Record<NowTimeWindow, string> = {
   morning: "06:00–12:00",
@@ -92,15 +101,6 @@ export const NOW_REACH: Record<
     travel: "up to about two hours by train, bus or car",
   },
 };
-
-/**
- * How far ahead of the day itself Chapter starts writing.
- *
- * Deep research takes minutes, but a chapter takes a life to rearrange: three
- * days is the gap between arriving in time to plan around and arriving so far
- * out that it stops being news.
- */
-export const NOW_LEAD_DAYS = 3;
 
 /** How far ahead a day can be chosen. Past that, a world has moved on. */
 export const NOW_SCHEDULE_HORIZON_DAYS = 120;
