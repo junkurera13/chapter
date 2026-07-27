@@ -112,10 +112,18 @@ async function gistSourceTheLongWay(
 }
 
 /**
- * Everything a gist is made of, in one call where the backend can do it.
+ * Everything a gist is made of, in one call where that works, and the long
+ * way round where it doesn't.
  *
- * "Unknown action" is the one failure that means the backend is simply older
- * than this route, and it is the one failure worth retrying differently.
+ * The single call is an optimisation, and an optimisation must not be able to
+ * take the tab down. It gets one shot at anything: an older backend that has
+ * never heard of the action, a secret the two deployments disagree about, a
+ * response too large to come back in one piece. The long way is slow, but it
+ * reads every world separately and loses only the ones it can't reach, which
+ * is exactly the failure Together used to survive without noticing.
+ *
+ * An expired session is the one thing not worth retrying, because the long
+ * way is holding the same expired token.
  */
 async function readGistSource(
   accessToken: string,
@@ -124,11 +132,16 @@ async function readGistSource(
   try {
     return await fetchTogetherGistSource({ limit: MAX_PEOPLE }, accessToken);
   } catch (error) {
-    if (!(error instanceof Base44FunctionError) || error.status !== 400) {
+    if (error instanceof Base44FunctionError && error.status === 401) {
       throw error;
     }
-    console.warn("[together:gists] backend predates the single-call source", {
+    // Logged with the status and the message, not just the error's name: the
+    // difference between 400 and 403 here is the difference between a stale
+    // backend and a misconfigured one, and the name says neither.
+    console.warn("[together:gists] single-call source unavailable", {
       requestId,
+      status: error instanceof Base44FunctionError ? error.status : undefined,
+      detail: error instanceof Error ? error.message : String(error),
     });
     return gistSourceTheLongWay(accessToken, requestId);
   }
@@ -231,15 +244,27 @@ export async function GET(request: Request) {
 
     return Response.json({ value: { gists: [...gists, ...samples] } });
   } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    const status = error instanceof Base44FunctionError
+      ? error.status
+      : undefined;
     console.error("[together:gists] request failed", {
       requestId,
       errorName: error instanceof Error ? error.name : "UnknownError",
+      status,
+      detail,
     });
     if (error instanceof Base44FunctionError && error.status === 401) {
       return unauthenticated();
     }
     return Response.json(
-      { error: "Chapter couldn’t read that just now.", code: "TOGETHER_FAILED" },
+      {
+        error: "Chapter couldn’t read that just now.",
+        code: "TOGETHER_FAILED",
+        // The reason, where saying it out loud costs nothing. In production
+        // this is a backend's own words to a browser, so it stays server-side.
+        ...(process.env.NODE_ENV === "production" ? {} : { detail, status }),
+      },
       { status: 502 },
     );
   }
