@@ -1,0 +1,46 @@
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--emboss-fallback);
+}
+
+.root[data-tone="blue"] {
+  --emboss-fallback: #73c7ff;
+}
+
+.root[data-tone="pink"] {
+  --emboss-fallback: #ff78b8;
+}
+
+.root[data-tone="green"] {
+  --emboss-fallback: #78e69f;
+}
+
+.fallbackMark,
+.fallbackNumber {
+  position: absolute;
+  z-index: 0;
+  color: rgba(37, 33, 29, 0.24);
+  opacity: 1;
+  filter:
+    drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.48))
+    drop-shadow(1px 1px 0 rgba(37, 33, 29, 0.14));
+}
+
+.fallbackMark {
+  top: 50%;
+  left: 50%;
+  width: 112px;
+  height: 112px;
+  opacity: 0.24;
+  transform: translate(-50%, -50%);
+}
+
+.fallbackNumber {
+  top: 6.2%;
+  left: 7.5%;
+  font: 600 13px/1 var(--font-chapter-instrument), system-ui, sans-serif;
+  letter-spacing: 0.06em;
+}

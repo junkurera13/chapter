@@ -10,6 +10,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import ChapterLoadingMark from "@/components/chapter-loading-mark";
 import AgentOrbVideo from "@/components/landing/agent-orb-video";
+import EmbossedCardBack from "@/components/weekly-pack/EmbossedCardBack";
+import type { BubblegumTone } from "@/components/weekly-pack/emboss-engine";
 import type { WeeklyPackScale } from "@/lib/weeklyPackDesign";
 import {
   WEEKLY_COMPANY_LABELS,
@@ -37,6 +39,8 @@ type PackState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "ready"; pack: WeeklyExperiencePack | null };
+
+const BUBBLEGUM_TONES: BubblegumTone[] = ["blue", "pink", "green"];
 
 function localIsoDay(date = new Date()) {
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
@@ -459,7 +463,12 @@ export default function WeeklyPackView({
           ease: [0.22, 1, 0.36, 1],
         }}
       >
-        <h1>Choose one.</h1>
+        <div className={styles.packHeaderTitle}>
+          <span className={styles.packHeaderOrb} aria-hidden="true">
+            <AgentOrbVideo playWhileMounted preload="auto" />
+          </span>
+          <h1>Choose one.</h1>
+        </div>
       </motion.header>
 
       <ol className={styles.cardGrid} aria-label="This week’s three cards">
@@ -495,103 +504,116 @@ export default function WeeklyPackView({
                 ease: [0.22, 1, 0.36, 1],
               }}
             >
-              <div className={styles.cardScene}>
-                <div
-                  className={styles.cardInner}
-                  data-revealed={revealed ? "true" : "false"}
-                  data-reduced-motion={reduceMotion ? "true" : "false"}
-                >
-                  <button
-                    type="button"
-                    className={`${styles.cardFace} ${styles.cardBack}`}
-                    onClick={() => void reveal(card.id)}
-                    disabled={busy || revealed}
-                    aria-label={`Turn over card ${index + 1}`}
-                    aria-hidden={revealed}
-                    tabIndex={revealed ? -1 : 0}
+              <motion.div
+                className={styles.cardHover}
+                whileHover={
+                  reduceMotion || committing
+                    ? undefined
+                    : { y: -7, scale: 1.01 }
+                }
+                whileTap={
+                  reduceMotion || committing
+                    ? undefined
+                    : { y: -4, scale: 1.004 }
+                }
+                transition={{
+                  duration: 0.34,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                <div className={styles.cardScene}>
+                  <div
+                    className={styles.cardInner}
+                    data-revealed={revealed ? "true" : "false"}
+                    data-reduced-motion={reduceMotion ? "true" : "false"}
                   >
-                    <span className={styles.cardNumber}>
-                      {`${index + 1}`.padStart(2, "0")}
-                    </span>
-                    <span className={styles.backMark} aria-hidden="true">
-                      <Image
-                        src="/chapter-mark.svg"
-                        alt=""
-                        width={58}
-                        height={58}
+                    <button
+                      type="button"
+                      className={`${styles.cardFace} ${styles.cardBack}`}
+                      onClick={() => void reveal(card.id)}
+                      disabled={busy || revealed}
+                      aria-label={`Turn over card ${index + 1}`}
+                      aria-hidden={revealed}
+                      tabIndex={revealed ? -1 : 0}
+                    >
+                      <EmbossedCardBack
+                        number={`${index + 1}`.padStart(2, "0")}
+                        tone={BUBBLEGUM_TONES[index % BUBBLEGUM_TONES.length]}
                       />
-                    </span>
-                    <span className={styles.turnHint}>Turn over</span>
-                  </button>
+                    </button>
 
-                  <article
-                    className={`${styles.cardFace} ${styles.cardFront}`}
-                    data-scale={card.scale}
-                    aria-hidden={!revealed}
-                    inert={!revealed}
-                  >
-                    <div>
-                      <p className={styles.formatLabel}>
-                        {WEEKLY_SCALE_LABELS[card.scale]}
-                      </p>
-                      <h2>{card.title}</h2>
-                      <p className={styles.cardPromise}>{card.promise}</p>
-                    </div>
-
-                    <div className={styles.cardFoot}>
-                      <div className={styles.cardMeta}>
-                        <span>{formatWeeklyDuration(card.durationMinutes)}</span>
-                        <span>{WEEKLY_COMPANY_LABELS[card.company]}</span>
+                    <article
+                      className={`${styles.cardFace} ${styles.cardFront}`}
+                      data-scale={card.scale}
+                      data-tone={
+                        BUBBLEGUM_TONES[index % BUBBLEGUM_TONES.length]
+                      }
+                      aria-hidden={!revealed}
+                      inert={!revealed}
+                    >
+                      <div>
+                        <p className={styles.formatLabel}>
+                          {WEEKLY_SCALE_LABELS[card.scale]}
+                        </p>
+                        <h2>{card.title}</h2>
+                        <p className={styles.cardPromise}>{card.promise}</p>
                       </div>
-                      <AnimatePresence mode="wait" initial={false}>
-                        {pendingChoice === card.id ? (
-                          <motion.div
-                            key="confirm"
-                            className={styles.confirmChoice}
-                            initial={
-                              reduceMotion ? false : { opacity: 0, y: 5 }
-                            }
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                          >
-                            <button
+
+                      <div className={styles.cardFoot}>
+                        <div className={styles.cardMeta}>
+                          <span>{formatWeeklyDuration(card.durationMinutes)}</span>
+                          <span>{WEEKLY_COMPANY_LABELS[card.company]}</span>
+                        </div>
+                        <AnimatePresence mode="wait" initial={false}>
+                          {pendingChoice === card.id ? (
+                            <motion.div
+                              key="confirm"
+                              className={styles.confirmChoice}
+                              initial={
+                                reduceMotion ? false : { opacity: 0, y: 5 }
+                              }
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0 }}
+                            >
+                              <button
+                                type="button"
+                                className={styles.keepAction}
+                                onClick={() => void choose(card.id)}
+                                disabled={busy}
+                              >
+                                Keep it
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.backAction}
+                                onClick={() => setPendingChoice(null)}
+                                disabled={busy}
+                              >
+                                Back
+                              </button>
+                            </motion.div>
+                          ) : (
+                            <motion.button
+                              key="keep"
                               type="button"
                               className={styles.keepAction}
-                              onClick={() => void choose(card.id)}
+                              onClick={() => setPendingChoice(card.id)}
                               disabled={busy}
+                              initial={
+                                reduceMotion ? false : { opacity: 0, y: 5 }
+                              }
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0 }}
                             >
-                              Keep it
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.backAction}
-                              onClick={() => setPendingChoice(null)}
-                              disabled={busy}
-                            >
-                              Back
-                            </button>
-                          </motion.div>
-                        ) : (
-                          <motion.button
-                            key="keep"
-                            type="button"
-                            className={styles.keepAction}
-                            onClick={() => setPendingChoice(card.id)}
-                            disabled={busy}
-                            initial={
-                              reduceMotion ? false : { opacity: 0, y: 5 }
-                            }
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                          >
-                            Keep this
-                          </motion.button>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </article>
+                              Keep this
+                            </motion.button>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </article>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             </motion.li>
           );
         })}
