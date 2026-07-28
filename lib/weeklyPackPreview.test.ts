@@ -62,4 +62,25 @@ describe("weekly pack UI review fixtures", () => {
       scheduledFor: "2026-08-08",
     });
   });
+
+  it("shows a real person and a concrete place in the chosen experience", () => {
+    const fixture = weeklyPackReviewFixture("chosen");
+    const pack =
+      fixture.state.status === "ready" ? fixture.state.pack : null;
+    const card = pack?.cards?.find(
+      (candidate) => candidate.id === pack.chosenCardId,
+    );
+
+    expect(card?.companion).toMatchObject({
+      name: "Mina",
+      familiarity: "new",
+    });
+    expect(card?.place).toMatchObject({
+      name: "Ceradu Ceramics Studio",
+      area: "Yeoksam-dong, Gangnam-gu",
+    });
+    expect(JSON.stringify(card)).not.toMatch(
+      /someone new|a stranger|bring someone/i,
+    );
+  });
 });

@@ -16,6 +16,7 @@ import {
   isLiveIntroduction,
   MAX_LIVE_INTRODUCTIONS,
   normalizeCity,
+  normalizeMatchLabel,
   responseOf,
   sharedAnchorsBetween,
   sideFor,
@@ -26,6 +27,11 @@ import {
   togetherChapterRecord,
   visibleTo,
 } from "../../shared/together-chapter.ts";
+import {
+  weeklyCompanyForConnection,
+  weeklyCompanionFamiliarity,
+  weeklyCardsHaveConcretePeopleAndPlaces,
+} from "../../shared/weekly-companion.ts";
 
 // Base44 entity rows are dynamic at this SDK boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -457,7 +463,11 @@ async function planningGraphFor(base44: Row, user: Row) {
   const { projected } = await projectedGraphFor(base44, user, {
     withEdges: false,
   });
-  const nodes = projected.nodes
+  return { nodes: planningNodesFromProjected(projected.nodes) };
+}
+
+function planningNodesFromProjected(projectedNodes: Row[]) {
+  return projectedNodes
     .filter((node: Row) =>
       (TOGETHER_SHAREABLE_CATEGORIES as readonly string[]).includes(
         categoryForNode(node),
@@ -470,7 +480,6 @@ async function planningGraphFor(base44: Row, user: Row) {
       salience: boundedUnit(node.salience, 0.6),
     }))
     .filter((node: Row) => node.label);
-  return { nodes };
 }
 
 const NOW_TIME_WINDOWS = ["morning", "afternoon", "evening", "night"];
@@ -546,33 +555,43 @@ function weeklyPackRecord(row: Row, now = Date.now()) {
   const storedStatus = stringValue(row.status);
   const releaseAt = Number(row.release_at);
   const expiresAt = Number(row.expires_at);
+  const released = now >= releaseAt && storedStatus !== "preparing";
+  const cards = released ? parsedJson(row.cards_json) : undefined;
+  const validReleasedCards =
+    !released || weeklyCardsHaveConcretePeopleAndPlaces(cards);
   const status =
     storedStatus === "failed"
       ? "failed"
-      : storedStatus === "lived"
-        ? "lived"
-        : storedStatus === "dismissed"
-          ? "dismissed"
-          : now >= expiresAt
-            ? "expired"
-            : storedStatus === "chosen"
-              ? "chosen"
-              : storedStatus === "preparing" || now < releaseAt
-                ? "locked"
-                : "available";
-  const released = now >= releaseAt && storedStatus !== "preparing";
-
+      : !validReleasedCards
+        ? "failed"
+        : storedStatus === "lived"
+          ? "lived"
+          : storedStatus === "dismissed"
+            ? "dismissed"
+            : now >= expiresAt
+              ? "expired"
+              : storedStatus === "chosen"
+                ? "chosen"
+                : storedStatus === "preparing" || now < releaseAt
+                  ? "locked"
+                  : "available";
   return {
     id: row.id,
     weekKey: stringValue(row.week_key),
     status,
     releaseAt,
     expiresAt,
-    ...(released ? { cards: parsedJson(row.cards_json) } : {}),
-    revealedCardIds: released ? weeklyCardIdList(row.revealed_card_ids) : [],
-    chosenCardId: released ? weeklyCardId(row.chosen_card_id) : undefined,
+    ...(released && validReleasedCards ? { cards } : {}),
+    revealedCardIds:
+      released && validReleasedCards
+        ? weeklyCardIdList(row.revealed_card_ids)
+        : [],
+    chosenCardId:
+      released && validReleasedCards
+        ? weeklyCardId(row.chosen_card_id)
+        : undefined,
     scheduledFor:
-      released && stringValue(row.scheduled_for)
+      released && validReleasedCards && stringValue(row.scheduled_for)
         ? stringValue(row.scheduled_for)
         : undefined,
     livedAt: Number(row.lived_at) || undefined,
@@ -598,6 +617,108 @@ function weeklyPackPreparationRecord(row: Row) {
 
 function firstName(user: Row | undefined, fallback = "your friend") {
   return displayName(user, fallback).split(" ")[0];
+}
+
+/**
+ * A weekly social card never starts from a generic company label. It starts
+ * from one real person who has already crossed the introduction consent gate.
+ *
+ * Introduction-origin connections remain `new-person` until Chapter has a
+ * lived meeting on record. Invite-origin and already-met connections are
+ * familiar people. Either way, only the strict intersection of the two
+ * shareable graphs may shape their card.
+ */
+async function weeklySocialCandidateFor(
+  base44: Row,
+  user: Row,
+  mine: Row[],
+  connectionRows: Row[],
+) {
+  if (mine.length === 0 || connectionRows.length === 0) return undefined;
+  const users = base44.asServiceRole.entities.SidequestUser;
+  const mineByLabel = new Map<string, Row>();
+  for (const node of mine) {
+    const key = normalizeMatchLabel(stringValue(node.label));
+    if (key && !mineByLabel.has(key)) mineByLabel.set(key, node);
+  }
+
+  const candidates = await mapWithLimit(
+    connectionRows,
+    OPEN_WORLDS_AT_ONCE,
+    async (connection: Row) => {
+      const otherUserId = connection.user_a_id === user.id
+        ? stringValue(connection.user_b_id)
+        : stringValue(connection.user_a_id);
+      if (!otherUserId) return undefined;
+
+      let other: Row | undefined;
+      try {
+        other = await readWithRateLimitRetry(() => users.get(otherUserId));
+      } catch {
+        other = undefined;
+      }
+      if (!other) return undefined;
+
+      const theirs = (await planningGraphFor(base44, other)).nodes;
+      const shared = sharedAnchorsBetween(mine, theirs);
+      const company = weeklyCompanyForConnection(connection);
+      const minimumAnchors = company === "new-person"
+        ? INTRODUCTION_MIN_ANCHORS
+        : 1;
+      if (shared.anchors.length < minimumAnchors) return undefined;
+
+      const sharedAnchors = shared.anchors.flatMap((anchor) => {
+        const node = mineByLabel.get(normalizeMatchLabel(anchor.label));
+        return node
+          ? [{
+              nodeId: stringValue(node.id),
+              label: stringValue(node.label),
+              category: stringValue(node.category),
+            }]
+          : [];
+      });
+      if (sharedAnchors.length < minimumAnchors) return undefined;
+
+      const name = firstName(other, "");
+      if (!name) return undefined;
+      return {
+        company,
+        companion: {
+          connectionId: stringValue(connection.id),
+          userId: otherUserId,
+          name,
+          familiarity: weeklyCompanionFamiliarity(company),
+        },
+        sharedAnchors,
+        sharedWeight: shared.weight,
+        connectionCreatedAt: Number(connection.created_at) || 0,
+      };
+    },
+  );
+
+  const ranked = candidates
+    .filter(
+      (
+        candidate,
+      ): candidate is NonNullable<(typeof candidates)[number]> =>
+        Boolean(candidate),
+    )
+    .sort((first, second) => {
+      if (first.company !== second.company) {
+        return first.company === "new-person" ? -1 : 1;
+      }
+      return (
+        second.sharedWeight - first.sharedWeight ||
+        second.connectionCreatedAt - first.connectionCreatedAt
+      );
+    });
+  const selected = ranked[0];
+  if (!selected) return undefined;
+  return {
+    company: selected.company,
+    companion: selected.companion,
+    sharedAnchors: selected.sharedAnchors,
+  };
 }
 
 /**
@@ -1741,7 +1862,7 @@ Deno.serve(async (req) => {
               ],
             },
             "-created_at",
-            1,
+            24,
           )
         ),
       ]);
@@ -1751,6 +1872,12 @@ Deno.serve(async (req) => {
           { status: 409 },
         );
       }
+      const socialCandidate = await weeklySocialCandidateFor(
+        base44,
+        user,
+        planningNodesFromProjected(projected.nodes),
+        connectionRows,
+      );
       return Response.json({
         value: {
           ownerUserId: user.id,
@@ -1758,8 +1885,9 @@ Deno.serve(async (req) => {
           timezone,
           availableCompanies: [
             "self",
-            ...(connectionRows.length > 0 ? ["known-person"] : []),
+            ...(socialCandidate ? [socialCandidate.company] : []),
           ],
+          ...(socialCandidate ? { socialCandidate } : {}),
           graph: {
             memoryCount: memoryRows.length,
             onboardingStep: user.onboarding_step,
@@ -1980,6 +2108,7 @@ Deno.serve(async (req) => {
         pack.status !== "preparing" ||
         !cardsJson ||
         !researchJson ||
+        !weeklyCardsHaveConcretePeopleAndPlaces(cards) ||
         cardIds.length !== 3 ||
         WEEKLY_CARD_IDS.some((id) => !cardIds.includes(id))
       ) {
@@ -2135,6 +2264,39 @@ Deno.serve(async (req) => {
       }
 
       const updated = await packs.update(pack.id, patch);
+      if (transition === "lived") {
+        const cards = parsedJson(pack.cards_json);
+        const chosen = Array.isArray(cards)
+          ? cards.find((card: Row) => card?.id === pack.chosen_card_id)
+          : undefined;
+        const connectionId = stringValue(chosen?.companion?.connectionId);
+        if (connectionId) {
+          const connections =
+            base44.asServiceRole.entities.SidequestConnection;
+          try {
+            const connection = await connections.get(connectionId);
+            const belongsToViewer =
+              connection.user_a_id === user.id ||
+              connection.user_b_id === user.id;
+            if (
+              belongsToViewer &&
+              connection.status === "accepted" &&
+              connection.origin === "introduction" &&
+              !Number(connection.met_at)
+            ) {
+              await connections.update(connection.id, {
+                met_at: Number(pack.lived_at) || now,
+                met_via_weekly_pack_id: pack.id,
+              });
+            }
+          } catch (error) {
+            console.warn("[weekly-pack] could not close first-meeting stretch", {
+              packId: pack.id,
+              errorName: error instanceof Error ? error.name : "UnknownError",
+            });
+          }
+        }
+      }
       return Response.json({ value: { pack: weeklyPackRecord(updated) } });
     }
 

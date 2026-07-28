@@ -5,6 +5,7 @@ import {
   WEEKLY_PACK_SCALES,
   weeklyPackAnchorSchema,
 } from "./weeklyPackDesign";
+import { weeklyPackCompanionSchema } from "./weeklyPackSocial";
 
 export const WEEKLY_PACK_PUBLIC_STATUSES = [
   "locked",
@@ -31,13 +32,12 @@ export const weeklyExperienceCardSchema = z.object({
     min: z.number().int().min(15).max(720),
     max: z.number().int().min(15).max(720),
   }),
-  place: z
-    .object({
-      name: z.string().trim().min(2).max(160),
-      area: z.string().trim().min(2).max(160),
-      address: z.string().trim().min(3).max(300),
-    })
-    .nullable(),
+  place: z.object({
+    name: z.string().trim().min(2).max(160),
+    area: z.string().trim().min(2).max(160),
+    address: z.string().trim().min(3).max(300),
+  }),
+  companion: weeklyPackCompanionSchema.optional(),
   steps: z.array(z.string().trim().min(8).max(500)).min(1).max(8),
   practical: z
     .array(
@@ -57,6 +57,41 @@ export const weeklyExperienceCardSchema = z.object({
       credit: z.string().trim().min(2).max(240).optional(),
     })
     .nullable(),
+}).superRefine((card, context) => {
+  if (card.company === "self" && card.companion) {
+    context.addIssue({
+      code: "custom",
+      path: ["companion"],
+      message: "A solo experience cannot carry a companion.",
+    });
+  }
+  if (card.company !== "self" && !card.companion) {
+    context.addIssue({
+      code: "custom",
+      path: ["companion"],
+      message: "Every social experience must show its actual person.",
+    });
+  }
+  if (
+    card.company === "new-person" &&
+    card.companion?.familiarity !== "new"
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["companion", "familiarity"],
+      message: "A new-person experience must carry a new companion.",
+    });
+  }
+  if (
+    card.company === "known-person" &&
+    card.companion?.familiarity !== "known"
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["companion", "familiarity"],
+      message: "A known-person experience must carry a known companion.",
+    });
+  }
 });
 
 export const weeklyExperiencePackSchema = z.object({

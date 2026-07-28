@@ -32,6 +32,12 @@ import {
   type WeeklyExperienceCard,
 } from "./weeklyPackSchema";
 import { generateWeeklyPackImage } from "./weeklyPackImageGeneration";
+import {
+  WEEKLY_PACK_PERSON_TOKEN,
+  containsAnonymousPersonLanguage,
+  resolveWeeklyPersonToken,
+  type WeeklyPackCompanion,
+} from "./weeklyPackSocial";
 
 const PACK_MODEL_ID =
   process.env.CHAPTER_PACK_MODEL || "anthropic/claude-sonnet-5";
@@ -452,6 +458,7 @@ export async function pollWeeklyPackResearch(args: {
 export function buildWeeklyPackCompositionPrompt(args: {
   pack: WeeklyPackDesign;
   research: WeeklyPackResearchResult[];
+  companion?: WeeklyPackCompanion;
 }) {
   return [
     "Write the visible copy for three already-designed, already-researched Chapter cards.",
@@ -466,10 +473,70 @@ export function buildWeeklyPackCompositionPrompt(args: {
     "- Opening: 1-2 unhurried sentences that make the action legible without explaining personalization.",
     "- Steps: 2-5 concise actions forming the researched rhythm or route. Do not pad a small activity into an itinerary.",
     "- No marketing language, destiny, exclamation marks, compatibility claims, or mention of Chapter's machinery.",
+    args.companion
+      ? [
+          `- One social card has a real server-confirmed person. Refer to that person with the exact token ${WEEKLY_PACK_PERSON_TOKEN}; the server replaces it with their actual name after generation.`,
+          `- The social card's line must contain ${WEEKLY_PACK_PERSON_TOKEN}.`,
+          "- Never write someone new, a new person, a stranger, someone you know, a friend, bring someone, or another anonymous substitute.",
+        ].join("\n")
+      : "- No matched person exists. Do not write a social card or suggest bringing somebody.",
     "",
     `ACCEPTED DESIGN: ${JSON.stringify(args.pack)}`,
     `VERIFIED RESEARCH: ${JSON.stringify(args.research)}`,
   ].join("\n");
+}
+
+export function validateWeeklyPackSocialCopy(args: {
+  pack: WeeklyPackDesign;
+  copy: z.infer<typeof weeklyPackCopySchema>;
+  companion?: WeeklyPackCompanion;
+}) {
+  const socialDesigns = args.pack.cards.filter(
+    (card) => card.format.company !== "self",
+  );
+  if (!args.companion) {
+    if (socialDesigns.length > 0) {
+      throw new WeeklyPackGenerationError(
+        "A social card was composed without a real person.",
+      );
+    }
+    return;
+  }
+  if (socialDesigns.length !== 1) {
+    throw new WeeklyPackGenerationError(
+      "A matched person must belong to exactly one card.",
+    );
+  }
+
+  const design = socialDesigns[0];
+  const expectedCompany =
+    args.companion.familiarity === "new" ? "new-person" : "known-person";
+  if (design.format.company !== expectedCompany) {
+    throw new WeeklyPackGenerationError(
+      "The social card does not match the real person's familiarity.",
+    );
+  }
+  const copy = args.copy.cards.find((card) => card.id === design.id);
+  if (!copy) {
+    throw new WeeklyPackGenerationError("The social card copy is missing.");
+  }
+  if (!copy.line.includes(WEEKLY_PACK_PERSON_TOKEN)) {
+    throw new WeeklyPackGenerationError(
+      "The social card line did not identify its real person.",
+    );
+  }
+  const visibleCopy = [
+    copy.title,
+    copy.line,
+    copy.promise,
+    copy.opening,
+    ...copy.steps,
+  ].join("\n");
+  if (containsAnonymousPersonLanguage(visibleCopy)) {
+    throw new WeeklyPackGenerationError(
+      "The social card used anonymous person language.",
+    );
+  }
 }
 
 const PRACTICAL_LABELS: Record<
@@ -490,6 +557,7 @@ export function materializeWeeklyExperienceCards(args: {
   pack: WeeklyPackDesign;
   research: WeeklyPackResearchResult[];
   copy: z.infer<typeof weeklyPackCopySchema>;
+  companion?: WeeklyPackCompanion;
   images?: Partial<
     Record<
       WeeklyPackScale,
@@ -497,6 +565,7 @@ export function materializeWeeklyExperienceCards(args: {
     >
   >;
 }): WeeklyExperienceCard[] {
+  validateWeeklyPackSocialCopy(args);
   const cards = args.pack.cards.map((design) => {
     const result = args.research.find(
       (candidate) => candidate.cardId === design.id,
@@ -515,18 +584,31 @@ export function materializeWeeklyExperienceCards(args: {
         ...result.citations.map((citation) => citation.url),
       ]),
     );
+    const social = design.format.company !== "self";
+    const visibleCopy = social && args.companion
+      ? {
+          title: resolveWeeklyPersonToken(copy.title, args.companion),
+          line: resolveWeeklyPersonToken(copy.line, args.companion),
+          promise: resolveWeeklyPersonToken(copy.promise, args.companion),
+          opening: resolveWeeklyPersonToken(copy.opening, args.companion),
+          steps: copy.steps.map((step) =>
+            resolveWeeklyPersonToken(step, args.companion!),
+          ),
+        }
+      : copy;
     return weeklyExperienceCardSchema.parse({
       id: design.id,
       scale: design.format.scale,
       company: design.format.company,
-      title: copy.title,
-      line: copy.line,
+      title: visibleCopy.title,
+      line: visibleCopy.line,
       anchors: design.anchors,
-      promise: copy.promise,
-      opening: copy.opening,
+      promise: visibleCopy.promise,
+      opening: visibleCopy.opening,
       durationMinutes: design.format.durationMinutes,
       place: result.finding.primaryPlace,
-      steps: copy.steps,
+      ...(social ? { companion: args.companion } : {}),
+      steps: visibleCopy.steps,
       practical: Object.entries(result.finding.logistics).map(
         ([key, value]) => ({
           label:
@@ -547,17 +629,55 @@ export async function composeWeeklyExperienceCards(args: {
   pack: WeeklyPackDesign;
   research: WeeklyPackResearchResult[];
   requestId: string;
+  companion?: WeeklyPackCompanion;
 }) {
-  const output = await generateObject({
-    prompt: buildWeeklyPackCompositionPrompt(args),
-    schema: weeklyPackCopyModelSchema,
-    schemaName: "weekly_pack_card_copy",
-    modelId: PACK_COMPOSITION_MODEL_ID,
-    temperature: 0.3,
-    maxOutputTokens: 5_000,
-    requestId: args.requestId,
-  });
-  const copy = weeklyPackCopySchema.parse(output);
+  const modelIds = [
+    PACK_COMPOSITION_MODEL_ID,
+    ...(PACK_FALLBACK_MODEL_ID === PACK_COMPOSITION_MODEL_ID
+      ? []
+      : [PACK_FALLBACK_MODEL_ID]),
+  ];
+  let copy: z.infer<typeof weeklyPackCopySchema> | undefined;
+  const failures: string[] = [];
+  let correction = "";
+  for (const modelId of modelIds) {
+    try {
+      const output = await generateObject({
+        prompt: [
+          buildWeeklyPackCompositionPrompt(args),
+          correction,
+        ].filter(Boolean).join("\n\n"),
+        schema: weeklyPackCopyModelSchema,
+        schemaName: "weekly_pack_card_copy",
+        modelId,
+        temperature: 0.3,
+        maxOutputTokens: 5_000,
+        requestId: args.requestId,
+      });
+      const candidate = weeklyPackCopySchema.parse(output);
+      validateWeeklyPackSocialCopy({
+        pack: args.pack,
+        copy: candidate,
+        companion: args.companion,
+      });
+      copy = candidate;
+      break;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : String(error);
+      failures.push(`${modelId}: ${message}`);
+      correction = [
+        "The previous complete copy set failed a deterministic truth gate.",
+        "Return all three cards again and repair this failure:",
+        message,
+      ].join("\n");
+    }
+  }
+  if (!copy) {
+    throw new WeeklyPackGenerationError(
+      `No model produced truthful social copy. ${failures.join(" | ")}`,
+    );
+  }
   const images = Object.fromEntries(
     await Promise.all(
       args.pack.cards.map(async (design) => {
@@ -616,6 +736,7 @@ export async function composeWeeklyExperienceCards(args: {
     pack: args.pack,
     research: args.research,
     copy,
+    companion: args.companion,
     images,
   });
 }

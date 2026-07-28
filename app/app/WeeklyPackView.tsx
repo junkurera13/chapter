@@ -25,6 +25,7 @@ import {
   type WeeklyExperienceCard,
   type WeeklyExperiencePack,
 } from "@/lib/weeklyPackSchema";
+import { weeklyCompanionInitials } from "@/lib/weeklyPackSocial";
 import {
   chooseWeeklyCard,
   dismissWeeklyPack,
@@ -787,6 +788,14 @@ export default function WeeklyPackView({
 
                       <div className={styles.cardSay}>
                         <WeeklyCardLine card={card} />
+                        {card.companion ? (
+                          <div className={styles.cardCompanion}>
+                            <span aria-hidden="true">
+                              {weeklyCompanionInitials(card.companion.name)}
+                            </span>
+                            <strong>{card.companion.name}</strong>
+                          </div>
+                        ) : null}
                       </div>
 
                       <WeeklyCardPhoto
@@ -1008,9 +1017,23 @@ function ChosenExperience({
           </p>
           <h1>{card.title}</h1>
           <p className={styles.chosenOpening}>{card.opening}</p>
+          {card.companion ? (
+            <div className={styles.chosenCompanion}>
+              <span className={styles.chosenCompanionMark} aria-hidden="true">
+                {weeklyCompanionInitials(card.companion.name)}
+              </span>
+              <span className={styles.chosenCompanionCopy}>
+                <small>You’re going with</small>
+                <strong>{card.companion.name}</strong>
+              </span>
+            </div>
+          ) : null}
           <div className={styles.chosenMeta}>
             <span>{formatWeeklyDuration(card.durationMinutes)}</span>
-            <span>{WEEKLY_COMPANY_LABELS[card.company]}</span>
+            <span>{card.place.name}</span>
+            {!card.companion ? (
+              <span>{WEEKLY_COMPANY_LABELS[card.company]}</span>
+            ) : null}
           </div>
         </header>
 
@@ -1031,6 +1054,7 @@ function ChosenExperience({
                 <p>
                   {card.place.name}
                   <small>{card.place.area}</small>
+                  <small>{card.place.address}</small>
                 </p>
               </div>
             ) : null}

@@ -4,6 +4,15 @@
 > production Now experience. Base44 owns preparation and release state, Vercel
 > runs the guarded daily worker, and the app shell no longer contains a route
 > back to the previous on-demand Now experience.
+>
+> **Social follow-up, July 29 2026:** implemented in the workspace and awaiting
+> the next Base44 resource deployment. A social card now begins with one
+> specific, mutually-consented person from Chapter's introduction system.
+> Introduction-origin pairs remain `new-person` until a lived meeting is
+> recorded. Their real first name is attached server-side after generation,
+> while models receive only the strict shared anchors. Generic people and
+> placeholder places are rejected at both composition and Base44 persistence
+> boundaries.
 
 ## Why Chapter exists
 
@@ -354,10 +363,13 @@ with `CHAPTER_WEEKLY_PACKS_PER_RUN`. Parallel receives only the research-safe
 cut of each accepted design: no graph, raw memory, familiar thread, or anchor
 identifier leaves the server through the research boundary.
 
-The first production social cut is intentionally limited to `self` and
-`known-person`. `new-person` and `small-group` remain part of the format system,
-but the worker will not generate them until mutual consent, matching, and
-minimum local density are real product capabilities.
+The deployed production worker is still limited to `self` and `known-person`
+until the Base44 follow-up above is deployed. The workspace implementation now
+activates `new-person` when a real introduction-origin pair has both crossed
+the consent gate and holds enough strict shared ground. It prefers that
+still-unmet person over a known-person candidate, requires exactly one social
+card for them, and falls back to three solo cards when no honest match exists.
+`small-group` remains inactive until local density can support it.
 
 ## Decisions already made
 
@@ -370,6 +382,10 @@ minimum local density are real product capabilities.
 - Design the pack as a whole before research.
 - Keep experience scale separate from social composition.
 - Treat human connection as a core purpose, not an optional feature.
+- A social experience always shows the actual person after mutual consent;
+  never `someone new`, `bring someone`, or another anonymous placeholder.
+- Every finished experience names a concrete researched place and arrival
+  address.
 - Do not label stranger matches as friendship or romance.
 - Romance is a possible outcome, never a product promise.
 - Card backs are visually identical. Format is part of the reveal.

@@ -81,6 +81,7 @@ function context(args: {
   homeCity?: string;
   privacyMode?: WeeklyPackContext["privacyMode"];
   availableCompanies?: readonly WeeklyPackCompany[];
+  socialMatch?: WeeklyPackContext["socialMatch"];
   maxMechanismOccurrences?: WeeklyPackContext["maxMechanismOccurrences"];
   generationNotes?: readonly string[];
 }): WeeklyPackContext {
@@ -88,6 +89,7 @@ function context(args: {
     homeCity: args.homeCity ?? "Seoul",
     privacyMode: args.privacyMode ?? "personal",
     availableCompanies: args.availableCompanies ?? ["self"],
+    socialMatch: args.socialMatch,
     maxMechanismOccurrences: args.maxMechanismOccurrences,
     generationNotes: args.generationNotes,
   };
@@ -402,6 +404,26 @@ export const WEEKLY_PACK_FIXTURES: readonly WeeklyPackFixture[] = [
     context: context({
       privacyMode: "intersection",
       availableCompanies: ["self", "known-person"],
+      socialMatch: {
+        company: "known-person",
+        sharedAnchors: [
+          {
+            nodeId: "friend-printing",
+            label: "making small printed objects",
+            category: "activity",
+          },
+          {
+            nodeId: "friend-architecture",
+            label: "adaptive reuse architecture",
+            category: "interest",
+          },
+          {
+            nodeId: "friend-alley",
+            label: "older workshop alleys",
+            category: "place",
+          },
+        ],
+      },
       generationNotes: [
         "At least one card should gain real value from two people doing something together.",
         "Every sentence must be true in both shareable worlds; use no one-sided memory.",
@@ -464,6 +486,26 @@ export const WEEKLY_PACK_FIXTURES: readonly WeeklyPackFixture[] = [
     context: context({
       privacyMode: "intersection",
       availableCompanies: ["self", "new-person"],
+      socialMatch: {
+        company: "new-person",
+        sharedAnchors: [
+          {
+            nodeId: "stranger-sketch",
+            label: "observational sketching",
+            category: "activity",
+          },
+          {
+            nodeId: "stranger-gardens",
+            label: "public gardens",
+            category: "place",
+          },
+          {
+            nodeId: "stranger-plants",
+            label: "seasonal plants",
+            category: "interest",
+          },
+        ],
+      },
       generationNotes: [
         "Include at most one new-person card and spend its only stretch on the person.",
         "Keep its place, activity, and time familiar, public, bounded, activity-centred, and easy to leave.",

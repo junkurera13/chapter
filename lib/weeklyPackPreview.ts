@@ -69,9 +69,9 @@ const previewCards: WeeklyExperienceCard[] = [
       "The street is already part of your life. This time, move through it as if you were responsible for its soundtrack.",
     durationMinutes: { min: 45, max: 60 },
     place: {
-      name: "Your usual neighbourhood",
-      area: "Within walking distance",
-      address: "Begin at a corner you already know",
+      name: "Cheonggyecheon at Gwanggyo",
+      area: "Jongno-gu, Seoul",
+      address: "Gwanggyo, Cheonggyecheon-ro, Jongno-gu, Seoul",
     },
     steps: [
       "Start at a familiar corner and put your phone on airplane mode.",
@@ -91,9 +91,9 @@ const previewCards: WeeklyExperienceCard[] = [
     id: "mini",
     scale: "mini",
     company: "new-person",
-    title: "Make one bowl beside someone new",
+    title: "Make one bowl with Mina",
     line:
-      "How about making one bowl at a beginner pottery table beside someone new?",
+      "How about making one pottery bowl with Mina at Ceradu Ceramics Studio?",
     anchors: [
       {
         nodeId: "preview-pottery",
@@ -101,25 +101,31 @@ const previewCards: WeeklyExperienceCard[] = [
         category: "activity",
       },
       {
-        nodeId: "preview-someone-new",
-        label: "someone new",
-        category: "people",
+        nodeId: "preview-ceradu",
+        label: "Ceradu Ceramics Studio",
+        category: "place",
       },
     ],
+    companion: {
+      connectionId: "preview-introduction-mina",
+      userId: "preview-mina",
+      name: "Mina",
+      familiarity: "new",
+    },
     promise:
-      "Join a bounded beginner pottery table where conversation has something to orbit, then leave with one imperfect object of your own.",
+      "Make one useful bowl with Mina at a supervised beginner table, then leave both pieces at the studio for firing.",
     opening:
-      "Nobody has to be interesting on command when both hands are busy. The clay carries the first hour; whatever follows is allowed to be ordinary.",
+      "You and Mina do not need to be interesting on command. The clay carries the first hour, and conversation can arrive without becoming the assignment.",
     durationMinutes: { min: 150, max: 180 },
     place: {
-      name: "A researched beginner open studio",
-      area: "Within the city",
-      address: "The final pack supplies the verified studio and arrival point",
+      name: "Ceradu Ceramics Studio",
+      area: "Yeoksam-dong, Gangnam-gu",
+      address: "B1, 332 Nonhyeon-ro, Gangnam-gu, Seoul",
     },
     steps: [
-      "Arrive ten minutes early and take any open place at the shared table.",
-      "Make one useful bowl rather than trying to make something impressive.",
-      "Ask the person beside you what they want theirs to become, if a natural moment appears.",
+      "Meet Mina outside the studio ten minutes before the class begins.",
+      "Take adjacent places and each make one useful bowl rather than something impressive.",
+      "Before leaving the pieces for firing, choose one detail you noticed in the other person’s work.",
     ],
     practical: [
       { label: "When", value: "A weekend afternoon session" },
@@ -127,16 +133,18 @@ const previewCards: WeeklyExperienceCard[] = [
       { label: "Cost", value: "Materials and firing included" },
       { label: "Exit", value: "The session ends after one piece" },
     ],
-    sourceUrls: [],
+    sourceUrls: [
+      "https://english.visitseoul.net/gangnamarea/ceradu-ceramics-studio_/34385",
+    ],
     image: null,
   },
   {
     id: "proper",
     scale: "proper",
     company: "known-person",
-    title: "Follow the water out of the city",
+    title: "Follow Mojiko’s water with Daniel",
     line:
-      "How about following the river out of the city with someone you already know?",
+      "How about following the Mojiko waterfront with Daniel, from the old station to Mekari Park?",
     anchors: [
       {
         nodeId: "preview-river",
@@ -144,23 +152,29 @@ const previewCards: WeeklyExperienceCard[] = [
         category: "place",
       },
       {
-        nodeId: "preview-someone-known",
-        label: "someone you already know",
-        category: "people",
+        nodeId: "preview-mojiko",
+        label: "Mojiko",
+        category: "place",
       },
     ],
+    companion: {
+      connectionId: "preview-connection-daniel",
+      userId: "preview-daniel",
+      name: "Daniel",
+      familiarity: "known",
+    },
     promise:
-      "Take someone you already know from the last dense stretch of river to its quieter edge, collecting one small proof of each change along the way.",
+      "Walk with Daniel from Mojiko Station to Mekari Park, collecting one small proof of how the waterfront changes along the way.",
     opening:
       "Begin where the water still feels like part of the city. End where the city has stopped explaining itself. The journey between them is the day.",
     durationMinutes: { min: 360, max: 480 },
     place: {
-      name: "A verified river-to-edge route",
-      area: "City to beyond-city",
-      address: "The final pack supplies both stations and the return route",
+      name: "Mojiko Station to Mekari Park",
+      area: "Moji-ku, Kitakyushu",
+      address: "1-5-31 Nishikaigan, Moji-ku, Kitakyushu, Fukuoka",
     },
     steps: [
-      "Meet beside the busiest section of water and choose one thing to collect: colours, overheard phrases, or small drawings.",
+      "Meet Daniel beneath the clock at Mojiko Station and choose one thing to collect: colours, overheard phrases, or small drawings.",
       "Travel outward in three legs, stopping once when the river changes character.",
       "Eat somewhere simple near the final waterline and each choose the one collected thing worth keeping.",
       "Return before the final comfortable connection home.",

@@ -23,6 +23,14 @@
       "enum": ["invite", "introduction"]
     },
     "status": { "type": "string", "enum": ["accepted", "blocked"] },
+    "met_at": {
+      "type": "number",
+      "description": "First lived meeting recorded for an introduction-origin pair. Until this exists, weekly experience design treats the person as the new-person stretch."
+    },
+    "met_via_weekly_pack_id": {
+      "type": "string",
+      "description": "The weekly pack whose chosen social experience first became lived."
+    },
     "created_at": { "type": "number" }
   },
   // `invite_id` was required while an invite was the only way to connect. It is

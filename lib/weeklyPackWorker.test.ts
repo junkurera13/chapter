@@ -37,7 +37,28 @@ function source(): WeeklyPackGenerationSource {
     ownerUserId: "owner-1",
     homeCity: "Seoul",
     timezone: "Asia/Seoul",
-    availableCompanies: ["self", "known-person"],
+    availableCompanies: ["self", "new-person"],
+    socialCandidate: {
+      company: "new-person",
+      companion: {
+        connectionId: "connection-mina",
+        userId: "user-mina",
+        name: "Mina",
+        familiarity: "new",
+      },
+      sharedAnchors: [
+        {
+          nodeId: "shared-pottery",
+          label: "pottery",
+          category: "activity",
+        },
+        {
+          nodeId: "shared-seoul",
+          label: "Seoul",
+          category: "place",
+        },
+      ],
+    },
     graph: {
       memoryCount: 1,
       onboardingStep: "memory_ready",
@@ -141,7 +162,21 @@ describe("weekly pack worker", () => {
     );
     expect(
       current.designPack.mock.calls[0][0].source.context.availableCompanies,
-    ).toEqual(["self", "known-person"]);
+    ).toEqual(["self", "new-person"]);
+    expect(
+      current.designPack.mock.calls[0][0].source.context.socialMatch,
+    ).toEqual({
+      company: "new-person",
+      sharedAnchors: source().socialCandidate?.sharedAnchors,
+    });
+    expect(
+      JSON.stringify(current.designPack.mock.calls[0][0]),
+    ).not.toContain("Mina");
+    expect(current.setResearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        designJson: expect.stringContaining('"name":"Mina"'),
+      }),
+    );
   });
 
   it("asks Base44 for retries only on Friday", async () => {

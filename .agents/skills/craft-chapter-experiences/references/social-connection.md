@@ -28,6 +28,15 @@ Never reveal:
 
 Composition of a Together chapter belongs to the initiator alone.
 
+After mutual consent, the opposite rule applies to an actionable experience:
+show the actual person. A social card must carry a server-confirmed person and
+render their real first name. Never write `someone new`, `a stranger`,
+`someone you know`, `a friend`, `bring someone`, or another anonymous
+substitute where a person should be.
+
+If there is no specific eligible person, make the card solo. Do not create a
+social-shaped placeholder and hope matching happens later.
+
 ## First-meeting experience contract
 
 Keep the person as the single stretch. Make everything else maximally familiar
@@ -35,6 +44,7 @@ and easy to leave.
 
 Require:
 
+- a specific mutually-consented person attached before experience generation;
 - a public, populated setting;
 - a bounded duration;
 - an activity that lets people stand or work side by side;

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { ExperienceGraphRecord } from "./backendTypes";
 import type { ExperienceNodeCategory } from "./experienceOntology";
+import { weeklyPackCompanionSchema } from "./weeklyPackSocial";
 
 export const WEEKLY_PACK_SCALES = ["small", "mini", "proper"] as const;
 export const WEEKLY_PACK_COMPANIES = [
@@ -65,6 +66,10 @@ export type WeeklyPackCompany = (typeof WEEKLY_PACK_COMPANIES)[number];
 export type WeeklyPackMechanism = (typeof WEEKLY_PACK_MECHANISMS)[number];
 export type WeeklyPackStretchDimension =
   (typeof WEEKLY_PACK_STRETCH_DIMENSIONS)[number];
+export type WeeklyPackSocialMatch = {
+  company: "known-person" | "new-person";
+  sharedAnchors: readonly z.infer<typeof weeklyPackAnchorSchema>[];
+};
 
 const scaleSchema = z.enum(WEEKLY_PACK_SCALES);
 const companySchema = z.enum(WEEKLY_PACK_COMPANIES);
@@ -213,6 +218,7 @@ export type WeeklyPackContext = {
   homeCity: string;
   privacyMode: "personal" | "shareable" | "intersection";
   availableCompanies: readonly WeeklyPackCompany[];
+  socialMatch?: WeeklyPackSocialMatch;
   maxMechanismOccurrences?: Partial<
     Record<WeeklyPackMechanism, number>
   >;
@@ -352,6 +358,14 @@ export function buildWeeklyPackDesignPrompt(args: {
     "- Do not attach company decoratively. Another person must improve the mechanism itself.",
     "- New-person experiences must be public, bounded, activity-centred, easy to leave, worthwhile even if no connection forms, and independent of alcohol.",
     "- Do not expose a name, profile, one-sided fact, matching score, attraction, destiny, or supposed compatibility.",
+    args.context.socialMatch
+      ? [
+          `- A real ${args.context.socialMatch.company} match is available. Exactly one card must use that company value.`,
+          "- The matched person's identity is deliberately withheld from this model and will be attached by the server.",
+          "- The social card may anchor only to the strict shared anchors below, so its familiar ground is true for both people.",
+          `- SHARED SOCIAL ANCHORS: ${JSON.stringify(args.context.socialMatch.sharedAnchors)}`,
+        ].join("\n")
+      : "- No real matched person is available. Every card must be self company.",
     "",
     "RESEARCH BRIEFS",
     "- Write a separate objective for each card that proves what the designed experience needs.",
@@ -541,6 +555,57 @@ function auditConnection(
   }
 }
 
+function auditSocialMatch(
+  pack: WeeklyPackDesign,
+  context: WeeklyPackContext,
+  issues: WeeklyPackAuditIssue[],
+) {
+  const socialCards = pack.cards.filter(
+    (card) => card.format.company !== "self",
+  );
+  const match = context.socialMatch;
+  if (!match) {
+    if (socialCards.length > 0) {
+      addIssue(issues, {
+        code: "SOCIAL_PERSON_MISSING",
+        message:
+          "A social card cannot exist without a specific server-confirmed person.",
+      });
+    }
+    return;
+  }
+
+  const matchedCards = socialCards.filter(
+    (card) => card.format.company === match.company,
+  );
+  if (socialCards.length !== 1 || matchedCards.length !== 1) {
+    addIssue(issues, {
+      code: "SOCIAL_MATCH_CARD_COUNT",
+      message:
+        "A real social match must produce exactly one card for that specific person.",
+    });
+    return;
+  }
+
+  const allowedAnchorIds = new Set(
+    match.sharedAnchors.map((anchor) => anchor.nodeId),
+  );
+  const socialCard = matchedCards[0];
+  if (
+    socialCard.anchors.length === 0 ||
+    socialCard.anchors.some(
+      (anchor) => !allowedAnchorIds.has(anchor.nodeId),
+    )
+  ) {
+    addIssue(issues, {
+      code: "SOCIAL_ANCHOR_NOT_SHARED",
+      cardId: socialCard.id,
+      message:
+        "The social card may use only graph anchors that are true in both people's worlds.",
+    });
+  }
+}
+
 function auditAnchors(
   card: WeeklyPackCardDesign,
   graph: ExperienceGraphRecord,
@@ -667,6 +732,7 @@ export function auditWeeklyPackDesign(args: {
       );
     }
   }
+  auditSocialMatch(pack, context, issues);
 
   const primaryAnchors = pack.cards.map((card) => card.primaryAnchorId);
   if (new Set(primaryAnchors).size !== primaryAnchors.length) {
@@ -809,6 +875,7 @@ export const weeklyPackDesignArtifactSchema = z.object({
   pack: weeklyPackDesignSchema,
   review: weeklyPackReviewSchema,
   revisionReviews: z.array(weeklyPackReviewSchema).max(2),
+  companion: weeklyPackCompanionSchema.optional(),
 });
 
 export type WeeklyPackDesignArtifact = z.infer<
@@ -913,13 +980,11 @@ export const weeklyPackResearchFindingSchema = z.object({
   workingTitle: z.string().trim().min(3).max(140),
   experienceAction: z.string().trim().min(20).max(800),
   experienceType: z.string().trim().min(3).max(120),
-  primaryPlace: z
-    .object({
-      name: z.string().trim().min(2).max(200),
-      area: z.string().trim().min(2).max(200),
-      address: z.string().trim().min(3).max(300),
-    })
-    .nullable(),
+  primaryPlace: z.object({
+    name: z.string().trim().min(2).max(200),
+    area: z.string().trim().min(2).max(200),
+    address: z.string().trim().min(3).max(300),
+  }),
   routeOrSequence: z.string().trim().min(10).max(1_500),
   logistics: z.object({
     availability: z.string().trim().min(5).max(800),

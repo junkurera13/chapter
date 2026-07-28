@@ -224,6 +224,15 @@ export type WeeklyPackCandidate = {
 
 export type WeeklyPackGenerationSource = WeeklyPackCandidate & {
   availableCompanies: import("./weeklyPackDesign").WeeklyPackCompany[];
+  socialCandidate?: {
+    company: "known-person" | "new-person";
+    companion: import("./weeklyPackSocial").WeeklyPackCompanion;
+    sharedAnchors: Array<{
+      nodeId: string;
+      label: string;
+      category: string;
+    }>;
+  };
   graph: import("./backendTypes").ExperienceGraphRecord;
 };
 

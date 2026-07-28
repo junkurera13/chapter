@@ -86,11 +86,18 @@ function contextFrom(source: WeeklyPackGenerationSource): WeeklyPackContext {
     homeCity: source.homeCity,
     privacyMode: "personal",
     availableCompanies: source.availableCompanies,
+    socialMatch: source.socialCandidate
+      ? {
+          company: source.socialCandidate.company,
+          sharedAnchors: source.socialCandidate.sharedAnchors,
+        }
+      : undefined,
     maxMechanismOccurrences: { taste: 1 },
     generationNotes: [
       "Make the three choices feel genuinely different in action, rhythm, and commitment.",
-      "A known-person card must still be worthwhile if the invited person cannot come.",
-      "Do not use new-person or small-group company until the consent and density systems explicitly make them available.",
+      source.socialCandidate
+        ? "A real person is already attached to the social card. Design for that pair; never invent or substitute another person."
+        : "No real matched person is available. Keep all three cards solo.",
     ],
   };
 }
@@ -186,6 +193,7 @@ export async function runWeeklyPackCycle(
         research: research.results,
         requestId:
           preparation.generationRequestId ?? dependencies.newRequestId(),
+        companion: artifact.companion,
       });
       await dependencies.completePreparation({
         packId: preparation.id,
@@ -270,13 +278,17 @@ export async function runWeeklyPackCycle(
     summary.packsStarted += 1;
 
     try {
-      const artifact = await dependencies.designPack({
+      const designed = await dependencies.designPack({
         source: {
           graph: source.graph,
           context: contextFrom(source),
         },
         requestId,
       });
+      const artifact = {
+        ...designed,
+        companion: source.socialCandidate?.companion,
+      };
       const runs = await dependencies.startResearch({
         pack: artifact.pack,
         context: contextFrom(source),
