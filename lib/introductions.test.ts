@@ -29,34 +29,34 @@ beforeEach(() => {
 });
 
 describe("buildIntroductionPrompt", () => {
-  it("forbids inventing a name or a gender for someone unnamed", () => {
+  it("uses an identity token without sending a name or gender", () => {
     const prompt = buildIntroductionPrompt([thread], "Fukuoka");
-    expect(prompt).toContain("NO NAME");
-    expect(prompt).toContain("never guess a gender");
+    expect(prompt).toContain("[[PERSON]]");
+    expect(prompt).toContain("Never invent a name");
+    expect(prompt).toContain("guess a gender");
   });
 
   it("never sends the other person's id to the model", () => {
     expect(buildIntroductionPrompt([thread], "Fukuoka")).not.toContain("user-b");
   });
 
-  it("allows the city only when there is one", () => {
-    expect(buildIntroductionPrompt([thread], "Fukuoka")).toContain("Fukuoka");
-    expect(buildIntroductionPrompt([thread], "")).not.toContain(
-      "The city both people live in",
+  it("does not send either person's city to the model", () => {
+    expect(buildIntroductionPrompt([thread], "Fukuoka")).not.toContain(
+      "Fukuoka",
     );
   });
 });
 
 describe("fallbackIntroductionLine", () => {
-  it("is plain, true, and names nobody", () => {
+  it("is plain, true, and ready for server-side personalization", () => {
     expect(fallbackIntroductionLine(thread, "Fukuoka")).toBe(
-      "Someone in Fukuoka also knows cycling and Mojiko.",
+      "[[PERSON]] also knows cycling and Mojiko.",
     );
   });
 
-  it("drops the city rather than inventing one", () => {
+  it("never depends on a city", () => {
     expect(fallbackIntroductionLine(thread, "")).toBe(
-      "Someone also knows cycling and Mojiko.",
+      "[[PERSON]] also knows cycling and Mojiko.",
     );
   });
 });
@@ -75,7 +75,7 @@ describe("writeIntroductionLines", () => {
 
   it("keeps only the anchors the sentence actually names", async () => {
     generateStructured.mockResolvedValue({
-      lines: [{ index: 0, line: "Someone here knows cycling too." }],
+      lines: [{ index: 0, line: "[[PERSON]] knows cycling too." }],
     });
 
     const [written] = await writeIntroductionLines({
@@ -84,7 +84,7 @@ describe("writeIntroductionLines", () => {
       requestId: "req-2",
     });
 
-    expect(written.line).toBe("Someone here knows cycling too.");
+    expect(written.line).toBe("[[PERSON]] knows cycling too.");
     expect(written.anchors.map((anchor) => anchor.label)).toEqual(["cycling"]);
   });
 
@@ -97,7 +97,7 @@ describe("writeIntroductionLines", () => {
       requestId: "req-3",
     });
 
-    expect(written.line).toBe("Someone in Fukuoka also knows cycling and Mojiko.");
+    expect(written.line).toBe("[[PERSON]] also knows cycling and Mojiko.");
     expect(written.anchors).toHaveLength(2);
   });
 
@@ -110,12 +110,12 @@ describe("writeIntroductionLines", () => {
       requestId: "req-4",
     });
 
-    expect(written.line).toContain("Someone in Fukuoka");
+    expect(written.line).toContain("[[PERSON]]");
   });
 
   it("carries the other person's id through without ever writing it down", async () => {
     generateStructured.mockResolvedValue({
-      lines: [{ index: 0, line: "Someone here knows cycling and Mojiko too." }],
+      lines: [{ index: 0, line: "[[PERSON]] knows cycling and Mojiko too." }],
     });
 
     const [written] = await writeIntroductionLines({

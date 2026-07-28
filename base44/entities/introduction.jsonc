@@ -8,10 +8,8 @@
     },
     "user_a_id": { "type": "string" },
     "user_b_id": { "type": "string" },
-    "match_city": {
-      "type": "string",
-      "description": "The normalised home city both people share; two people who cannot meet are not introduced"
-    },
+    "user_a_name": { "type": "string" },
+    "user_b_name": { "type": "string" },
     "line": {
       "type": "string",
       "description": "The one sentence both people see, written only from the strict intersection of their two shareable graphs"
@@ -34,8 +32,11 @@
     },
     "status": {
       "type": "string",
-      "enum": ["offered", "connected", "declined", "expired"]
+      "enum": ["offered", "message_pending", "connected", "declined", "expired"]
     },
+    "opening_sender_user_id": { "type": "string" },
+    "opening_message": { "type": "string" },
+    "message_sent_at": { "type": "number" },
     "connection_id": {
       "type": "string",
       "description": "Set once both people said yes and a real connection was created"

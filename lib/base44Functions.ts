@@ -433,14 +433,43 @@ export function setMyIntroductions(muted: boolean, accessToken: string) {
   );
 }
 
-export function respondToIntroduction(
-  args: { introductionId: string; answer: "yes" | "no" },
+export function sendIntroductionMessage(
+  args: { introductionId: string; message: string },
   accessToken: string,
 ) {
-  return invokeSidequestData<import("./introductionSchema").IntroductionAnswer>(
-    { action: "respondToIntroduction", ...args },
+  return invokeSidequestData<{
+    introduction: import("./introductionSchema").IntroductionRecord;
+  }>(
+    { action: "sendIntroductionMessage", ...args },
     accessToken,
   );
+}
+
+export function respondToIntroductionMessage(
+  args: { introductionId: string; answer: "accept" | "decline" },
+  accessToken: string,
+) {
+  return invokeSidequestData<
+    import("./introductionSchema").IntroductionMessageAnswer
+  >(
+    { action: "respondToIntroductionMessage", ...args },
+    accessToken,
+  );
+}
+
+export function fetchMyHumanConversations(accessToken: string) {
+  return invokeSidequestData<
+    import("./introductionSchema").HumanConversationsState
+  >({ action: "getMyHumanConversations" }, accessToken);
+}
+
+export function sendHumanMessage(
+  args: { connectionId: string; message: string },
+  accessToken: string,
+) {
+  return invokeSidequestData<{
+    message: import("./introductionSchema").HumanMessageRecord;
+  }>({ action: "sendHumanMessage", ...args }, accessToken);
 }
 
 /**
@@ -455,8 +484,7 @@ export function findIntroductionCandidates(accessToken: string) {
       anchors: import("./introductionSchema").IntroductionAnchor[];
       weight: number;
     }>;
-    matchCity?: string;
-    /** Worlds actually opened, and worlds in the city the cap did not reach. */
+    /** Worlds actually opened, and eligible worlds the cap did not reach. */
     scanned?: number;
     skipped?: number;
   }>(
@@ -471,7 +499,6 @@ export function offerIntroduction(
     line: string;
     anchorsJson: string;
     weight: number;
-    matchCity: string;
   },
   accessToken: string,
 ) {

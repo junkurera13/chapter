@@ -3,16 +3,14 @@
  *
  * Everything Chapter already does with two worlds assumes consent has been
  * given: an invite was accepted, so both people know each other's names. An
- * introduction has no such handshake to lean on, so the rules below are the
- * whole safety argument, and they live in shared/ so they can be tested rather
- * than trusted.
+ * introduction has no such handshake to lean on, so the rules below live in
+ * shared/ where they can be tested rather than trusted.
  *
  * The argument is short. A gist is the strict intersection of two shareable
  * graphs, so every word of it is already true in the reader's own world. A
- * sentence made only of things you already hold discloses nothing about the
- * other person, which is why an introduction can be offered before either
- * person has agreed to anything. Names, faces, counts, and the other person's
- * answer are all one-sided facts, and none of them appear here.
+ * sentence is made only of things both people hold. Names are attached by the
+ * server after the line is written; neither person's identity or graph is sent
+ * to the model.
  */
 
 // Base44 entity rows are dynamic at this SDK boundary.
@@ -46,10 +44,10 @@ export const INTRODUCTION_SCAN_LIMIT = 200;
 /**
  * How many candidate worlds one scan will actually open.
  *
- * The city filter is free; reading a graph is not, and a scan that opened
- * every world in a city would get slower for everyone precisely as the product
- * started working. Newest accounts are looked at first, so the people most
- * likely to be waiting for something to happen are the ones who get it.
+ * Reading a graph is not free, and a scan that opened every world would get
+ * slower for everyone precisely as the product started working. Newest
+ * accounts are looked at first, so the people most likely to be waiting for
+ * something to happen are the ones who get it.
  */
 export const INTRODUCTION_GRAPH_READS = 24;
 
@@ -128,13 +126,11 @@ export function introductionPairKey(firstUserId: string, secondUserId: string) {
  * opt-in to protect. Consent belongs where something actually crosses, which
  * is the second yes.
  *
- * A home city is the only requirement, because it is what makes two people
- * able to meet at all. Muting is the only way out, and it is honoured here as
- * well as in the query, so a stale row can never put a muted account back in.
+ * Muting is the way out, and it is honoured here as well as in the scan, so a
+ * stale row can never put a muted account back in.
  */
 export function takesPartInIntroductions(row: Row) {
-  if (row?.introductions_muted === true) return false;
-  return Boolean(normalizeCity(row?.home_city));
+  return row?.introductions_muted !== true;
 }
 
 /**
@@ -212,30 +208,30 @@ export function eitherSaidNo(row: Row) {
  * information anybody needs, and the pair is never offered again.
  */
 export function isLiveIntroduction(row: Row, now: number) {
-  if (text(row?.status) !== "offered") return false;
+  const status = text(row?.status);
+  if (status !== "offered" && status !== "message_pending") return false;
+  // Rows written by the earlier anonymous flow have no names. They are not
+  // compatible with a named gist and should quietly age out of consideration.
+  if (!text(row?.user_a_name) || !text(row?.user_b_name)) return false;
   if (eitherSaidNo(row)) return false;
   return numberOr(row?.expires_at, 0) > now;
 }
 
 export type IntroductionRecord = {
   id: string;
+  partnerName: string;
   line: string;
   anchors: IntroductionAnchor[];
-  /** "offered" until this reader answers, then "waiting" until the other does. */
-  state: "offered" | "waiting";
+  state: "ready" | "sent" | "received";
+  openingMessage?: string;
   expiresAt: number;
 };
 
 /**
  * One stored row as one of the two people may see it.
  *
- * Deliberately absent: the other person's name, their id, their city, and
- * whether they have answered yet. That last one is the subtle one. Knowing
- * someone is already waiting on you would change the answer you give, and it
- * is a fact about them rather than about the two of you, so it stays on the
- * server until the moment it stops being private: when both have said yes and
- * a real connection exists, at which point they arrive through the ordinary
- * connections path with a name attached.
+ * The other person's id and graph stay server-side. The reader gets their name,
+ * the shared sentence, and—only if they are the recipient—the opening message.
  */
 export function introductionRecordFor(
   row: Row,
@@ -246,9 +242,19 @@ export function introductionRecordFor(
   if (!side || !isLiveIntroduction(row, now)) return undefined;
 
   const anchors = parsedJson(row.anchors_json);
+  const partnerName = text(side === "a" ? row.user_b_name : row.user_a_name) ||
+    "Someone";
+  const senderUserId = text(row.opening_sender_user_id);
+  const state = text(row.status) === "message_pending"
+    ? senderUserId === viewerUserId
+      ? "sent"
+      : "received"
+    : "ready";
+  const storedLine = text(row.line);
   return {
     id: text(row.id),
-    line: text(row.line),
+    partnerName,
+    line: storedLine.replaceAll("[[PERSON]]", partnerName),
     anchors: Array.isArray(anchors)
       ? anchors
         .map((anchor: Row) => ({
@@ -257,7 +263,10 @@ export function introductionRecordFor(
         }))
         .filter((anchor: IntroductionAnchor) => anchor.label)
       : [],
-    state: responseOf(row, side) === "yes" ? "waiting" : "offered",
+    state,
+    ...(state === "received"
+      ? { openingMessage: text(row.opening_message) }
+      : {}),
     expiresAt: numberOr(row.expires_at, 0),
   };
 }

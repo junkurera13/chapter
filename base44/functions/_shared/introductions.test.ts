@@ -28,7 +28,9 @@ function row(overrides: Record<string, unknown> = {}) {
     id: "intro-1",
     user_a_id: "user-a",
     user_b_id: "user-b",
-    line: "Someone else here knows the feeling of cycling around Mojiko too.",
+    user_a_name: "Mina",
+    user_b_name: "Daniel",
+    line: "[[PERSON]] knows the feeling of cycling around Mojiko too.",
     anchors_json: JSON.stringify([
       { label: "cycling", category: "activity" },
       { label: "Mojiko", category: "place" },
@@ -180,9 +182,9 @@ describe("takesPartInIntroductions", () => {
     ).toBe(false);
   });
 
-  it("needs a city, because two people who cannot meet are not introduced", () => {
-    expect(takesPartInIntroductions({})).toBe(false);
-    expect(takesPartInIntroductions({ home_city: "   " })).toBe(false);
+  it("does not require a city", () => {
+    expect(takesPartInIntroductions({})).toBe(true);
+    expect(takesPartInIntroductions({ home_city: "   " })).toBe(true);
   });
 
   it("reads only an explicit true as muted", () => {
@@ -231,6 +233,11 @@ describe("isLiveIntroduction", () => {
     expect(isLiveIntroduction(row({ status: "connected" }), NOW)).toBe(false);
     expect(isLiveIntroduction(row({ status: "expired" }), NOW)).toBe(false);
   });
+
+  it("does not revive rows from the earlier anonymous flow", () => {
+    expect(isLiveIntroduction(row({ user_a_name: undefined }), NOW)).toBe(false);
+    expect(isLiveIntroduction(row({ user_b_name: undefined }), NOW)).toBe(false);
+  });
 });
 
 describe("sideFor and responseOf", () => {
@@ -247,14 +254,15 @@ describe("sideFor and responseOf", () => {
 });
 
 describe("introductionRecordFor", () => {
-  it("says nothing about the other person", () => {
+  it("names the other person without exposing their id", () => {
     const record = introductionRecordFor(row(), "user-a", NOW);
     const serialized = JSON.stringify(record);
 
     expect(record).toBeDefined();
     expect(serialized).not.toContain("user-b");
     expect(serialized).not.toContain("user_b");
-    expect(record && "partnerName" in record).toBe(false);
+    expect(record?.partnerName).toBe("Daniel");
+    expect(record?.line).toContain("Daniel");
   });
 
   it("never reveals that the other person already answered", () => {
@@ -269,17 +277,47 @@ describe("introductionRecordFor", () => {
     expect(theyAgreed).toEqual(nobodyAnswered);
   });
 
-  it("reports only the reader's own answer back to them", () => {
-    expect(introductionRecordFor(row(), "user-a", NOW)?.state).toBe("offered");
+  it("reports whether the reader sent or received the opener", () => {
+    expect(introductionRecordFor(row(), "user-a", NOW)?.state).toBe("ready");
     expect(
-      introductionRecordFor(row({ user_a_response: "yes" }), "user-a", NOW)
+      introductionRecordFor(
+        row({
+          status: "message_pending",
+          opening_sender_user_id: "user-a",
+          opening_message: "Hi Daniel",
+        }),
+        "user-a",
+        NOW,
+      )
         ?.state,
-    ).toBe("waiting");
-    // The same row, read from the other side, is still waiting to be answered.
+    ).toBe("sent");
     expect(
-      introductionRecordFor(row({ user_a_response: "yes" }), "user-b", NOW)
+      introductionRecordFor(
+        row({
+          status: "message_pending",
+          opening_sender_user_id: "user-a",
+          opening_message: "Hi Daniel",
+        }),
+        "user-b",
+        NOW,
+      )
         ?.state,
-    ).toBe("offered");
+    ).toBe("received");
+  });
+
+  it("shows the opener only to its recipient", () => {
+    const pending = row({
+      status: "message_pending",
+      opening_sender_user_id: "user-a",
+      opening_message: "Hi Daniel",
+    });
+
+    expect(
+      introductionRecordFor(pending, "user-a", NOW)?.openingMessage,
+    ).toBeUndefined();
+    expect(
+      introductionRecordFor(pending, "user-b", NOW)?.openingMessage,
+    ).toBe("Hi Daniel");
   });
 
   it("returns nothing to somebody the introduction is not about", () => {

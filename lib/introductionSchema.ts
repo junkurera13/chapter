@@ -3,12 +3,9 @@ import { z } from "zod";
 /**
  * An introduction is a gist about someone you have not met.
  *
- * It carries strictly less than a connected gist does. A gist between friends
- * may name the friend, because you already know them. An introduction may name
- * nobody: no name, no face, no city beyond the one you are already standing in,
- * and no count of how well you supposedly match. What is left is one sentence
- * made only of things your own world already holds, which is the reason it can
- * be shown to you before either of you has agreed to anything.
+ * It names the other person, but its sentence is still made only from the
+ * strict intersection of two shareable graphs. The message request is the
+ * consent boundary: no conversation or People node exists until it is accepted.
  */
 export type IntroductionAnchor = {
   label: string;
@@ -19,35 +16,43 @@ export type IntroductionAnchor = {
 
 export type IntroductionRecord = {
   id: string;
-  /** One sentence, true in both worlds, naming neither person. */
+  partnerName: string;
+  /** One sentence, true in both worlds, naming the other person. */
   line: string;
   anchors: IntroductionAnchor[];
-  /**
-   * `offered` until this reader answers, then `waiting`. It never reports what
-   * the other person did, so the state is only ever about the reader.
-   */
-  state: "offered" | "waiting";
+  state: "ready" | "sent" | "received";
+  /** Only returned to the recipient of the opening message. */
+  openingMessage?: string;
   expiresAt: number;
 };
 
-/**
- * There is no `optedIn` here, and that is the design.
- *
- * Nothing about you reaches a stranger's screen: what reaches it is a sentence
- * made of what they already hold, which happens to also be true of you. So
- * there is nothing to opt into, only something to stop, and `muted` is that.
- */
 export type IntroductionsState = {
   muted: boolean;
-  homeCity: string;
   introductions: IntroductionRecord[];
 };
 
-export type IntroductionAnswer = {
+export type IntroductionMessageAnswer = {
   connected: boolean;
   closed: boolean;
   connectionId?: string;
   friendName?: string;
+};
+
+export type HumanMessageRecord = {
+  id: string;
+  sender: "me" | "them";
+  text: string;
+  createdAt: number;
+};
+
+export type HumanConversationRecord = {
+  connectionId: string;
+  partnerName: string;
+  messages: HumanMessageRecord[];
+};
+
+export type HumanConversationsState = {
+  conversations: HumanConversationRecord[];
 };
 
 /** What the model returns: a line per candidate, addressed by position. */

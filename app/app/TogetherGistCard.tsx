@@ -92,8 +92,8 @@ export default function TogetherGistCard({
   notice,
   stageLabel,
   onGo,
+  onMessage,
   onAnswer,
-  onMute,
   onSend,
   onAccept,
   onDecline,
@@ -107,8 +107,8 @@ export default function TogetherGistCard({
   notice: string;
   stageLabel: string;
   onGo: () => void;
-  onAnswer: (answer: "yes" | "no") => void;
-  onMute: () => void;
+  onMessage: (message: string) => void;
+  onAnswer: (answer: "accept" | "decline") => void;
   onSend: (proposedFor: string) => void;
   onAccept: (scheduledFor: string) => void;
   onDecline: (reason: string) => void;
@@ -119,19 +119,22 @@ export default function TogetherGistCard({
   );
   const [declining, setDeclining] = useState(false);
   const [declineDraft, setDeclineDraft] = useState("");
+  const [composing, setComposing] = useState(false);
+  const [messageDraft, setMessageDraft] = useState("");
 
   const content = chapter?.content;
   const answerable = chapter?.status === "proposed" && chapter.role === "partner";
   const sendable = chapter?.status === "draft" && chapter.role === "initiator";
   const livable = chapter?.status === "accepted" && !chapter.youLived;
   const researching = chapter?.status === "researching";
-  const unanswered = introduction?.state === "offered";
-  const waiting = introduction?.state === "waiting";
+  const ready = introduction?.state === "ready";
+  const sent = introduction?.state === "sent";
+  const received = introduction?.state === "received";
 
   const status = chapter
     ? statusLine(chapter)
     : introduction
-      ? (waiting ? "You said yes" : "Someone you haven’t met")
+      ? (sent ? "Message sent" : "")
       : "";
   const line = gist?.line ?? introduction?.line ?? "";
   const anchors = gist?.anchors ?? introduction?.anchors ?? [];
@@ -146,9 +149,6 @@ export default function TogetherGistCard({
     >
       {status ? (
         <p className={styles.cardStatus}>
-          {introduction ? (
-            <span className={styles.strangerOrb} aria-hidden="true" />
-          ) : null}
           {status}
         </p>
       ) : null}
@@ -156,7 +156,7 @@ export default function TogetherGistCard({
       <div className={styles.cardBody}>
         {line ? (
           <p
-            className={content || waiting
+            className={content || sent
               ? styles.gistLineQuiet
               : styles.gistLine}
           >
@@ -225,47 +225,69 @@ export default function TogetherGistCard({
       </div>
 
       <div className={styles.cardFoot}>
-        {/*
-          Before you have met, the card asks rather than plans. There is no
-          "Message" here on purpose: there is no one to write to until they
-          have said yes too.
-        */}
-        {unanswered ? (
+        {ready && !composing ? (
           <div className={styles.actions}>
-            <button type="button" disabled={busy} onClick={() => onAnswer("yes")}>
-              I’d go
-            </button>
-            <button
-              type="button"
-              className={styles.quiet}
-              disabled={busy}
-              onClick={() => onAnswer("no")}
-            >
-              Not this one
+            <button type="button" disabled={busy} onClick={() => setComposing(true)}>
+              Message
             </button>
           </div>
         ) : null}
 
-        {waiting ? (
-          <p className={styles.strangerWaiting}>
-            If they say yes too, you’ll both know.
-          </p>
+        {ready && composing ? (
+          <form
+            className={styles.messageForm}
+            onSubmit={(event) => {
+              event.preventDefault();
+              const message = messageDraft.trim();
+              if (message) onMessage(message);
+            }}
+          >
+            <textarea
+              value={messageDraft}
+              autoFocus
+              maxLength={1_000}
+              rows={3}
+              placeholder={`Message ${introduction?.partnerName}`}
+              aria-label={`Message ${introduction?.partnerName}`}
+              onChange={(event) => setMessageDraft(event.target.value)}
+            />
+            <div className={styles.actions}>
+              <button type="submit" disabled={busy || !messageDraft.trim()}>
+                Send
+              </button>
+              <button
+                type="button"
+                className={styles.quiet}
+                disabled={busy}
+                onClick={() => setComposing(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         ) : null}
 
-        {/*
-          The way out, where the thing it is about is. There is no setting for
-          this elsewhere and no switch to find: someone who does not want these
-          says so the first time they see one.
-        */}
-        {unanswered ? (
-          <button
-            type="button"
-            className={styles.strangerMute}
-            disabled={busy}
-            onClick={onMute}
-          >
-            Stop showing me these
-          </button>
+        {received ? (
+          <div className={styles.messageRequest}>
+            <p>{introduction?.openingMessage}</p>
+            <div className={styles.actions}>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onAnswer("accept")}
+              >
+                Accept
+              </button>
+              <button
+                type="button"
+                className={styles.quiet}
+                disabled={busy}
+                onClick={() => onAnswer("decline")}
+              >
+                Decline
+              </button>
+            </div>
+          </div>
         ) : null}
 
         {!chapter && !introduction ? (

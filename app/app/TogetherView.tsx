@@ -8,17 +8,20 @@ import {
   acceptTogetherChapter,
   answerIntroduction,
   declineTogetherChapter,
+  loadHumanConversations,
   loadIntroductions,
   loadTogether,
   loadTogetherGists,
   markTogetherChapterLived,
+  messageIntroduction,
   sendTogetherChapter,
-  muteIntroductions,
+  sendHumanConversationMessage,
   startTogetherChapter,
   type TogetherState,
   TogetherRequestError,
 } from "../../lib/togetherClient";
 import type {
+  HumanConversationRecord,
   IntroductionRecord,
   IntroductionsState,
 } from "../../lib/introductionSchema";
@@ -36,6 +39,7 @@ import type {
 import { demoGists } from "../../lib/togetherSamples";
 import { categoryOrbGradient } from "./categoryAppearance";
 import type { WorldNode } from "./graphData";
+import HumanMessages from "./HumanMessages";
 import TogetherGistCard from "./TogetherGistCard";
 import TogetherFriendsCard, {
   type TogetherPerson,
@@ -48,6 +52,7 @@ import styles from "./TogetherView.module.css";
  * rate limit the reads that people are waiting on also have to pass through.
  */
 const RESEARCH_POLL_MS = 15_000;
+const MESSAGE_POLL_MS = 8_000;
 
 const RESEARCH_STAGES = [
   "Reading both your worlds",
@@ -129,6 +134,11 @@ export default function TogetherView({
   const [introductions, setIntroductions] = useState<IntroductionRecord[]>(
     openedIntroductions?.introductions ?? [],
   );
+  const [conversations, setConversations] = useState<HumanConversationRecord[]>(
+    [],
+  );
+  const [messagesOpen, setMessagesOpen] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState("");
   /** True until the gist request has answered, either way. */
   const [reading, setReading] = useState(!openedGists);
   const [busy, setBusy] = useState(false);
@@ -171,6 +181,15 @@ export default function TogetherView({
     }
   }, []);
 
+  const readConversations = useCallback(async () => {
+    try {
+      const found = await loadHumanConversations();
+      setConversations(found.conversations);
+    } catch (error) {
+      console.warn("Could not read your messages", error);
+    }
+  }, []);
+
   /**
    * Opening Together, one read at a time and in the order they matter.
    *
@@ -208,9 +227,9 @@ export default function TogetherView({
           if (active) setReading(false);
         }
       }
-      if (!active || openedIntroductions) return;
-
-      await readIntroductions();
+      if (!active) return;
+      if (!openedIntroductions) await readIntroductions();
+      if (active) await readConversations();
     })();
     return () => {
       active = false;
@@ -286,36 +305,46 @@ export default function TogetherView({
     [refresh],
   );
 
-  /**
-   * An answer is final, so the card goes as soon as it is given rather than
-   * after a round trip. A yes that turns out to be mutual arrives back as a
-   * real connection, with a name on it, through the ordinary refresh.
-   */
+  const onMessageIntroduction = useCallback(
+    async (introductionId: string, message: string) => {
+      setBusy(true);
+      setNotice("");
+      setNoticeFor(introductionId);
+      try {
+        const result = await messageIntroduction(introductionId, message);
+        setIntroductions((current) =>
+          current.map((one) =>
+            one.id === introductionId ? result.introduction : one,
+          ),
+        );
+      } catch (error) {
+        setNotice(
+          error instanceof TogetherRequestError
+            ? error.message
+            : "Chapter couldn’t send that.",
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [],
+  );
+
   const onAnswerIntroduction = useCallback(
-    async (introductionId: string, answer: "yes" | "no") => {
+    async (introductionId: string, answer: "accept" | "decline") => {
       setBusy(true);
       setNotice("");
       setNoticeFor(introductionId);
       try {
         const result = await answerIntroduction(introductionId, answer);
+        setIntroductions((current) =>
+          current.filter((one) => one.id !== introductionId),
+        );
         if (result.connected) {
-          setIntroductions((current) =>
-            current.filter((one) => one.id !== introductionId),
-          );
-          await Promise.all([refresh(), readIntroductions()]);
-          const found = await loadTogetherGists().catch(() => undefined);
-          if (found) setGists(found.gists);
+          await Promise.all([refresh(), readIntroductions(), readConversations()]);
+          setSelectedConversationId(result.connectionId ?? "");
+          setMessagesOpen(true);
           onGraphAdvanced?.();
-        } else if (answer === "no") {
-          setIntroductions((current) =>
-            current.filter((one) => one.id !== introductionId),
-          );
-        } else {
-          setIntroductions((current) =>
-            current.map((one) =>
-              one.id === introductionId ? { ...one, state: "waiting" } : one,
-            ),
-          );
         }
       } catch (error) {
         setNotice(
@@ -327,33 +356,45 @@ export default function TogetherView({
         setBusy(false);
       }
     },
-    [refresh, readIntroductions, onGraphAdvanced],
+    [refresh, readIntroductions, readConversations, onGraphAdvanced],
   );
 
-  /**
-   * The way out, asked for from the card it is about rather than from a
-   * setting somewhere else. Every live offer goes with it, on both sides.
-   */
-  const onMuteIntroductions = useCallback(
-    async (cardId: string) => {
+  const onSendHumanMessage = useCallback(
+    async (connectionId: string, message: string) => {
       setBusy(true);
       setNotice("");
-      setNoticeFor(cardId);
+      setNoticeFor("messages");
       try {
-        await muteIntroductions();
-        setIntroductions([]);
+        await sendHumanConversationMessage(connectionId, message);
+        await readConversations();
+        return true;
       } catch (error) {
         setNotice(
           error instanceof TogetherRequestError
             ? error.message
-            : "Chapter couldn’t save that.",
+            : "Chapter couldn’t send that.",
         );
+        return false;
       } finally {
         setBusy(false);
       }
     },
-    [],
+    [readConversations],
   );
+
+  const messagePending = introductions.some(
+    (introduction) =>
+      introduction.state === "sent" || introduction.state === "received",
+  );
+  useEffect(() => {
+    if (!messagePending && !messagesOpen) return;
+    const poll = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void readIntroductions();
+      if (messagesOpen) void readConversations();
+    }, MESSAGE_POLL_MS);
+    return () => window.clearInterval(poll);
+  }, [messagePending, messagesOpen, readConversations, readIntroductions]);
 
   const entries = useMemo(
     () => buildEntries(chapters, gists, introductions),
@@ -430,10 +471,31 @@ export default function TogetherView({
     );
   }
 
+  if (messagesOpen) {
+    return (
+      <section className={styles.together}>
+        <main className={styles.main}>
+          <HumanMessages
+            conversations={conversations}
+            initialConnectionId={selectedConversationId}
+            busy={busy}
+            notice={noticeFor === "messages" ? notice : ""}
+            onClose={() => setMessagesOpen(false)}
+            onSend={onSendHumanMessage}
+          />
+        </main>
+      </section>
+    );
+  }
+
   // Someone with no people in their world can still have somewhere to be and
   // something they love, which is all an introduction is made of — so the
   // empty state only holds when there is nothing on either side of the tab.
-  if (people.length === 0 && introductions.length === 0) {
+  if (
+    people.length === 0 &&
+    introductions.length === 0 &&
+    conversations.length === 0
+  ) {
     return (
       <section className={styles.state}>
         <div className={styles.emptyOrbs} aria-hidden="true">
@@ -489,13 +551,14 @@ export default function TogetherView({
           </h1>
         )}
 
-        {entries.length > 0 ? (
+        {entries.length > 0 || conversations.length > 0 ? (
           <div className={styles.search}>
             {/* Standing furniture for now: the shape of where messages will be. */}
             <button
               type="button"
               className={styles.headButton}
               aria-label="Messages"
+              onClick={() => setMessagesOpen(true)}
             >
               <svg
                 aria-hidden="true"
@@ -610,7 +673,9 @@ export default function TogetherView({
                 onAnswer={(answer) =>
                   void onAnswerIntroduction(entry.id, answer)
                 }
-                onMute={() => void onMuteIntroductions(entry.id)}
+                onMessage={(message) =>
+                  void onMessageIntroduction(entry.id, message)
+                }
                 onGo={() => {
                   // Deep research costs real money, and a sample has no real
                   // person behind it. It says so rather than spending anything.

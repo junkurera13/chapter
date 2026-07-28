@@ -246,6 +246,175 @@
   display: none;
 }
 
+.messageForm,
+.messageRequest {
+  display: grid;
+  width: 100%;
+  gap: 10px;
+}
+
+.messageForm textarea,
+.threadComposer textarea {
+  width: 100%;
+  resize: none;
+  border: 0;
+  border-radius: 12px;
+  outline: 0;
+  background: #f6f5f3;
+  color: #25211d;
+  font: 14px/1.45 var(--font-chapter-sans), system-ui, sans-serif;
+}
+
+.messageForm textarea {
+  padding: 12px;
+}
+
+.messageForm textarea:focus,
+.threadComposer textarea:focus {
+  box-shadow: 0 0 0 2px rgba(201, 118, 135, 0.32);
+}
+
+.messageRequest > p {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f6f5f3;
+  color: #25211d;
+  font: 14px/1.5 var(--font-chapter-sans), system-ui, sans-serif;
+}
+
+.messages {
+  display: grid;
+  width: min(100%, 42rem);
+  min-height: 32rem;
+  gap: 18px;
+  align-content: start;
+}
+
+.messagesHead {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.messagesHead h1 {
+  margin: 0;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+.backButton {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: rgba(45, 39, 34, 0.56);
+  cursor: pointer;
+  font: 13px var(--font-chapter-sans), system-ui, sans-serif;
+}
+
+.conversationList,
+.conversationTabs {
+  display: grid;
+  gap: 2px;
+}
+
+.conversationList button,
+.conversationTabs button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #25211d;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+}
+
+.conversationList button {
+  display: grid;
+  gap: 4px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.conversationList button span:last-child {
+  overflow: hidden;
+  color: rgba(45, 39, 34, 0.5);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversationTabs {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+}
+
+.conversationTabs button {
+  padding: 0 0 5px;
+  color: rgba(45, 39, 34, 0.46);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.conversationTabs button[aria-current="true"] {
+  border-bottom: 1px solid #25211d;
+  color: #25211d;
+}
+
+.messageThread {
+  display: grid;
+  gap: 8px;
+  align-content: end;
+  min-height: 18rem;
+}
+
+.messageThread p {
+  width: fit-content;
+  max-width: min(78%, 28rem);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font: 14px/1.45 var(--font-chapter-sans), system-ui, sans-serif;
+}
+
+.messageMine {
+  justify-self: end;
+  background: #25211d;
+  color: #fff;
+}
+
+.messageTheirs {
+  justify-self: start;
+  background: #f3f2f0;
+  color: #25211d;
+}
+
+.threadComposer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.threadComposer textarea {
+  min-height: 44px;
+  padding: 11px 12px;
+}
+
+.threadComposer button {
+  min-height: 44px;
+}
+
+.noMessages {
+  margin: 0;
+  color: rgba(45, 39, 34, 0.46);
+  font: 14px var(--font-chapter-sans), system-ui, sans-serif;
+}
+
 @keyframes rise {
   from {
     opacity: 0;

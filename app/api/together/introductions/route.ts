@@ -4,7 +4,8 @@ import {
   fetchMyIntroductions,
   findIntroductionCandidates,
   offerIntroduction,
-  respondToIntroduction,
+  respondToIntroductionMessage,
+  sendIntroductionMessage,
   setMyIntroductions,
 } from "@/lib/base44Functions";
 import { withBackendDetail } from "@/lib/backendFailureDetail";
@@ -129,7 +130,6 @@ export async function GET(request: Request) {
       return Response.json({
         value: {
           muted: true,
-          homeCity: existing.homeCity,
           introductions: [],
         } satisfies IntroductionsState,
       });
@@ -148,7 +148,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const { candidates, matchCity, scanned, skipped } = settled;
+    const { candidates, scanned, skipped } = settled;
     if (skipped) {
       // A bounded scan that reports nothing looks exactly like an empty city.
       console.info("[together:introductions] scan truncated", {
@@ -166,14 +166,13 @@ export async function GET(request: Request) {
       });
     }
 
-    const city = existing.homeCity || matchCity || "";
     const written = await writeIntroductionLines({
       threads: candidates.map((candidate) => ({
         otherUserId: candidate.userId,
         anchors: candidate.anchors,
         weight: candidate.weight,
       })),
-      city,
+      city: "",
       requestId,
       signal: request.signal,
     });
@@ -189,7 +188,6 @@ export async function GET(request: Request) {
               line: introduction.line,
               anchorsJson: JSON.stringify(introduction.anchors),
               weight: introduction.weight,
-              matchCity: matchCity || city,
             },
             accessToken,
           );
@@ -226,7 +224,7 @@ export async function GET(request: Request) {
   }
 }
 
-/** Opting in or out, and answering one offer. */
+/** Muting, sending an opener, or answering one. */
 export async function POST(request: Request) {
   const requestId = crypto.randomUUID();
   const accessToken = accessTokenFrom(request);
@@ -248,11 +246,31 @@ export async function POST(request: Request) {
       return Response.json({ value: result });
     }
 
+    if (body.action === "message") {
+      const introductionId = typeof body.introductionId === "string"
+        ? body.introductionId
+        : "";
+      const message = typeof body.message === "string"
+        ? body.message.trim()
+        : "";
+      if (!introductionId || !message || message.length > 1_000) {
+        return Response.json(
+          { error: "Chapter couldn’t read that.", code: "TOGETHER_BAD_REQUEST" },
+          { status: 400 },
+        );
+      }
+      const result = await sendIntroductionMessage(
+        { introductionId, message },
+        accessToken,
+      );
+      return Response.json({ value: result });
+    }
+
     if (body.action === "answer") {
       const introductionId = typeof body.introductionId === "string"
         ? body.introductionId
         : "";
-      const answer = body.answer === "yes" || body.answer === "no"
+      const answer = body.answer === "accept" || body.answer === "decline"
         ? body.answer
         : undefined;
       if (!introductionId || !answer) {
@@ -261,7 +279,7 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-      const result = await respondToIntroduction(
+      const result = await respondToIntroductionMessage(
         { introductionId, answer },
         accessToken,
       );
@@ -275,7 +293,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Base44FunctionError && error.status === 409) {
       return Response.json(
-        { error: "That one was already answered.", code: "TOGETHER_ANSWERED" },
+        { error: "That request has already closed.", code: "TOGETHER_ANSWERED" },
         { status: 409 },
       );
     }

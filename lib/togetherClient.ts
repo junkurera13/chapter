@@ -1,7 +1,9 @@
 import { getAccessToken } from "@base44/sdk";
 
 import type {
-  IntroductionAnswer,
+  HumanConversationsState,
+  HumanMessageRecord,
+  IntroductionMessageAnswer,
   IntroductionsState,
 } from "./introductionSchema";
 import {
@@ -112,14 +114,40 @@ export function muteIntroductions() {
   });
 }
 
+export function messageIntroduction(
+  introductionId: string,
+  message: string,
+) {
+  return togetherFetch<{ introduction: IntroductionsState["introductions"][number] }>({
+    path: "/introductions",
+    method: "POST",
+    body: { action: "message", introductionId, message },
+  });
+}
+
 export function answerIntroduction(
   introductionId: string,
-  answer: "yes" | "no",
+  answer: "accept" | "decline",
 ) {
-  return togetherFetch<IntroductionAnswer>({
+  return togetherFetch<IntroductionMessageAnswer>({
     path: "/introductions",
     method: "POST",
     body: { action: "answer", introductionId, answer },
+  });
+}
+
+export function loadHumanConversations() {
+  return togetherFetch<HumanConversationsState>({ path: "/messages" });
+}
+
+export function sendHumanConversationMessage(
+  connectionId: string,
+  message: string,
+) {
+  return togetherFetch<{ message: HumanMessageRecord }>({
+    path: "/messages",
+    method: "POST",
+    body: { connectionId, message },
   });
 }
 

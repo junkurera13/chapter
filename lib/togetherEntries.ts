@@ -27,8 +27,8 @@ export function isOpen(chapter: TogetherChapterRecord) {
 /**
  * One person Chapter has something to say about, at whatever stage they are.
  *
- * `partnerName` is absent for exactly one reason: you have not met them yet.
- * Making that a missing field rather than a separate type is the point.
+ * An introduction names the other person, but still has no connection until
+ * its opening message is accepted.
  */
 export type TogetherEntry = {
   id: string;
@@ -50,12 +50,14 @@ export type TogetherEntry = {
 export function priorityOf(entry: TogetherEntry) {
   const { chapter, introduction } = entry;
   if (chapter?.status === "proposed" && chapter.role === "partner") return 0;
-  if (introduction?.state === "offered") return 1;
-  if (chapter?.status === "draft") return 2;
-  if (chapter?.status === "researching") return 3;
-  if (chapter?.status === "accepted") return 4;
-  if (chapter?.status === "proposed") return 5;
-  return 6;
+  if (introduction?.state === "received") return 1;
+  if (introduction?.state === "ready") return 2;
+  if (chapter?.status === "draft") return 3;
+  if (chapter?.status === "researching") return 4;
+  if (chapter?.status === "accepted") return 5;
+  if (chapter?.status === "proposed") return 6;
+  if (introduction?.state === "sent") return 7;
+  return 8;
 }
 
 /** Sorts after every real name, so someone unmet never jumps the alphabet. */
@@ -68,7 +70,11 @@ export function buildEntries(
 ): TogetherEntry[] {
   const byId = new Map<string, TogetherEntry>();
   for (const introduction of introductions) {
-    byId.set(introduction.id, { id: introduction.id, introduction });
+    byId.set(introduction.id, {
+      id: introduction.id,
+      partnerName: introduction.partnerName,
+      introduction,
+    });
   }
   for (const gist of gists) {
     byId.set(gist.connectionId, {

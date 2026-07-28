@@ -16,11 +16,12 @@ function gist(connectionId: string, partnerName: string): TogetherGist {
 
 function introduction(
   id: string,
-  state: IntroductionRecord["state"] = "offered",
+  state: IntroductionRecord["state"] = "ready",
 ): IntroductionRecord {
   return {
     id,
-    line: "Someone else here knows Mojiko too.",
+    partnerName: "Mina",
+    line: "Mina knows Mojiko too.",
     anchors: [{ label: "Mojiko", category: "place" }],
     state,
     expiresAt: 1_800_000_000_000,
@@ -60,11 +61,11 @@ describe("buildEntries", () => {
     expect(entries[0].partnerName).toBe("Samuel");
   });
 
-  it("carries someone unmet with no name at all", () => {
+  it("carries the name on a gist without making a connection", () => {
     const [entry] = buildEntries([], [], [introduction("i1")]);
 
     expect(entry.id).toBe("i1");
-    expect(entry.partnerName).toBeUndefined();
+    expect(entry.partnerName).toBe("Mina");
     expect(entry.introduction).toBeDefined();
     expect(entry.gist).toBeUndefined();
   });
@@ -86,25 +87,24 @@ describe("buildEntries", () => {
     expect(entries.map((entry) => entry.id)).toEqual(["c1", "i1", "c2"]);
   });
 
-  it("stops asking once the reader has answered", () => {
-    const [entry] = buildEntries([], [], [introduction("i1", "waiting")]);
-    // An answered introduction drops below a gist it used to outrank.
+  it("puts a sent request below a gist waiting for a first message", () => {
+    const [entry] = buildEntries([], [], [introduction("i1", "sent")]);
     expect(priorityOf(entry)).toBeGreaterThan(
       priorityOf({ id: "x", introduction: introduction("i2") }),
     );
   });
 
-  it("sorts named people alphabetically, and the unmet after them", () => {
+  it("keeps a sent request visible, then sorts ordinary gists alphabetically", () => {
     const entries = buildEntries(
       [],
       [gist("c2", "Samuel"), gist("c1", "Daniel")],
-      [introduction("i1", "waiting")],
+      [{ ...introduction("i1", "sent"), partnerName: "Zoe" }],
     );
 
     expect(entries.map((entry) => entry.partnerName)).toEqual([
+      "Zoe",
       "Daniel",
       "Samuel",
-      undefined,
     ]);
   });
 

@@ -1,0 +1,21 @@
+{
+  "name": "HumanMessage",
+  "type": "object",
+  "properties": {
+    "connection_id": { "type": "string" },
+    "introduction_id": {
+      "type": "string",
+      "description": "Present only on the opening message that created this conversation"
+    },
+    "sender_user_id": { "type": "string" },
+    "text": { "type": "string" },
+    "created_at": { "type": "number" }
+  },
+  "required": ["connection_id", "sender_user_id", "text", "created_at"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

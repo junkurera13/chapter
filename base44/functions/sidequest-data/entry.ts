@@ -6,7 +6,6 @@ import {
 } from "../../shared/concurrency.ts";
 import { collapseMemoryGraphRows } from "../../shared/memory-map.ts";
 import {
-  bothSaidYes,
   INTRODUCTION_GRAPH_READS,
   INTRODUCTION_MIN_ANCHORS,
   INTRODUCTION_SCAN_LIMIT,
@@ -17,7 +16,6 @@ import {
   MAX_LIVE_INTRODUCTIONS,
   normalizeCity,
   normalizeMatchLabel,
-  responseOf,
   sharedAnchorsBetween,
   sideFor,
   takesPartInIntroductions,
@@ -1199,7 +1197,7 @@ Deno.serve(async (req) => {
       const user = await ensureSidequestUser(users, viewer);
       if (user.introductions_muted) {
         return Response.json({
-          value: { muted: true, homeCity: "", introductions: [] },
+          value: { muted: true, introductions: [] },
         });
       }
 
@@ -1207,7 +1205,6 @@ Deno.serve(async (req) => {
       const rows = await readWithRateLimitRetry(() =>
         introductions.filter(
           {
-            status: "offered",
             $or: [{ user_a_id: user.id }, { user_b_id: user.id }],
           },
           "-created_at",
@@ -1225,7 +1222,6 @@ Deno.serve(async (req) => {
       return Response.json({
         value: {
           muted: false,
-          homeCity: stringValue(user.home_city),
           introductions: value.slice(0, MAX_LIVE_INTRODUCTIONS),
         },
       });
@@ -1249,7 +1245,6 @@ Deno.serve(async (req) => {
       if (!trustedInternalCall(data)) return untrustedInternalCall();
 
       const user = await ensureSidequestUser(users, viewer);
-      const city = normalizeCity(user.home_city);
       if (!takesPartInIntroductions(user)) {
         return Response.json({ value: { candidates: [] } });
       }
@@ -1296,23 +1291,15 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Queried on the city rather than scanned and compared, so a pool that
-      // grows in other cities costs this one nothing.
       const pool = await readWithRateLimitRetry(() =>
-        users.filter(
-          { home_city_key: city },
-          "-first_seen_at",
-          INTRODUCTION_SCAN_LIMIT,
-        )
+        users.list("-first_seen_at", INTRODUCTION_SCAN_LIMIT)
       );
       const mine = (await planningGraphFor(base44, user)).nodes;
       if (mine.length === 0) {
         return Response.json({ value: { candidates: [] } });
       }
 
-      // Narrowing is free. Opening a world is not, so only so many are opened
-      // per scan, and the count that was skipped is said out loud rather than
-      // quietly presented as though the city held nobody else.
+      // Opening a world is not free, so only so many are opened per scan.
       const reachable = pool.filter((candidate: Row) =>
         candidate.id !== user.id &&
         !alreadyPaired.has(candidate.id) &&
@@ -1348,7 +1335,6 @@ Deno.serve(async (req) => {
       return Response.json({
         value: {
           candidates,
-          matchCity: city,
           scanned: opened.length,
           skipped: reachable.length - opened.length,
         },
@@ -1370,8 +1356,7 @@ Deno.serve(async (req) => {
       const user = await ensureSidequestUser(users, viewer);
       const otherUserId = stringValue(data.otherUserId);
       const line = stringValue(data.line);
-      const matchCity = normalizeCity(data.matchCity);
-      if (!takesPartInIntroductions(user) || !otherUserId || !line || !matchCity) {
+      if (!takesPartInIntroductions(user) || !otherUserId || !line) {
         return Response.json({ error: "introduction unavailable" }, { status: 400 });
       }
       if (otherUserId === user.id) {
@@ -1411,7 +1396,8 @@ Deno.serve(async (req) => {
         pair_key: stablePairKey,
         user_a_id: firstId,
         user_b_id: secondId,
-        match_city: matchCity,
+        user_a_name: firstId === user.id ? firstName(user) : firstName(other),
+        user_b_name: secondId === user.id ? firstName(user) : firstName(other),
         line,
         anchors_json: boundedJson(data.anchorsJson, 4_000),
         shared_weight: typeof data.weight === "number" &&
@@ -1432,22 +1418,56 @@ Deno.serve(async (req) => {
       });
     }
 
-    /**
-     * One person's answer, and the moment two of them become a connection.
-     *
-     * A yes on its own reveals nothing to the other side; only the second yes
-     * does anything at all. That is what makes this safe to answer honestly:
-     * saying yes to a stranger who says no leaves you exactly where you were,
-     * and they never learn you said it.
-     */
-    if (action === "respondToIntroduction") {
+    if (action === "sendIntroductionMessage") {
       const viewer = await authenticatedViewer(base44);
       if (!viewer) {
         return Response.json({ error: "authentication required" }, { status: 401 });
       }
 
       const user = await ensureSidequestUser(users, viewer);
-      const answer = data.answer === "yes" || data.answer === "no"
+      const message = stringValue(data.message);
+      const introductions = base44.asServiceRole.entities.Introduction;
+      let introduction: Row | undefined;
+      try {
+        introduction = await introductions.get(stringValue(data.introductionId));
+      } catch {
+        introduction = undefined;
+      }
+      const side = introduction ? sideFor(introduction, user.id) : undefined;
+      if (!introduction || !side || !message) {
+        return Response.json({ error: "introduction not found" }, { status: 404 });
+      }
+      if (message.length > 1_000) {
+        return Response.json({ error: "message too long" }, { status: 400 });
+      }
+      if (!isLiveIntroduction(introduction, Date.now())) {
+        return Response.json({ error: "introduction closed" }, { status: 410 });
+      }
+      if (stringValue(introduction.status) !== "offered") {
+        return Response.json({ error: "message already sent" }, { status: 409 });
+      }
+
+      const updated = await introductions.update(introduction.id, {
+        status: "message_pending",
+        opening_sender_user_id: user.id,
+        opening_message: message,
+        message_sent_at: Date.now(),
+      });
+      return Response.json({
+        value: {
+          introduction: introductionRecordFor(updated, user.id, Date.now()),
+        },
+      });
+    }
+
+    if (action === "respondToIntroductionMessage") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const answer = data.answer === "accept" || data.answer === "decline"
         ? data.answer
         : undefined;
       const introductions = base44.asServiceRole.entities.Introduction;
@@ -1461,29 +1481,18 @@ Deno.serve(async (req) => {
       if (!introduction || !side || !answer) {
         return Response.json({ error: "introduction not found" }, { status: 404 });
       }
-      if (!isLiveIntroduction(introduction, Date.now())) {
-        return Response.json({ error: "introduction closed" }, { status: 410 });
-      }
-      if (responseOf(introduction, side) !== "pending") {
-        return Response.json({ error: "already answered" }, { status: 409 });
+      if (
+        stringValue(introduction.status) !== "message_pending" ||
+        stringValue(introduction.opening_sender_user_id) === user.id
+      ) {
+        return Response.json({ error: "message request closed" }, { status: 409 });
       }
 
-      const answerPatch: Row = side === "a"
-        ? { user_a_response: answer, user_a_responded_at: Date.now() }
-        : { user_b_response: answer, user_b_responded_at: Date.now() };
-
-      if (answer === "no") {
+      if (answer === "decline") {
         await introductions.update(introduction.id, {
-          ...answerPatch,
           status: "declined",
         });
         return Response.json({ value: { connected: false, closed: true } });
-      }
-
-      const answered = { ...introduction, ...answerPatch };
-      if (!bothSaidYes(answered)) {
-        await introductions.update(introduction.id, answerPatch);
-        return Response.json({ value: { connected: false, closed: false } });
       }
 
       const otherUserId = side === "a"
@@ -1497,7 +1506,6 @@ Deno.serve(async (req) => {
       }
       if (!other) {
         await introductions.update(introduction.id, {
-          ...answerPatch,
           status: "expired",
         });
         return Response.json({ error: "introduction closed" }, { status: 410 });
@@ -1505,6 +1513,7 @@ Deno.serve(async (req) => {
 
       const connections = base44.asServiceRole.entities.SidequestConnection;
       const graphNodes = base44.asServiceRole.entities.ExperienceGraphNode;
+      const humanMessages = base44.asServiceRole.entities.HumanMessage;
       const stablePairKey = pairKey(user.id, other.id);
       const existingConnections = await connections.filter(
         { pair_key: stablePairKey, status: "accepted" },
@@ -1560,6 +1569,23 @@ Deno.serve(async (req) => {
         nodeFor(other, user),
       ]);
 
+      const existingOpeningMessages = await humanMessages.filter(
+        { introduction_id: introduction.id },
+        undefined,
+        1,
+      );
+      if (!existingOpeningMessages[0]) {
+        await humanMessages.create({
+          connection_id: connection.id,
+          introduction_id: introduction.id,
+          sender_user_id: stringValue(introduction.opening_sender_user_id),
+          text: stringValue(introduction.opening_message),
+          created_at: typeof introduction.message_sent_at === "number"
+            ? introduction.message_sent_at
+            : Date.now(),
+        });
+      }
+
       await Promise.all([
         connections.update(connection.id, {
           user_a_node_id: connection.user_a_id === user.id
@@ -1570,7 +1596,6 @@ Deno.serve(async (req) => {
             : theirNode.id,
         }),
         introductions.update(introduction.id, {
-          ...answerPatch,
           status: "connected",
           connection_id: connection.id,
           connected_at: Date.now(),
@@ -1583,6 +1608,117 @@ Deno.serve(async (req) => {
           closed: true,
           connectionId: connection.id,
           friendName: displayName(other),
+        },
+      });
+    }
+
+    if (action === "getMyHumanConversations") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+      const user = await ensureSidequestUser(users, viewer);
+      const connections = base44.asServiceRole.entities.SidequestConnection;
+      const humanMessages = base44.asServiceRole.entities.HumanMessage;
+      const connectionRows = await readWithRateLimitRetry(() =>
+        connections.filter(
+          {
+            status: "accepted",
+            $or: [{ user_a_id: user.id }, { user_b_id: user.id }],
+          },
+          "-created_at",
+          40,
+        )
+      );
+
+      const conversations = await mapWithLimit(
+        connectionRows,
+        OPEN_WORLDS_AT_ONCE,
+        async (connection: Row) => {
+          const otherUserId = connection.user_a_id === user.id
+            ? connection.user_b_id
+            : connection.user_a_id;
+          const [messageRows, other] = await Promise.all([
+            readWithRateLimitRetry(() =>
+              humanMessages.filter(
+                { connection_id: connection.id },
+                "created_at",
+                100,
+              )
+            ),
+            readWithRateLimitRetry(() => users.get(otherUserId)).catch(
+              () => undefined,
+            ),
+          ]);
+          if (messageRows.length === 0) return undefined;
+          return {
+            connectionId: connection.id,
+            partnerName: firstName(other),
+            messages: messageRows.map((message: Row) => ({
+              id: message.id,
+              sender: message.sender_user_id === user.id ? "me" : "them",
+              text: stringValue(message.text),
+              createdAt: message.created_at,
+            })),
+          };
+        },
+      );
+
+      return Response.json({
+        value: {
+          conversations: conversations
+            .filter(Boolean)
+            .sort((first, second) => {
+              const firstMessages = first?.messages ?? [];
+              const secondMessages = second?.messages ?? [];
+              return (secondMessages.at(-1)?.createdAt ?? 0) -
+                (firstMessages.at(-1)?.createdAt ?? 0);
+            }),
+        },
+      });
+    }
+
+    if (action === "sendHumanMessage") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+      const user = await ensureSidequestUser(users, viewer);
+      const connectionId = stringValue(data.connectionId);
+      const message = stringValue(data.message);
+      if (!connectionId || !message || message.length > 1_000) {
+        return Response.json({ error: "message unavailable" }, { status: 400 });
+      }
+
+      const connections = base44.asServiceRole.entities.SidequestConnection;
+      let connection: Row | undefined;
+      try {
+        connection = await connections.get(connectionId);
+      } catch {
+        connection = undefined;
+      }
+      if (
+        !connection ||
+        stringValue(connection.status) !== "accepted" ||
+        (connection.user_a_id !== user.id && connection.user_b_id !== user.id)
+      ) {
+        return Response.json({ error: "conversation not found" }, { status: 404 });
+      }
+
+      const created = await base44.asServiceRole.entities.HumanMessage.create({
+        connection_id: connection.id,
+        sender_user_id: user.id,
+        text: message,
+        created_at: Date.now(),
+      });
+      return Response.json({
+        value: {
+          message: {
+            id: created.id,
+            sender: "me",
+            text: stringValue(created.text),
+            createdAt: created.created_at,
+          },
         },
       });
     }
