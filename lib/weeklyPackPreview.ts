@@ -3,6 +3,7 @@ import type {
   WeeklyExperiencePack,
 } from "./weeklyPackSchema";
 import type { WeeklyPackScale } from "./weeklyPackDesign";
+import type { WeeklyPackPhase } from "./weeklyPackPhase";
 
 export const WEEKLY_PACK_REVIEW_STATES = [
   { id: "loading", label: "Loading" },
@@ -22,8 +23,7 @@ export const WEEKLY_PACK_REVIEW_STATES = [
   { id: "error", label: "Pack could not load" },
 ] as const;
 
-export type WeeklyPackReviewState =
-  (typeof WEEKLY_PACK_REVIEW_STATES)[number]["id"];
+export type WeeklyPackReviewState = WeeklyPackPhase;
 
 export type WeeklyPackReviewFixture = {
   state:
@@ -49,8 +49,7 @@ const previewCards: WeeklyExperienceCard[] = [
     scale: "small",
     company: "self",
     title: "Map a street by sound",
-    line:
-      "How about making a tiny field recording while walking one familiar street before sunset?",
+    line: "How about making a tiny field recording while walking one familiar street before sunset?",
     anchors: [
       {
         nodeId: "preview-field-recording",
@@ -92,8 +91,7 @@ const previewCards: WeeklyExperienceCard[] = [
     scale: "mini",
     company: "new-person",
     title: "Make one bowl with Mina",
-    line:
-      "How about making one pottery bowl with Mina at Ceradu Ceramics Studio?",
+    line: "How about making one pottery bowl with Mina at Ceradu Ceramics Studio?",
     anchors: [
       {
         nodeId: "preview-pottery",
@@ -143,8 +141,7 @@ const previewCards: WeeklyExperienceCard[] = [
     scale: "proper",
     company: "known-person",
     title: "Follow Mojiko’s water with Daniel",
-    line:
-      "How about following the Mojiko waterfront with Daniel, from the old station to Mekari Park?",
+    line: "How about following the Mojiko waterfront with Daniel, from the old station to Mekari Park?",
     anchors: [
       {
         nodeId: "preview-river",

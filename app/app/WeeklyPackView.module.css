@@ -295,7 +295,6 @@
 
 .cardBack:focus-visible,
 .darkAction:focus-visible,
-.lightAction:focus-visible,
 .textAction:focus-visible,
 .dateChoice input:focus-visible {
   outline: 2px solid #7c6c59;
@@ -398,7 +397,11 @@
 
 .cardShot[data-empty="true"] {
   background:
-    radial-gradient(circle at 38% 34%, rgba(255, 255, 255, 0.72), transparent 38%),
+    radial-gradient(
+      circle at 38% 34%,
+      rgba(255, 255, 255, 0.72),
+      transparent 38%
+    ),
     #f0eeeb;
 }
 
@@ -475,27 +478,7 @@
   opacity: 0.5;
 }
 
-.formatLabel {
-  margin: 0;
-  color: rgba(37, 33, 29, 0.5);
-  font: 620 11px/1.1 var(--font-chapter-instrument), system-ui, sans-serif;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-}
-
-.chosenMeta span {
-  display: inline-flex;
-  min-height: 25px;
-  padding: 0 10px;
-  align-items: center;
-  border: 1px solid rgba(37, 33, 29, 0.11);
-  border-radius: 999px;
-  color: rgba(37, 33, 29, 0.56);
-  font: 570 11px/1 var(--font-chapter-instrument), system-ui, sans-serif;
-}
-
 .darkAction,
-.lightAction,
 .textAction {
   appearance: none;
   border: 0;
@@ -507,11 +490,13 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.darkAction,
-.lightAction {
+.darkAction {
   min-height: 45px;
   border-radius: 999px;
-  font: 620 13px/1 var(--font-chapter-instrument), system-ui, sans-serif;
+  font:
+    620 13px/1 var(--font-chapter-instrument),
+    system-ui,
+    sans-serif;
 }
 
 .darkAction:hover {
@@ -520,7 +505,6 @@
 }
 
 .darkAction:disabled,
-.lightAction:disabled,
 .textAction:disabled {
   cursor: default;
   opacity: 0.5;
@@ -569,43 +553,6 @@
   margin-top: 24px;
 }
 
-.sealedStack {
-  position: relative;
-  width: min(250px, 64vw);
-  aspect-ratio: 0.72;
-}
-
-.sealedStack span {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(42, 36, 29, 0.13);
-  border-radius: 20px;
-  background: #f6f3ed;
-}
-
-.sealedStack span:nth-child(1) {
-  transform: translate(-11px, 7px) rotate(-4deg);
-}
-
-.sealedStack span:nth-child(2) {
-  transform: translate(11px, 7px) rotate(4deg);
-}
-
-.sealedStack span:nth-child(3)::before {
-  position: absolute;
-  inset: 9px;
-  border: 1px solid rgba(50, 43, 35, 0.09);
-  border-radius: 14px;
-  content: "";
-}
-
-.sealedStack img {
-  width: 64px;
-  height: 64px;
-}
-
 .closedMark {
   display: grid;
   width: 88px;
@@ -625,7 +572,10 @@
   padding: 8px 4px;
   background: transparent;
   color: rgba(36, 33, 29, 0.5);
-  font: 590 12px/1.2 var(--font-chapter-instrument), system-ui, sans-serif;
+  font:
+    590 12px/1.2 var(--font-chapter-instrument),
+    system-ui,
+    sans-serif;
 }
 
 .textAction:hover {
@@ -633,209 +583,202 @@
 }
 
 .chosenPage {
-  padding: clamp(54px, 8vh, 92px) 24px 150px;
-}
-
-.chosenCard {
-  width: min(920px, 100%);
-  margin: 0 auto;
-}
-
-.chosenHeader {
-  max-width: 720px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-.chosenHeader h1 {
-  margin: 18px auto 0;
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: clamp(44px, 7vw, 78px);
-  font-weight: 520;
-  letter-spacing: -0.06em;
-  line-height: 0.92;
-}
-
-.chosenOpening {
-  max-width: 610px;
-  margin: 24px auto 0;
-  color: rgba(37, 33, 29, 0.69);
-  font-family: var(--font-chapter-serif), Georgia, serif;
-  font-size: clamp(19px, 2.4vw, 25px);
-  line-height: 1.38;
-}
-
-.chosenCompanion {
-  display: inline-flex;
-  margin-top: 24px;
-  gap: 10px;
-  align-items: center;
-  text-align: left;
-}
-
-.chosenCompanionMark {
   display: grid;
-  width: 46px;
-  height: 46px;
-  flex: 0 0 auto;
-  border: 1px solid rgba(41, 37, 33, 0.1);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 31% 22%, rgba(255, 255, 255, 0.92), transparent 34%),
-    linear-gradient(145deg, #ffd6e5, #aacfff);
-  box-shadow:
-    inset 0 -3px 5px rgba(61, 42, 70, 0.13),
-    0 4px 10px rgba(44, 38, 35, 0.09);
-  color: #24211d;
-  font: 650 13px/1 var(--font-chapter-instrument), system-ui, sans-serif;
+  padding: 44px 24px 140px;
   place-items: center;
 }
 
-.chosenCompanionCopy {
+.chosenLayout {
   display: grid;
-  gap: 3px;
-}
-
-.chosenCompanionCopy small {
-  color: rgba(37, 33, 29, 0.45);
-  font: 580 10px/1 var(--font-chapter-instrument), system-ui, sans-serif;
-  letter-spacing: 0.02em;
-}
-
-.chosenCompanionCopy strong {
-  color: #24211d;
-  font: 630 15px/1.15 var(--font-chapter-instrument), system-ui, sans-serif;
-}
-
-.chosenMeta {
-  display: flex;
-  margin-top: 22px;
-  gap: 7px;
+  width: min(1040px, 100%);
+  gap: clamp(54px, 8vw, 104px);
+  align-items: center;
   justify-content: center;
+  grid-template-columns: minmax(320px, 460px) minmax(260px, 340px);
 }
 
-.experienceBody {
-  display: grid;
-  margin-top: clamp(48px, 7vh, 72px);
-  gap: clamp(40px, 7vw, 86px);
-  grid-template-columns: minmax(0, 1.35fr) minmax(230px, 0.65fr);
+.chosenExperienceCard {
+  display: flex;
+  width: auto;
+  max-width: 100%;
+  height: min(640px, calc(100svh - 184px));
+  min-height: 500px;
+  padding: 18px;
+  overflow: hidden;
+  flex-direction: column;
+  aspect-ratio: 0.71;
+  border: 1px solid rgba(42, 36, 29, 0.13);
+  border-radius: 28px;
+  background: #fff;
+  box-shadow:
+    0 32px 68px rgba(0, 0, 0, 0.11),
+    0 8px 20px rgba(0, 0, 0, 0.065);
+  justify-self: center;
 }
 
-.experienceSteps {
-  border-top: 1px solid rgba(37, 33, 29, 0.13);
+.chosenCardSay {
+  padding: 16px 16px 21px;
 }
 
-.step {
-  display: grid;
-  padding: 22px 0;
-  gap: 20px;
-  border-bottom: 1px solid rgba(37, 33, 29, 0.13);
-  grid-template-columns: 28px minmax(0, 1fr);
+.chosenExperienceCard .cardLine {
+  font-size: clamp(20px, 2vw, 25px);
+  line-height: 1.25;
 }
 
-.step > span {
-  padding-top: 3px;
-  color: rgba(37, 33, 29, 0.36);
-  font: 600 10px/1 var(--font-chapter-instrument), system-ui, sans-serif;
-  letter-spacing: 0.08em;
+.chosenExperienceCard .cardShot {
+  border-radius: 13px;
 }
 
-.step p {
-  margin: 0;
-  color: #2b2722;
-  font-family: var(--font-chapter-serif), Georgia, serif;
-  font-size: 18px;
-  line-height: 1.48;
+.chosenDetails {
+  width: 100%;
+  max-width: 340px;
 }
 
-.practical {
-  align-self: start;
-}
-
-.practicalRow {
-  padding: 0 0 18px;
-}
-
-.practicalRow + .practicalRow {
-  padding-top: 18px;
-  border-top: 1px solid rgba(37, 33, 29, 0.1);
-}
-
-.practicalRow > span,
-.scheduled span,
-.dateChoice label > span {
+.detailIcon {
   display: block;
-  margin-bottom: 7px;
-  color: rgba(37, 33, 29, 0.42);
-  font: 620 10px/1 var(--font-chapter-instrument), system-ui, sans-serif;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  width: 20px;
+  height: 20px;
+  margin: 4px 0 0;
+  flex: 0 0 auto;
+  color: rgba(37, 33, 29, 0.64);
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.practicalRow p {
+.locationIcon {
+  color: #e15252;
+  fill: currentColor;
+  stroke: none;
+}
+
+.locationIcon circle {
+  fill: #fff;
+}
+
+.chosenLocation,
+.chosenWhen {
+  display: grid;
+  gap: 13px;
+  align-items: start;
+  grid-template-columns: 20px minmax(0, 1fr);
+}
+
+.chosenLocation h2 {
+  max-width: 13ch;
   margin: 0;
-  color: rgba(37, 33, 29, 0.76);
-  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
-  font-size: 13px;
-  line-height: 1.45;
+  color: #24211d;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(28px, 3vw, 37px);
+  font-weight: 520;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
 }
 
-.practicalRow small {
-  display: block;
-  margin-top: 3px;
-  color: rgba(37, 33, 29, 0.44);
-  font-size: 11px;
+.chosenLocation h2 a {
+  border-radius: 3px;
+  color: inherit;
+  text-decoration: none;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.chosenLocation h2 a:hover {
+  text-decoration: underline;
+}
+
+.chosenLocation h2 a:focus-visible,
+.mapLinks a:focus-visible {
+  outline: 2px solid #7c6c59;
+  outline-offset: 3px;
+}
+
+.chosenLocationCopy > p {
+  margin: 15px 0 0;
+  color: rgba(37, 33, 29, 0.68);
+  font:
+    560 14px/1.35 var(--font-chapter-instrument),
+    system-ui,
+    sans-serif;
+}
+
+.mapLinks {
+  display: flex;
+  margin-top: 13px;
+  gap: 14px;
+}
+
+.mapLinks a {
+  color: rgba(37, 33, 29, 0.48);
+  font:
+    590 11px/1.2 var(--font-chapter-instrument),
+    system-ui,
+    sans-serif;
+  text-decoration: none;
+}
+
+.mapLinks a:hover {
+  color: #24211d;
+}
+
+.chosenWhen {
+  margin-top: 34px;
+  padding-top: 29px;
+  border-top: 1px solid rgba(37, 33, 29, 0.12);
+}
+
+.chosenWhen[data-has-icon="false"] {
+  gap: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.chosenWhenContent {
+  min-width: 0;
 }
 
 .chosenActions {
-  width: min(480px, 100%);
-  margin: clamp(54px, 8vh, 78px) auto 0;
-  text-align: center;
+  width: 100%;
 }
 
 .primaryActions {
   display: grid;
-  gap: 9px;
-  grid-template-columns: 1.1fr 0.9fr;
 }
 
-.darkAction,
-.lightAction {
-  padding: 0 20px;
+.primaryActions .darkAction {
+  width: 100%;
+}
+
+.secondaryActions {
+  display: flex;
+  margin-top: 11px;
+  gap: 18px;
+  justify-content: center;
+}
+
+.secondaryActions .textAction {
+  padding-right: 0;
+  padding-left: 0;
 }
 
 .darkAction {
+  padding: 0 20px;
   background: #28241f;
   color: #fff;
 }
 
-.lightAction {
-  border: 1px solid rgba(37, 33, 29, 0.13);
-  background: #f6f4f0;
-  color: #2a2621;
-}
-
-.lightAction:hover {
-  background: #efede8;
-}
-
-.chosenActions > .textAction {
-  margin-top: 12px;
-}
-
 .scheduled {
-  margin: 0 0 18px;
+  margin: 0 0 17px;
   color: #29251f;
-  font-family: var(--font-chapter-serif), Georgia, serif;
-  font-size: 19px;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 23px;
+  font-weight: 520;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
 }
 
 .dateChoice {
-  padding: 22px;
-  border: 1px solid rgba(37, 33, 29, 0.11);
-  border-radius: 18px;
-  background: #f8f6f2;
-  text-align: left;
+  width: 100%;
 }
 
 .dateChoice label {
@@ -844,24 +787,39 @@
 
 .dateChoice input {
   width: 100%;
-  height: 46px;
+  height: 47px;
   padding: 0 14px;
   border: 1px solid rgba(37, 33, 29, 0.14);
-  border-radius: 11px;
+  border-radius: 12px;
   background: #fff;
   color: #24211d;
-  font: 570 14px/1 var(--font-chapter-instrument), system-ui, sans-serif;
+  font:
+    570 14px/1 var(--font-chapter-instrument),
+    system-ui,
+    sans-serif;
 }
 
 .dateChoice > div {
   display: flex;
   margin-top: 12px;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
 }
 
 .dateChoice .darkAction {
-  min-width: 150px;
+  flex: 1;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  margin: -1px;
+  white-space: nowrap;
 }
 
 .livedState {
@@ -958,25 +916,29 @@
   }
 
   .chosenPage {
-    padding: 52px 22px 138px;
+    padding: 56px 20px 138px;
+    align-items: start;
   }
 
-  .chosenHeader h1 {
-    font-size: clamp(45px, 14vw, 62px);
-  }
-
-  .chosenOpening {
-    font-size: 20px;
-  }
-
-  .experienceBody {
-    margin-top: 46px;
-    gap: 42px;
+  .chosenLayout {
+    width: min(420px, 100%);
+    gap: 38px;
     grid-template-columns: 1fr;
   }
 
-  .primaryActions {
-    grid-template-columns: 1fr;
+  .chosenExperienceCard {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 0.71;
+  }
+
+  .chosenDetails {
+    max-width: none;
+  }
+
+  .chosenLocation h2 {
+    font-size: 32px;
   }
 }
 
@@ -1002,7 +964,6 @@
   .openerButton::before,
   .packContinue,
   .darkAction,
-  .lightAction,
   .textAction {
     transition: none;
     animation: none;

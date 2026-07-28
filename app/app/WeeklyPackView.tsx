@@ -2,11 +2,7 @@
 
 import Image from "next/image";
 import type { StaticImageData } from "next/image";
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-} from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import ceramicImage from "@/app/assets/ceramics-class.jpg";
@@ -19,13 +15,9 @@ import type { BubblegumTone } from "@/components/weekly-pack/emboss-engine";
 import type { WorldNodeCategory } from "@/app/app/graphData";
 import type { WeeklyPackScale } from "@/lib/weeklyPackDesign";
 import {
-  WEEKLY_COMPANY_LABELS,
-  WEEKLY_SCALE_LABELS,
-  formatWeeklyDuration,
   type WeeklyExperienceCard,
   type WeeklyExperiencePack,
 } from "@/lib/weeklyPackSchema";
-import { weeklyCompanionInitials } from "@/lib/weeklyPackSocial";
 import {
   chooseWeeklyCard,
   dismissWeeklyPack,
@@ -38,6 +30,8 @@ import {
   weeklyPackReviewFixture,
   type WeeklyPackReviewState,
 } from "@/lib/weeklyPackPreview";
+import { weeklyPackPhase } from "@/lib/weeklyPackPhase";
+import { weeklyPackWindow } from "@/lib/weeklyPackSchedule";
 
 import { categoryOrbGradient } from "./categoryAppearance";
 import styles from "./WeeklyPackView.module.css";
@@ -254,15 +248,65 @@ function stableCardOrder(cards: WeeklyExperienceCard[], weekKey: string) {
   );
   return [...cards].sort((first, second) => {
     const firstWeight =
-      seed + [...first.id].reduce((sum, character) => sum + character.charCodeAt(0), 0);
+      seed +
+      [...first.id].reduce(
+        (sum, character) => sum + character.charCodeAt(0),
+        0,
+      );
     const secondWeight =
-      seed + [...second.id].reduce((sum, character) => sum + character.charCodeAt(0), 0);
-    return (firstWeight * 31) % 17 - ((secondWeight * 31) % 17);
+      seed +
+      [...second.id].reduce(
+        (sum, character) => sum + character.charCodeAt(0),
+        0,
+      );
+    return ((firstWeight * 31) % 17) - ((secondWeight * 31) % 17);
   });
 }
 
 function chosenCard(pack: WeeklyExperiencePack) {
   return pack.cards?.find((card) => card.id === pack.chosenCardId);
+}
+
+function LockedPackState({
+  releaseAt,
+  reduceMotion,
+}: {
+  releaseAt: number;
+  reduceMotion: boolean;
+}) {
+  return (
+    <section className={styles.statePage}>
+      <motion.div
+        className={styles.lockedLoader}
+        initial={reduceMotion ? false : { opacity: 0, scale: 0.975 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: reduceMotion ? 0 : 0.55 }}
+        aria-hidden="true"
+      >
+        <Image
+          className={styles.lockedLoaderMark}
+          src="/chapter-mark.svg"
+          alt=""
+          width={112}
+          height={112}
+        />
+      </motion.div>
+      <motion.div
+        className={styles.stateCopy}
+        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.14 }}
+      >
+        <h1>Your experiences are taking shape.</h1>
+        <p>
+          Ready{" "}
+          <span className={styles.dateUnderline}>
+            Saturday, {dayLabel(releaseAt, { weekday: undefined })}
+          </span>
+        </p>
+      </motion.div>
+    </section>
+  );
 }
 
 export default function WeeklyPackView({
@@ -277,18 +321,19 @@ export default function WeeklyPackView({
     ? weeklyPackReviewFixture(reviewState)
     : undefined;
   const initialReviewPack =
-    initialReview?.state.status === "ready"
-      ? initialReview.state.pack
-      : null;
+    initialReview?.state.status === "ready" ? initialReview.state.pack : null;
   const [state, setState] = useState<PackState>(
     () => initialReview?.state ?? { status: "loading" },
   );
-  const [pendingChoice, setPendingChoice] =
-    useState<WeeklyPackScale | null>(initialReview?.pendingChoice ?? null);
+  const [pendingChoice, setPendingChoice] = useState<WeeklyPackScale | null>(
+    initialReview?.pendingChoice ?? null,
+  );
   const [committingChoice, setCommittingChoice] =
     useState<WeeklyPackScale | null>(null);
   const [busy, setBusy] = useState(false);
-  const [openedPackId, setOpenedPackId] = useState<string | null>(null);
+  const [openedPackId, setOpenedPackId] = useState<string | null>(() =>
+    reviewState === "sealed" ? (initialReviewPack?.id ?? null) : null,
+  );
   const [actionError, setActionError] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(
     initialReview?.showDatePicker ?? false,
@@ -297,9 +342,9 @@ export default function WeeklyPackView({
     initialReview?.scheduledFor ?? "",
   );
   const hydratedPackId = useRef(initialReviewPack?.id);
-  const [settledCardIds, setSettledCardIds] = useState<
-    Set<WeeklyPackScale>
-  >(() => new Set(initialReviewPack?.revealedCardIds ?? []));
+  const [settledCardIds, setSettledCardIds] = useState<Set<WeeklyPackScale>>(
+    () => new Set(initialReviewPack?.revealedCardIds ?? []),
+  );
 
   useEffect(() => {
     if (reviewState) return;
@@ -337,9 +382,7 @@ export default function WeeklyPackView({
       }
 
       const stillRevealed = new Set(
-        [...current].filter((cardId) =>
-          pack.revealedCardIds.includes(cardId),
-        ),
+        [...current].filter((cardId) => pack.revealedCardIds.includes(cardId)),
       );
       return stillRevealed.size === current.size ? current : stillRevealed;
     });
@@ -380,7 +423,9 @@ export default function WeeklyPackView({
     setCommittingChoice(cardId);
     try {
       if (reviewState) {
-        await new Promise((resolve) => window.setTimeout(resolve, reduceMotion ? 0 : 620));
+        await new Promise((resolve) =>
+          window.setTimeout(resolve, reduceMotion ? 0 : 620),
+        );
         setState({
           status: "ready",
           pack: {
@@ -490,7 +535,26 @@ export default function WeeklyPackView({
     setOpenedPackId(pack.id);
   }
 
-  if (state.status === "loading") {
+  function replayPreview() {
+    if (onReviewStateChange) {
+      onReviewStateChange("sealed");
+      return;
+    }
+    const fixture = weeklyPackReviewFixture("sealed");
+    const replayPack =
+      fixture.state.status === "ready" ? fixture.state.pack : null;
+    setState(fixture.state);
+    setOpenedPackId(replayPack?.id ?? null);
+  }
+
+  const phase = weeklyPackPhase({
+    state,
+    openedPackId,
+    pendingChoice,
+    showDatePicker,
+  });
+
+  if (phase === "loading") {
     return (
       <section className={styles.statePage} aria-busy="true">
         <ChapterLoadingMark label="Opening Saturday" />
@@ -498,12 +562,16 @@ export default function WeeklyPackView({
     );
   }
 
-  if (state.status === "error") {
+  if (phase === "error") {
+    const message =
+      state.status === "error"
+        ? state.message
+        : "Chapter couldn’t open this week’s pack.";
     return (
       <section className={styles.statePage} role="alert">
         <div className={styles.stateCopy}>
           <h1>The pack stayed closed.</h1>
-          <p>{state.message}</p>
+          <p>{message}</p>
           <button
             type="button"
             className={styles.darkAction}
@@ -517,68 +585,36 @@ export default function WeeklyPackView({
   }
 
   if (!pack) {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const { releaseAt } = weeklyPackWindow({ timezone });
     return (
-      <section className={styles.statePage}>
-        <SealedStack />
-        <div className={styles.stateCopy}>
-          <h1>Saturday</h1>
-          <p>Your first pack is being made.</p>
-        </div>
-      </section>
+      <LockedPackState
+        releaseAt={releaseAt}
+        reduceMotion={Boolean(reduceMotion)}
+      />
     );
   }
 
-  if (pack.status === "locked") {
+  if (phase === "locked") {
     return (
-      <section className={styles.statePage}>
-        <motion.div
-          className={styles.lockedLoader}
-          initial={reduceMotion ? false : { opacity: 0, scale: 0.975 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: reduceMotion ? 0 : 0.55 }}
-          aria-hidden="true"
-        >
-          <Image
-            className={styles.lockedLoaderMark}
-            src="/chapter-mark.svg"
-            alt=""
-            width={112}
-            height={112}
-          />
-        </motion.div>
-        <motion.div
-          className={styles.stateCopy}
-          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.14 }}
-        >
-          <h1>Your experiences are taking shape.</h1>
-          <p>
-            Ready{" "}
-            <span className={styles.dateUnderline}>
-              Saturday, {dayLabel(pack.releaseAt, { weekday: undefined })}
-            </span>
-          </p>
-        </motion.div>
-      </section>
+      <LockedPackState
+        releaseAt={pack.releaseAt}
+        reduceMotion={Boolean(reduceMotion)}
+      />
     );
   }
 
-  if (
-    pack.status === "dismissed" ||
-    pack.status === "expired" ||
-    pack.status === "failed"
-  ) {
+  if (phase === "dismissed" || phase === "expired" || phase === "failed") {
     const title =
-      pack.status === "dismissed"
+      phase === "dismissed"
         ? "Not this week."
-        : pack.status === "expired"
+        : phase === "expired"
           ? "This pack has passed."
           : "This pack didn’t make it.";
     const body =
-      pack.status === "dismissed"
+      phase === "dismissed"
         ? "Saturday will bring three new cards."
-        : pack.status === "expired"
+        : phase === "expired"
           ? "A new set arrives on Saturday."
           : "Chapter will try again before the next Saturday.";
     return (
@@ -593,9 +629,7 @@ export default function WeeklyPackView({
             <button
               type="button"
               className={styles.textAction}
-              onClick={() =>
-                setState(weeklyPackReviewFixture("sealed").state)
-              }
+              onClick={replayPreview}
             >
               Replay preview
             </button>
@@ -605,7 +639,12 @@ export default function WeeklyPackView({
     );
   }
 
-  if (pack.status === "chosen" || pack.status === "lived") {
+  if (
+    phase === "chosen" ||
+    phase === "date-picker" ||
+    phase === "scheduled" ||
+    phase === "lived"
+  ) {
     const card = chosenCard(pack);
     if (!card) {
       return (
@@ -636,20 +675,12 @@ export default function WeeklyPackView({
         onCancelDate={() => setShowDatePicker(false)}
         onDismiss={() => void dismiss()}
         onLived={() => void markLived()}
-        onReplay={() =>
-          setState(weeklyPackReviewFixture("sealed").state)
-        }
+        onReplay={replayPreview}
       />
     );
   }
 
-  if (
-    pack.status === "available" &&
-    pack.revealedCardIds.length === 0 &&
-    orderedCards.length > 0 &&
-    reviewState !== "sealed" &&
-    openedPackId !== pack.id
-  ) {
+  if (phase === "opener") {
     return (
       <PackOpener
         busy={busy}
@@ -731,8 +762,7 @@ export default function WeeklyPackView({
               }
               transition={{
                 duration: committing ? 0.48 : pendingChoice ? 0.35 : 0.68,
-                delay:
-                  committing || pendingChoice ? 0 : 0.18 + index * 0.09,
+                delay: committing || pendingChoice ? 0 : 0.18 + index * 0.09,
                 ease: [0.22, 1, 0.36, 1],
               }}
             >
@@ -841,15 +871,11 @@ export default function WeeklyPackView({
               onClick={() => void choose(pendingCard.id)}
               disabled={busy}
               initial={
-                reduceMotion
-                  ? { opacity: 0 }
-                  : { opacity: 0, y: 5, scale: 0.9 }
+                reduceMotion ? { opacity: 0 } : { opacity: 0, y: 5, scale: 0.9 }
               }
               animate={{ opacity: 1, y: 0, scale: 1 }}
               whileHover={reduceMotion ? undefined : { y: -1 }}
-              whileTap={
-                reduceMotion ? undefined : { y: 2, scale: 0.985 }
-              }
+              whileTap={reduceMotion ? undefined : { y: 2, scale: 0.985 }}
               exit={
                 reduceMotion
                   ? { opacity: 0 }
@@ -919,12 +945,8 @@ function PackOpener({
                 }
               : { opacity: 1, scale: 1, filter: "blur(0px)" }
           }
-          whileHover={
-            reduceMotion || opening ? undefined : { scale: 1.035 }
-          }
-          whileTap={
-            reduceMotion || opening ? undefined : { scale: 0.985 }
-          }
+          whileHover={reduceMotion || opening ? undefined : { scale: 1.035 }}
+          whileTap={reduceMotion || opening ? undefined : { scale: 0.985 }}
           transition={
             opening
               ? {
@@ -962,30 +984,6 @@ function PackOpener({
   );
 }
 
-function SealedStack() {
-  return (
-    <motion.div
-      className={styles.sealedStack}
-      initial={{ opacity: 0, y: 12, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      aria-hidden="true"
-    >
-      <span />
-      <span />
-      <span>
-        <Image
-          src="/chapter-mark.svg"
-          alt=""
-          width={64}
-          height={64}
-          loading="eager"
-        />
-      </span>
-    </motion.div>
-  );
-}
-
 function ChosenExperience({
   card,
   pack,
@@ -1020,172 +1018,197 @@ function ChosenExperience({
   onReplay: () => void;
 }) {
   const latestDay = localIsoDay(new Date(pack.expiresAt - 1));
+  const showCalendar = showDatePicker || Boolean(pack.scheduledFor);
+  const mapQuery = `${card.place.name}, ${card.place.address}`;
+  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+  const kakaoMapsUrl = `https://m.map.kakao.com/scheme/search?q=${encodeURIComponent(mapQuery)}`;
   return (
     <section className={styles.chosenPage}>
-      <motion.article
-        className={styles.chosenCard}
-        initial={
-          reduceMotion ? false : { opacity: 0, y: 18, scale: 0.985 }
-        }
+      <motion.div
+        className={styles.chosenLayout}
+        initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
       >
-        <header className={styles.chosenHeader}>
-          <p className={styles.formatLabel}>
-            {WEEKLY_SCALE_LABELS[card.scale]}
-          </p>
-          <h1>{card.title}</h1>
-          <p className={styles.chosenOpening}>{card.opening}</p>
-          {card.companion ? (
-            <div className={styles.chosenCompanion}>
-              <span className={styles.chosenCompanionMark} aria-hidden="true">
-                {weeklyCompanionInitials(card.companion.name)}
-              </span>
-              <span className={styles.chosenCompanionCopy}>
-                <small>You’re going with</small>
-                <strong>{card.companion.name}</strong>
-              </span>
-            </div>
-          ) : null}
-          <div className={styles.chosenMeta}>
-            <span>{formatWeeklyDuration(card.durationMinutes)}</span>
-            <span>{card.place.name}</span>
-            {!card.companion ? (
-              <span>{WEEKLY_COMPANY_LABELS[card.company]}</span>
-            ) : null}
+        <motion.article
+          className={styles.chosenExperienceCard}
+          initial={reduceMotion ? false : { rotate: -0.7 }}
+          animate={{ rotate: 0 }}
+          transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <h1 className={styles.visuallyHidden}>{card.title}</h1>
+          <div className={styles.chosenCardSay}>
+            <WeeklyCardLine card={card} />
           </div>
-        </header>
+          <WeeklyCardPhoto card={card} preview={preview} />
+        </motion.article>
 
-        <div className={styles.experienceBody}>
-          <div className={styles.experienceSteps}>
-            {card.steps.map((step, index) => (
-              <div className={styles.step} key={step}>
-                <span>{`${index + 1}`.padStart(2, "0")}</span>
-                <p>{step}</p>
-              </div>
-            ))}
-          </div>
-
-          <aside className={styles.practical}>
-            {card.place ? (
-              <div className={styles.practicalRow}>
-                <span>Place</span>
-                <p>
-                  {card.place.name}
-                  <small>{card.place.area}</small>
-                  <small>{card.place.address}</small>
-                </p>
-              </div>
-            ) : null}
-            {card.practical.map((item) => (
-              <div className={styles.practicalRow} key={item.label}>
-                <span>{item.label}</span>
-                <p>{item.value}</p>
-              </div>
-            ))}
-          </aside>
-        </div>
-
-        <footer className={styles.chosenActions}>
-          {pack.status === "lived" ? (
-            <div className={styles.livedState}>
-              <span className={styles.livedMark} aria-hidden="true">
-                <svg viewBox="0 0 20 20">
-                  <path d="m4.5 10.3 3.3 3.3 7.7-8" />
-                </svg>
-              </span>
-              <p>You lived this one.</p>
-              {preview ? (
-                <button type="button" className={styles.textAction} onClick={onReplay}>
-                  Replay preview
-                </button>
-              ) : null}
-            </div>
-          ) : showDatePicker ? (
-            <form
-              className={styles.dateChoice}
-              onSubmit={(event) => {
-                event.preventDefault();
-                const input = event.currentTarget.elements.namedItem(
-                  "scheduledFor",
-                );
-                if (input instanceof HTMLInputElement) {
-                  onSchedule(input.value);
-                }
-              }}
+        <motion.aside
+          className={styles.chosenDetails}
+          initial={reduceMotion ? false : { opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{
+            duration: reduceMotion ? 0 : 0.48,
+            delay: reduceMotion ? 0 : 0.14,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        >
+          <div className={styles.chosenLocation}>
+            <svg
+              className={`${styles.detailIcon} ${styles.locationIcon}`}
+              viewBox="0 0 24 24"
+              aria-hidden="true"
             >
-              <label>
-                <span>Choose a day</span>
-                <input
-                  type="date"
-                  name="scheduledFor"
-                  min={localIsoDay()}
-                  max={latestDay}
-                  value={scheduledFor}
-                  onChange={(event) => onDateChange(event.target.value)}
-                />
-              </label>
-              <div>
-                <button
-                  type="submit"
-                  className={styles.darkAction}
-                  disabled={busy || !scheduledFor}
+              <path d="M12 2.75a7.25 7.25 0 0 0-7.25 7.25c0 5.15 6.18 10.46 6.44 10.68a1.25 1.25 0 0 0 1.62 0c.26-.22 6.44-5.53 6.44-10.68A7.25 7.25 0 0 0 12 2.75Z" />
+              <circle cx="12" cy="10" r="2.35" />
+            </svg>
+            <span className={styles.visuallyHidden}>Location</span>
+            <div className={styles.chosenLocationCopy}>
+              <h2>
+                <a
+                  href={googleMapsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`Open ${card.place.name} in Google Maps`}
                 >
-                  Save the day
-                </button>
-                <button
-                  type="button"
-                  className={styles.textAction}
-                  onClick={onCancelDate}
-                  disabled={busy}
-                >
-                  Not yet
-                </button>
+                  {card.place.name}
+                </a>
+              </h2>
+              <p>{card.place.area}</p>
+              <div className={styles.mapLinks}>
+                <a href={googleMapsUrl} target="_blank" rel="noreferrer">
+                  Google Maps
+                </a>
+                <a href={kakaoMapsUrl} target="_blank" rel="noreferrer">
+                  Kakao Maps
+                </a>
               </div>
-            </form>
-          ) : (
-            <>
-              {pack.scheduledFor ? (
-                <p className={styles.scheduled}>
-                  <span>Set for</span>
-                  {scheduledDayLabel(pack.scheduledFor)}
+            </div>
+          </div>
+
+          <div
+            className={styles.chosenWhen}
+            data-has-icon={showCalendar ? "true" : "false"}
+          >
+            {showCalendar ? (
+              <>
+                <svg
+                  className={styles.detailIcon}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path d="M6.75 3.5v3M17.25 3.5v3M4 9h16M5.75 5h12.5A1.75 1.75 0 0 1 20 6.75v11.5A1.75 1.75 0 0 1 18.25 20H5.75A1.75 1.75 0 0 1 4 18.25V6.75A1.75 1.75 0 0 1 5.75 5Z" />
+                </svg>
+                <span className={styles.visuallyHidden}>When</span>
+              </>
+            ) : null}
+            <div className={styles.chosenWhenContent}>
+              {pack.status === "lived" ? (
+                <div className={styles.livedState}>
+                  <span className={styles.livedMark} aria-hidden="true">
+                    <svg viewBox="0 0 20 20">
+                      <path d="m4.5 10.3 3.3 3.3 7.7-8" />
+                    </svg>
+                  </span>
+                  <p>You lived this one.</p>
+                  {preview ? (
+                    <button
+                      type="button"
+                      className={styles.textAction}
+                      onClick={onReplay}
+                    >
+                      Replay preview
+                    </button>
+                  ) : null}
+                </div>
+              ) : showDatePicker ? (
+                <form
+                  className={styles.dateChoice}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const input =
+                      event.currentTarget.elements.namedItem("scheduledFor");
+                    if (input instanceof HTMLInputElement) {
+                      onSchedule(input.value);
+                    }
+                  }}
+                >
+                  <label>
+                    <span className={styles.visuallyHidden}>Choose a day</span>
+                    <input
+                      type="date"
+                      name="scheduledFor"
+                      min={localIsoDay()}
+                      max={latestDay}
+                      value={scheduledFor}
+                      onChange={(event) => onDateChange(event.target.value)}
+                    />
+                  </label>
+                  <div>
+                    <button
+                      type="submit"
+                      className={styles.darkAction}
+                      disabled={busy || !scheduledFor}
+                    >
+                      Save the day
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.textAction}
+                      onClick={onCancelDate}
+                      disabled={busy}
+                    >
+                      Not yet
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className={styles.chosenActions}>
+                  {pack.scheduledFor ? (
+                    <p className={styles.scheduled}>
+                      {scheduledDayLabel(pack.scheduledFor)}
+                    </p>
+                  ) : null}
+                  <div className={styles.primaryActions}>
+                    <button
+                      type="button"
+                      className={styles.darkAction}
+                      onClick={onShowDatePicker}
+                      disabled={busy}
+                    >
+                      {pack.scheduledFor ? "Change the day" : "Choose a day"}
+                    </button>
+                  </div>
+                  <div className={styles.secondaryActions}>
+                    <button
+                      type="button"
+                      className={styles.textAction}
+                      onClick={onLived}
+                      disabled={busy}
+                    >
+                      I did this
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.textAction}
+                      onClick={onDismiss}
+                      disabled={busy}
+                    >
+                      Not this time
+                    </button>
+                  </div>
+                </div>
+              )}
+              {actionError ? (
+                <p className={styles.actionError} role="alert">
+                  {actionError}
                 </p>
               ) : null}
-              <div className={styles.primaryActions}>
-                <button
-                  type="button"
-                  className={styles.darkAction}
-                  onClick={onShowDatePicker}
-                  disabled={busy}
-                >
-                  {pack.scheduledFor ? "Change the day" : "Choose a day"}
-                </button>
-                <button
-                  type="button"
-                  className={styles.lightAction}
-                  onClick={onLived}
-                  disabled={busy}
-                >
-                  I did this
-                </button>
-              </div>
-              <button
-                type="button"
-                className={styles.textAction}
-                onClick={onDismiss}
-                disabled={busy}
-              >
-                Not this time
-              </button>
-            </>
-          )}
-          {actionError ? (
-            <p className={styles.actionError} role="alert">
-              {actionError}
-            </p>
-          ) : null}
-        </footer>
-      </motion.article>
+            </div>
+          </div>
+        </motion.aside>
+      </motion.div>
     </section>
   );
 }
