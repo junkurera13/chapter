@@ -5,6 +5,7 @@ import {
   auditWeeklyPackResearch,
   buildWeeklyPackDesignPrompt,
   buildWeeklyPackGraphDigest,
+  buildWeeklyPackResearchPrompt,
   canonicalizeWeeklyPackAnchors,
   enforceWeeklyPackReviewThresholds,
   weeklyPackDesignSchema,
@@ -218,6 +219,22 @@ describe("weekly pack design lab", () => {
     expect(buildWeeklyPackDesignPrompt(current)).not.toContain(
       "Synthetic fixture evidence",
     );
+  });
+
+  it("sends Parallel only the research-safe design cut", () => {
+    const current = fixture();
+    const designed = validPack().cards[0];
+    const prompt = buildWeeklyPackResearchPrompt({
+      card: designed,
+      context: current.context,
+      currentDate: "2026-07-29",
+    });
+
+    expect(prompt).toContain(designed.researchObjective);
+    expect(prompt).toContain(designed.experiencePromise);
+    expect(prompt).not.toContain(designed.familiarThread);
+    expect(prompt).not.toContain(designed.anchors[0].label);
+    expect(prompt).not.toContain(designed.primaryAnchorId);
   });
 
   it("accepts one small, mini, and proper card with separate mechanisms and stretches", () => {

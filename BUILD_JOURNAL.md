@@ -116,3 +116,32 @@ sounding like surveillance:
 Verification: 178 tests across 28 files, ESLint, and a Next.js production
 build. Still outstanding — a full two-account pass through a Together chapter
 on real hardware, and a recorded demo.
+
+## July 29, 2026 — Now becomes a Saturday ritual
+
+The on-demand settings-and-generate flow was replaced with a weekly object that
+is already waiting when the person arrives:
+
+- Chapter composes one small activity, one mini adventure, and one proper
+  adventure as a single three-way choice before any research begins;
+- each card receives its own Parallel run, then the finished pack is audited
+  again so research cannot quietly collapse three briefs into the same venue
+  or mechanism;
+- the accepted pack is stored privately in Base44 and the browser receives no
+  card content before 9:00 a.m. in the person's local timezone on Saturday;
+- all three cards may be turned over, but only one can be kept. That experience
+  remains schedulable for 21 days;
+- the first social cut supports solo experiences and people already known.
+  Stranger and small-group formats remain encoded but inactive until consent
+  and local density can support them honestly; and
+- a guarded Vercel cron runs daily at 16:00 UTC. Wednesday and Thursday create
+  new packs, Friday is retries only, and every cycle polls existing work before
+  spending on anything new.
+
+The deployment added the twelfth Base44 entity, refreshed `sidequest-data`,
+activated the weekly Now surface through a production feature flag, and
+registered the Hobby-compatible daily schedule. Verification passed with 282
+tests across 38 files, ESLint, TypeScript, local and Vercel production builds,
+live Base44 internal authentication, production HTTP checks, and no Vercel
+runtime errors. A signed-in human pass through the production Now tab remains
+the final account-specific check.

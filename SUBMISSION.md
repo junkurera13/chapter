@@ -9,7 +9,7 @@
 - Surface type: **Web app**
 - Live URL: https://usechapter.vercel.app
 - Public GitHub repo: https://github.com/junkurera13/chapter
-- Access instructions: **Open `/app`, sign in with Google, connect an iMessage-capable phone number, text Chapter, and share one unforgettable experience. Return to You to see the private graph. Set a home city in Now to get one researched chapter to live this weekend. Together works two ways. To connect by name, open any named person and create a private invite; after they accept with their own Google account, both people receive reciprocal nodes and Chapter names what their two worlds share, then plans a chapter for both of them. Introductions need no setup: with a home city set, Chapter looks among other accounts in the same city and offers a sentence made only of what the two worlds already share, with no name attached, as another gist in the same list. Both people must say yes before either learns anything more; the second yes turns that card into an ordinary connection. Any card offers a way to stop being shown them. With one account in a city the pool is empty by design.**
+- Access instructions: **Open `/app`, sign in with Google, connect an iMessage-capable phone number, text Chapter, and share one unforgettable experience. Return to You to see the private graph. Set a home city, then open Now: Chapter prepares three independently researched experiences before Saturday, keeps them sealed until 9:00 a.m. local time, and lets you reveal all three but keep one. Together works two ways. To connect by name, open any named person and create a private invite; after they accept with their own Google account, both people receive reciprocal nodes and Chapter names what their two worlds share, then plans a chapter for both of them. Introductions need no setup: with a home city set, Chapter looks among other accounts in the same city and offers a sentence made only of what the two worlds already share, with no name attached, as another gist in the same list. Both people must say yes before either learns anything more; the second yes turns that card into an ordinary connection. Any card offers a way to stop being shown them. With one account in a city the pool is empty by design.**
 - Demo video URL: **[optional, not recorded yet]**
 - Agentic IDE used: **Codex and Claude Code**
 - Base44 App ID: **6a606ec9966ada5a7874da07**
@@ -36,7 +36,8 @@ exactly one, and that one (place, activity, time, or person) reaches into the
 unknown. Two stretches is a stranger doing a strange thing somewhere strange, and nobody
 goes. Zero stretches is Tuesday. The rule lives in the schema
 (`lib/nowChapterSchema.ts`), not only in the prompt, so nothing downstream can
-quietly break it. **Now** stretches place, activity, or time. **Together** spends
+quietly break it. Each **Now** card stretches place, activity, or time.
+**Together** spends
 the person dimension, with someone you have connected to or someone you have
 not met.
 
@@ -52,13 +53,16 @@ knows is new. Explicitly named people remain individual nodes, not a single
 generic group. The private graph is then revealed in the authenticated **You**
 view.
 
-That world is then spent. **Now** takes the graph plus a home city and writes
-one real chapter to live this weekend: a single stretch of a day, researched
-against the live web through Parallel AI and checked before it is offered,
-rather than a generated itinerary. **Together** does the same across two private
-worlds. It reduces both graphs to what is shareable, keeps only the threads they
-genuinely hold in common, and says that intersection out loud as a *gist*: one
-sentence, at most three threads, already true on both sides by construction.
+That world is then spent. **Now** takes the graph plus a home city and composes
+three deliberately different lanes together: a small activity, mini adventure,
+and proper adventure. Each lane gets its own Parallel research run. The pack is
+audited for collisions, composed into plain invitations, and stored behind a
+server-enforced local Saturday release boundary. A person may reveal all three,
+keep one, and schedule it within its 21-day life. **Together** works across two
+private worlds. It reduces both graphs to what is shareable, keeps only the
+threads they genuinely hold in common, and says that intersection out loud as
+a *gist*: one sentence, at most three threads, already true on both sides by
+construction.
 
 The gist is the whole mechanism, and it does two jobs. With someone you have
 connected to, it becomes a chapter for the two of you that either person can
@@ -79,13 +83,15 @@ of object.
 Base44 owns authenticated accounts, private image storage, phone-account
 linking, source memories, conversation records, graph validation, connection
 invitations, accepted connections, introductions between strangers, home city,
-Now and Together chapters, and persistence. Eleven Base44 entities model that
-world. Chapter's durable
+weekly experience packs, Now and Together chapters, and persistence. Twelve
+Base44 entities model that world. Chapter's durable
 conversation runs as an Eve agent on Vercel, and every model call goes directly
 through OpenRouter to 2026 models pinned to zero-data-retention providers:
 `google/gemini-3.1-flash-lite` (falling back to `moonshotai/kimi-k2.6`) for
 image-aware memory extraction, `deepseek/deepseek-v4-flash` for text
-conversation, and `moonshotai/kimi-k2.6` for Now and Together composition.
+conversation, `anthropic/claude-sonnet-5` with a
+`moonshotai/kimi-k2.6` fallback for weekly-pack design and review, and Kimi for
+Together composition.
 `sidequest-memory` preserves sources before model work and validates the
 structured graph before persistence; `sidequest-message` provides idempotent
 web and iMessage processing and stores the opaque Eve continuation cursor;
@@ -114,8 +120,9 @@ Photon is deliberately narrow: it connects Apple Messages to the signed
 Next.js webhook, while Base44 remains the source of truth. The product
 demonstrates Google sign-in, phone linking, an iMessage memory conversation,
 graph growth, a private interactive world, identity-backed connections, a
-researched personal chapter in **Now**, a shared one in **Together**, and an
-introduction between two people whose worlds overlap but who have never met.
+three-card researched Saturday pack in **Now**, a shared chapter in
+**Together**, and an introduction between two people whose worlds overlap but
+who have never met.
 
 **Decisions I would defend.** Anchors come back from the model as labels, never
 as ids, and every label is resolved against the real graph before it survives.

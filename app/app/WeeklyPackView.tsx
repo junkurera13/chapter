@@ -26,8 +26,8 @@ import {
   scheduleWeeklyCard,
 } from "@/lib/weeklyPackClient";
 import {
-  weeklyPackPreview,
-  type WeeklyPackPreviewMode,
+  weeklyPackReviewFixture,
+  type WeeklyPackReviewState,
 } from "@/lib/weeklyPackPreview";
 
 import styles from "./WeeklyPackView.module.css";
@@ -79,27 +79,32 @@ function chosenCard(pack: WeeklyExperiencePack) {
 }
 
 export default function WeeklyPackView({
-  previewMode,
+  reviewState,
 }: {
-  previewMode?: WeeklyPackPreviewMode;
+  reviewState?: WeeklyPackReviewState;
 }) {
   const reduceMotion = useReducedMotion();
-  const [state, setState] = useState<PackState>(() =>
-    previewMode
-      ? { status: "ready", pack: weeklyPackPreview(previewMode) }
-      : { status: "loading" },
+  const initialReview = reviewState
+    ? weeklyPackReviewFixture(reviewState)
+    : undefined;
+  const [state, setState] = useState<PackState>(
+    () => initialReview?.state ?? { status: "loading" },
   );
   const [pendingChoice, setPendingChoice] =
-    useState<WeeklyPackScale | null>(null);
+    useState<WeeklyPackScale | null>(initialReview?.pendingChoice ?? null);
   const [committingChoice, setCommittingChoice] =
     useState<WeeklyPackScale | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [scheduledFor, setScheduledFor] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(
+    initialReview?.showDatePicker ?? false,
+  );
+  const [scheduledFor, setScheduledFor] = useState(
+    initialReview?.scheduledFor ?? "",
+  );
 
   useEffect(() => {
-    if (previewMode) return;
+    if (reviewState) return;
 
     let active = true;
     void loadWeeklyPack()
@@ -120,7 +125,7 @@ export default function WeeklyPackView({
     return () => {
       active = false;
     };
-  }, [previewMode]);
+  }, [reviewState]);
 
   const pack = state.status === "ready" ? state.pack : null;
   const orderedCards = useMemo(
@@ -137,7 +142,7 @@ export default function WeeklyPackView({
     };
     setState({ status: "ready", pack: optimistic });
     setActionError("");
-    if (previewMode) return;
+    if (reviewState) return;
 
     try {
       const result = await revealWeeklyCard(pack.id, cardId);
@@ -156,7 +161,7 @@ export default function WeeklyPackView({
     setActionError("");
     setCommittingChoice(cardId);
     try {
-      if (previewMode) {
+      if (reviewState) {
         await new Promise((resolve) => window.setTimeout(resolve, reduceMotion ? 0 : 620));
         setState({
           status: "ready",
@@ -191,7 +196,7 @@ export default function WeeklyPackView({
     setBusy(true);
     setActionError("");
     try {
-      if (previewMode) {
+      if (reviewState) {
         setState({
           status: "ready",
           pack: { ...pack, scheduledFor: nextScheduledFor },
@@ -215,7 +220,7 @@ export default function WeeklyPackView({
     setBusy(true);
     setActionError("");
     try {
-      if (previewMode) {
+      if (reviewState) {
         setState({
           status: "ready",
           pack: { ...pack, status: "dismissed" },
@@ -238,7 +243,7 @@ export default function WeeklyPackView({
     setBusy(true);
     setActionError("");
     try {
-      if (previewMode) {
+      if (reviewState) {
         setState({
           status: "ready",
           pack: { ...pack, status: "lived", livedAt: Date.now() },
@@ -307,7 +312,6 @@ export default function WeeklyPackView({
           <h1>Saturday</h1>
           <p>{dayLabel(pack.releaseAt)}. Your cards are already inside.</p>
         </motion.div>
-        {previewMode ? <PreviewNote /> : null}
       </section>
     );
   }
@@ -337,15 +341,12 @@ export default function WeeklyPackView({
         <div className={styles.stateCopy}>
           <h1>{title}</h1>
           <p>{body}</p>
-          {previewMode ? (
+          {reviewState ? (
             <button
               type="button"
               className={styles.textAction}
               onClick={() =>
-                setState({
-                  status: "ready",
-                  pack: weeklyPackPreview("available"),
-                })
+                setState(weeklyPackReviewFixture("sealed").state)
               }
             >
               Replay preview
@@ -377,7 +378,7 @@ export default function WeeklyPackView({
         showDatePicker={showDatePicker}
         scheduledFor={scheduledFor}
         reduceMotion={Boolean(reduceMotion)}
-        preview={Boolean(previewMode)}
+        preview={Boolean(reviewState)}
         onShowDatePicker={() => {
           setScheduledFor(pack.scheduledFor ?? localIsoDay());
           setShowDatePicker(true);
@@ -388,10 +389,7 @@ export default function WeeklyPackView({
         onDismiss={() => void dismiss()}
         onLived={() => void markLived()}
         onReplay={() =>
-          setState({
-            status: "ready",
-            pack: weeklyPackPreview("available"),
-          })
+          setState(weeklyPackReviewFixture("sealed").state)
         }
       />
     );
@@ -551,7 +549,6 @@ export default function WeeklyPackView({
             {actionError}
           </p>
         ) : null}
-        {previewMode ? <PreviewNote /> : null}
       </div>
     </section>
   );
@@ -579,10 +576,6 @@ function SealedStack() {
       </span>
     </motion.div>
   );
-}
-
-function PreviewNote() {
-  return <p className={styles.previewNote}>Local interaction preview</p>;
 }
 
 function ChosenExperience({
@@ -768,7 +761,6 @@ function ChosenExperience({
               {actionError}
             </p>
           ) : null}
-          {preview && pack.status !== "lived" ? <PreviewNote /> : null}
         </footer>
       </motion.article>
     </section>

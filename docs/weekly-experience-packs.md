@@ -1,11 +1,9 @@
 # Weekly experience packs — product direction
 
-> **Status: agreed product direction; offline evaluation lab and local product
-> slice built, not deployed, July 28 2026.** The current Now implementation
-> remains the shipped source of truth. The weekly Base44 entity and function
-> changes are local only. Do not describe weekly packs, pre-generation,
-> persistence, release, or card selection as live until those resources are
-> explicitly deployed and the shipped-state docs say so.
+> **Status: deployed and activated, July 29 2026.** The weekly pack is the
+> production Now experience. Base44 owns preparation and release state, Vercel
+> runs the guarded daily worker, and the app shell no longer contains a route
+> back to the previous on-demand Now experience.
 
 ## Why Chapter exists
 
@@ -292,7 +290,7 @@ the structural audit, but the independent editor rejected two cards for hidden
 second stretches and rejected an unexamined solo overnight premise. A
 structurally valid pack is not automatically a good pack.
 
-## Local implementation state
+## Production implementation
 
 The local product slice adds:
 
@@ -302,16 +300,24 @@ The local product slice adds:
 - `getMyWeeklyPack`, which removes the entire card payload before `release_at`
   rather than relying on a visual cover in the browser;
 - guarded reveal, choose, schedule, dismiss, and lived transitions;
-- an internal, idempotent `storeWeeklyPack` boundary for a future pre-generation
-  worker;
+- internal Base44 transitions that claim one owner/week, persist the accepted
+  design and three research run IDs, complete only a valid three-card pack,
+  and retry a failed preparation at most three times;
+- a guarded `/api/cron/weekly-packs` worker that polls existing research before
+  claiming new work, designs the three choices as one composition, starts one
+  independent Parallel run per card, and writes visible copy only after all
+  three results pass the post-research collision audit;
+- a daily 16:00 UTC Vercel schedule, compatible with the current Hobby plan.
+  New work is claimed on Wednesday and Thursday in each person's recorded
+  timezone; Friday claims are retries only, and later cycles continue polling
+  research before release;
 - `app/api/weekly-pack/route.ts` and `lib/weeklyPackClient.ts`;
 - `WeeklyPackView`, covering waiting, sealed choice, card reveal, confirmation,
   chosen experience, scheduling, dismissal, and lived states;
 - a development-only `/weekly-pack-preview` route. `state=locked` and
   `state=chosen` open those states directly; the default opens the choice.
 
-The legacy Now screen remains at its normal route until the new Base44 resources
-and generation worker are ready to deploy. In a signed-in local app,
+The signed-in Now tab always opens the weekly experience. In a signed-in local app,
 `/app?view=now&pack=preview`, `pack=locked`, and `pack=chosen` mount the new
 interaction in the real app shell.
 
@@ -324,8 +330,17 @@ The implemented state model is:
 - Chosen experience: available, optionally scheduled, lived, dismissed, or
   expired
 
-This is implemented locally but not deployed. Read the Base44 SDK skill before
-changing it, and do not deploy resources without explicit authorization.
+The production timing contract is currently 9:00 a.m. local time on Saturday,
+with an un-lived chosen experience remaining valid for 21 days. The worker
+defaults to at most two new people per daily invocation and can be tuned
+with `CHAPTER_WEEKLY_PACKS_PER_RUN`. Parallel receives only the research-safe
+cut of each accepted design: no graph, raw memory, familiar thread, or anchor
+identifier leaves the server through the research boundary.
+
+The first production social cut is intentionally limited to `self` and
+`known-person`. `new-person` and `small-group` remain part of the format system,
+but the worker will not generate them until mutual consent, matching, and
+minimum local density are real product capabilities.
 
 ## Decisions already made
 
@@ -344,13 +359,11 @@ changing it, and do not deploy resources without explicit authorization.
 
 ## Open decisions
 
-1. Exact local Saturday release time and notification time.
-2. Exact chosen-experience validity window; three weeks is the starting
-   hypothesis.
-3. Whether expiry varies by scale.
-4. How a social card participates in weekly choice while mutual consent is
+1. Notification timing relative to the 9:00 a.m. local release.
+2. Whether the 21-day expiry should vary by scale.
+3. How a social card participates in weekly choice while mutual consent is
    still pending.
-5. The catch-up experience for users who become eligible after the generation
+4. The catch-up experience for users who become eligible after the generation
    cutoff.
-6. How past declines, expirations, and lived reflections alter later pack
+5. How past declines, expirations, and lived reflections alter later pack
    composition.

@@ -216,6 +216,111 @@ export function storeWeeklyPack(
   }>({ action: "storeWeeklyPack", internalSecret, ...args });
 }
 
+export type WeeklyPackCandidate = {
+  ownerUserId: string;
+  homeCity: string;
+  timezone: string;
+};
+
+export type WeeklyPackGenerationSource = WeeklyPackCandidate & {
+  availableCompanies: import("./weeklyPackDesign").WeeklyPackCompany[];
+  graph: import("./backendTypes").ExperienceGraphRecord;
+};
+
+export type WeeklyPackPreparation = {
+  id: string;
+  ownerUserId: string;
+  weekKey: string;
+  timezone: string;
+  releaseAt: number;
+  expiresAt: number;
+  status: "preparing" | "ready" | "chosen" | "lived" | "dismissed" | "failed";
+  design?: unknown;
+  researchRuns?: unknown;
+  generationRequestId?: string;
+  attemptCount: number;
+};
+
+export function listWeeklyPackCandidates(limit = 25) {
+  return invokeSidequestData<{ candidates: WeeklyPackCandidate[] }>({
+    action: "listWeeklyPackCandidates",
+    internalSecret: internalSecret(),
+    limit,
+  });
+}
+
+export function fetchWeeklyPackGenerationSource(ownerUserId: string) {
+  return invokeSidequestData<WeeklyPackGenerationSource>({
+    action: "getWeeklyPackGenerationSource",
+    internalSecret: internalSecret(),
+    ownerUserId,
+  });
+}
+
+export function claimWeeklyPackPreparation(args: {
+  ownerUserId: string;
+  weekKey: string;
+  timezone: string;
+  releaseAt: number;
+  expiresAt: number;
+  generationRequestId: string;
+  retryOnly?: boolean;
+}) {
+  return invokeSidequestData<{
+    claimed: boolean;
+    preparation: WeeklyPackPreparation | null;
+  }>({
+    action: "claimWeeklyPackPreparation",
+    internalSecret: internalSecret(),
+    ...args,
+  });
+}
+
+export function setWeeklyPackResearch(args: {
+  packId: string;
+  designJson: string;
+  researchRunIdsJson: string;
+}) {
+  return invokeSidequestData<{ preparation: WeeklyPackPreparation }>({
+    action: "setWeeklyPackResearch",
+    internalSecret: internalSecret(),
+    ...args,
+  });
+}
+
+export function listWeeklyPackPreparations(limit = 10) {
+  return invokeSidequestData<{ preparations: WeeklyPackPreparation[] }>({
+    action: "listWeeklyPackPreparations",
+    internalSecret: internalSecret(),
+    limit,
+  });
+}
+
+export function completeWeeklyPackPreparation(args: {
+  packId: string;
+  cardsJson: string;
+  researchJson: string;
+}) {
+  return invokeSidequestData<{
+    pack: import("./weeklyPackSchema").WeeklyExperiencePack;
+  }>({
+    action: "completeWeeklyPackPreparation",
+    internalSecret: internalSecret(),
+    ...args,
+  });
+}
+
+export function failWeeklyPackPreparation(args: {
+  packId: string;
+  error: string;
+}) {
+  return invokeSidequestData<{ preparation: WeeklyPackPreparation }>({
+    action: "failWeeklyPackPreparation",
+    internalSecret: internalSecret(),
+    ...args,
+  });
+}
+
 export function setMyHomeCity(homeCity: string, accessToken: string) {
   return invokeSidequestData<{ homeCity: string }>(
     { action: "setMyHomeCity", homeCity },
@@ -420,7 +525,7 @@ export function updateTogetherChapter(
 }
 
 function internalSecret() {
-  const secret = process.env.SIDEQUEST_INTERNAL_SECRET;
+  const secret = process.env.SIDEQUEST_INTERNAL_SECRET?.trim();
   if (!secret) {
     throw new Base44FunctionError(
       "SIDEQUEST_INTERNAL_SECRET is not configured.",

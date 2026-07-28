@@ -147,7 +147,8 @@
   font-weight: 650;
 }
 
-.connectPhone {
+.connectPhone,
+.reviewNow {
   width: 100%;
   margin-top: 13px;
   padding: 10px 12px;
@@ -160,9 +161,14 @@
   font-weight: 650;
 }
 
-.connectPhone:focus-visible {
+.connectPhone:focus-visible,
+.reviewNow:focus-visible {
   outline: 2px solid #80786c;
   outline-offset: 2px;
+}
+
+.reviewNow {
+  margin-top: 8px;
 }
 
 .signOut {

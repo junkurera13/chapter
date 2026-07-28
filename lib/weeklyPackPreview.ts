@@ -2,8 +2,46 @@ import type {
   WeeklyExperienceCard,
   WeeklyExperiencePack,
 } from "./weeklyPackSchema";
+import type { WeeklyPackScale } from "./weeklyPackDesign";
 
-export type WeeklyPackPreviewMode = "locked" | "available" | "chosen";
+export const WEEKLY_PACK_REVIEW_STATES = [
+  { id: "loading", label: "Loading" },
+  { id: "empty", label: "No pack yet" },
+  { id: "locked", label: "Locked until Saturday" },
+  { id: "sealed", label: "Three sealed cards" },
+  { id: "one-revealed", label: "One card revealed" },
+  { id: "all-revealed", label: "All cards revealed" },
+  { id: "confirming", label: "Confirming a choice" },
+  { id: "chosen", label: "Chosen experience" },
+  { id: "date-picker", label: "Choosing a day" },
+  { id: "scheduled", label: "Day scheduled" },
+  { id: "lived", label: "Experience completed" },
+  { id: "dismissed", label: "Pack dismissed" },
+  { id: "expired", label: "Pack expired" },
+  { id: "failed", label: "Pack generation failed" },
+  { id: "error", label: "Pack could not load" },
+] as const;
+
+export type WeeklyPackReviewState =
+  (typeof WEEKLY_PACK_REVIEW_STATES)[number]["id"];
+
+export type WeeklyPackReviewFixture = {
+  state:
+    | { status: "loading" }
+    | { status: "error"; message: string }
+    | { status: "ready"; pack: WeeklyExperiencePack | null };
+  pendingChoice?: WeeklyPackScale;
+  showDatePicker?: boolean;
+  scheduledFor?: string;
+};
+
+export function weeklyPackReviewStateFrom(
+  value: string | undefined,
+): WeeklyPackReviewState | undefined {
+  return WEEKLY_PACK_REVIEW_STATES.some((state) => state.id === value)
+    ? (value as WeeklyPackReviewState)
+    : undefined;
+}
 
 const previewCards: WeeklyExperienceCard[] = [
   {
@@ -96,12 +134,16 @@ const previewCards: WeeklyExperienceCard[] = [
   },
 ];
 
-export function weeklyPackPreview(
-  mode: WeeklyPackPreviewMode,
-): WeeklyExperiencePack {
+function previewPack(args?: {
+  status?: WeeklyExperiencePack["status"];
+  revealedCardIds?: WeeklyPackScale[];
+  chosenCardId?: WeeklyPackScale;
+  scheduledFor?: string;
+  livedAt?: number;
+}): WeeklyExperiencePack {
   const releaseAt = Date.UTC(2026, 7, 1, 0);
   const expiresAt = Date.UTC(2026, 7, 22, 0);
-  if (mode === "locked") {
+  if (args?.status === "locked") {
     return {
       id: "preview-weekly-pack",
       weekKey: "2026-08-01",
@@ -114,12 +156,123 @@ export function weeklyPackPreview(
   return {
     id: "preview-weekly-pack",
     weekKey: "2026-08-01",
-    status: mode === "chosen" ? "chosen" : "available",
+    status: args?.status ?? "available",
     releaseAt,
     expiresAt,
     cards: previewCards,
-    revealedCardIds: mode === "chosen" ? ["mini"] : [],
-    chosenCardId: mode === "chosen" ? "mini" : undefined,
+    revealedCardIds: args?.revealedCardIds ?? [],
+    chosenCardId: args?.chosenCardId,
+    scheduledFor: args?.scheduledFor,
+    livedAt: args?.livedAt,
   };
 }
 
+export function weeklyPackReviewFixture(
+  reviewState: WeeklyPackReviewState,
+): WeeklyPackReviewFixture {
+  switch (reviewState) {
+    case "loading":
+      return { state: { status: "loading" } };
+    case "error":
+      return {
+        state: {
+          status: "error",
+          message: "Chapter couldn’t open this week’s pack.",
+        },
+      };
+    case "empty":
+      return { state: { status: "ready", pack: null } };
+    case "locked":
+      return {
+        state: { status: "ready", pack: previewPack({ status: "locked" }) },
+      };
+    case "sealed":
+      return {
+        state: { status: "ready", pack: previewPack() },
+      };
+    case "one-revealed":
+      return {
+        state: {
+          status: "ready",
+          pack: previewPack({ revealedCardIds: ["small"] }),
+        },
+      };
+    case "all-revealed":
+      return {
+        state: {
+          status: "ready",
+          pack: previewPack({
+            revealedCardIds: ["small", "mini", "proper"],
+          }),
+        },
+      };
+    case "confirming":
+      return {
+        state: {
+          status: "ready",
+          pack: previewPack({
+            revealedCardIds: ["small", "mini", "proper"],
+          }),
+        },
+        pendingChoice: "mini",
+      };
+    case "chosen":
+      return {
+        state: {
+          status: "ready",
+          pack: previewPack({
+            status: "chosen",
+            revealedCardIds: ["mini"],
+            chosenCardId: "mini",
+          }),
+        },
+      };
+    case "date-picker":
+      return {
+        state: {
+          status: "ready",
+          pack: previewPack({
+            status: "chosen",
+            revealedCardIds: ["mini"],
+            chosenCardId: "mini",
+          }),
+        },
+        showDatePicker: true,
+        scheduledFor: "2026-08-08",
+      };
+    case "scheduled":
+      return {
+        state: {
+          status: "ready",
+          pack: previewPack({
+            status: "chosen",
+            revealedCardIds: ["mini"],
+            chosenCardId: "mini",
+            scheduledFor: "2026-08-08",
+          }),
+        },
+      };
+    case "lived":
+      return {
+        state: {
+          status: "ready",
+          pack: previewPack({
+            status: "lived",
+            revealedCardIds: ["mini"],
+            chosenCardId: "mini",
+            scheduledFor: "2026-08-08",
+            livedAt: Date.UTC(2026, 7, 8, 12),
+          }),
+        },
+      };
+    case "dismissed":
+    case "expired":
+    case "failed":
+      return {
+        state: {
+          status: "ready",
+          pack: previewPack({ status: reviewState }),
+        },
+      };
+  }
+}

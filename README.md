@@ -5,11 +5,11 @@ It meets them in iMessage, turns that experience into a private graph of
 people, places, activities, feelings, and patterns, and lets them explore that
 growing picture in the authenticated **You** view.
 
-That private world is then used for something. **Now** writes a single
-real chapter to live this weekend in the person's own city, researched
-against the live web rather than generated from a list. **Together** does the
-same thing for two people who have connected, planning only from what their
-two worlds turn out to share.
+That private world is then used for something. Every Saturday, **Now** opens a
+pack of three independently researched experiences: one small activity, one
+mini adventure, and one proper adventure. The person may reveal all three and
+keep one. **Together** plans for two connected people only from what their
+worlds turn out to share.
 
 This is the Base44 Backend Build-Off edition. Base44 owns authentication,
 private file storage, account-to-phone linking, conversations, autobiographical
@@ -40,17 +40,15 @@ web / iMessage <-> Next.js <-> Eve <-> OpenRouter
         Now                          Together
   home city + graph            People node -> hashed private invite
           |                    -> verified friend -> reciprocal nodes
-          |                                |
+  compose three lanes                      |
           |                    home city -> same-city pool scan
-          |                    -> strict intersection -> unnamed gist
+  3 independent research runs  -> strict intersection -> unnamed gist
           |                    -> both say yes -> reciprocal nodes
-          v                              |
-  deep research (Parallel)               v
+  lock until local Saturday                |
           |                    shared threads -> gist
-          v                              |
-   one chapter to live                   v
-                              deep research -> chapter -> propose
-                                             -> accept -> lived
+  reveal three -> keep one                 |
+          |                                v
+  schedule -> lived             deep research -> propose -> lived
 ```
 
 ## Models
@@ -62,7 +60,8 @@ web research. Every model choice is overridable by environment variable.
 | --- | --- | --- |
 | Onboarding memory extraction (multimodal) | `google/gemini-3.1-flash-lite`, falling back to `moonshotai/kimi-k2.6` | `CHAPTER_MEMORY_MODEL`, `CHAPTER_MEMORY_FALLBACK_MODEL` |
 | Eve conversation (web + iMessage) | `deepseek/deepseek-v4-flash` for text, `moonshotai/kimi-k2.6` for image-bearing turns | none |
-| Now / Together briefs, chapters, gists | `moonshotai/kimi-k2.6`, falling back to `deepseek/deepseek-v4-flash` | `CHAPTER_NOW_MODEL`, `CHAPTER_NOW_FALLBACK_MODEL` |
+| Weekly-pack design, review, and copy | `anthropic/claude-sonnet-5`, falling back to `moonshotai/kimi-k2.6` | `CHAPTER_PACK_MODEL`, `CHAPTER_PACK_FALLBACK_MODEL`, `CHAPTER_PACK_REVIEW_MODEL`, `CHAPTER_PACK_REVISION_MODEL`, `CHAPTER_PACK_COMPOSITION_MODEL` |
+| Together briefs, chapters, gists and legacy Now fallback | `moonshotai/kimi-k2.6`, falling back to `deepseek/deepseek-v4-flash` | `CHAPTER_NOW_MODEL`, `CHAPTER_NOW_FALLBACK_MODEL` |
 | Now / Together web research | Parallel AI `core` processor | `CHAPTER_NOW_PROCESSOR` |
 
 OpenRouter calls are pinned to zero-data-retention providers with
@@ -72,7 +71,7 @@ OpenRouter calls are pinned to zero-data-retention providers with
 
 - `sidequest-data` handles authenticated session ownership, phone-account
   linking, private graph retrieval, connection invites, reciprocal nodes, home
-  city, and Now/Together chapter records.
+  city, weekly-pack preparation/release state, and Together chapter records.
 - Eve owns the durable Chapter conversation. The same Eve session continues
   across the web and iMessage. Onboarding extraction does **not** go through
   Eve. It calls OpenRouter directly so the first memory never depends on the
@@ -86,9 +85,9 @@ OpenRouter calls are pinned to zero-data-retention providers with
 - The deployed Base44 resource IDs retain their pre-rebrand `sidequest-*`
   slugs as compatibility contracts. They are internal identifiers, not product
   branding.
-- Eleven Base44 entities hold accounts, messages, memories, source memories,
+- Twelve Base44 entities hold accounts, messages, memories, source memories,
   graph nodes, graph edges, connection invites, accepted connections,
-  introductions, Now chapters, and Together chapters.
+  introductions, weekly experience packs, Now chapters, and Together chapters.
 - A connection records how it began. An invite means the two people found each
   other by name; an introduction means Chapter put them together, and neither
   learned anything about the other until both said yes.
@@ -159,6 +158,10 @@ Runtime secrets: `OPENROUTER_API_KEY`, `PARALLEL_API_KEY`,
 `SIDEQUEST_INTERNAL_SECRET`, `IMESSAGE_WEBHOOK_SECRET`, and the Photon /
 iMessage project credentials. Never commit these values.
 
+Production also requires `CRON_SECRET`.
+`CHAPTER_WEEKLY_PACKS_PER_RUN` bounds how many eligible accounts the daily
+worker may begin.
+
 ## Verification
 
 ```bash
@@ -169,13 +172,13 @@ npx eve info --json
 npx eve channels list --json
 ```
 
-`npm test` currently runs 223 tests across 31 files.
+`npm test` currently runs 282 tests across 38 files.
 
 The production pass should additionally verify Google sign-in, phone linking,
 the iMessage webhook health route, one real memory turn, private graph
-retrieval, a two-account connection acceptance, a Now chapter from home city
-through research to accepted, a Together gist and chapter across two accounts,
-and mobile overflow.
+retrieval, a Saturday pack from three research runs through reveal and choice,
+a two-account connection acceptance, a Together gist and chapter across two
+accounts, and mobile overflow.
 
 See [`BUILD_JOURNAL.md`](./BUILD_JOURNAL.md) for the build history and
 [`SUBMISSION.md`](./SUBMISSION.md) for the competition draft.

@@ -1,0 +1,133 @@
+.toolbar {
+  position: fixed;
+  z-index: 30;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  display: flex;
+  height: 46px;
+  padding: 4px;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(27, 26, 24, 0.94);
+  box-shadow:
+    0 12px 34px rgba(25, 21, 16, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: #fff;
+  transform: translateX(-50%);
+  backdrop-filter: blur(18px);
+}
+
+.step,
+.exit {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  padding: 0;
+  place-items: center;
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.step:hover,
+.exit:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.step:focus-visible,
+.exit:focus-visible,
+.state select:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.72);
+  outline-offset: -2px;
+}
+
+.step svg,
+.exit svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.state {
+  position: relative;
+  display: grid;
+  width: 190px;
+  height: 38px;
+  padding: 5px 28px 4px 10px;
+  align-content: center;
+  cursor: pointer;
+}
+
+.state > span {
+  color: rgba(255, 255, 255, 0.42);
+  font: 600 8px/1 var(--font-chapter-instrument), system-ui, sans-serif;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.state select {
+  width: 100%;
+  margin-top: 3px;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font: 610 12px/1.1 var(--font-chapter-instrument), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.state::after {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid rgba(255, 255, 255, 0.48);
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.48);
+  content: "";
+  pointer-events: none;
+  transform: translateY(-70%) rotate(45deg);
+}
+
+.divider {
+  width: 1px;
+  height: 22px;
+  margin: 0 2px;
+  background: rgba(255, 255, 255, 0.11);
+}
+
+@media (max-width: 430px) {
+  .toolbar {
+    top: max(9px, env(safe-area-inset-top));
+    width: calc(100vw - 18px);
+  }
+
+  .state {
+    width: auto;
+    min-width: 0;
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step,
+  .exit {
+    transition: none;
+  }
+}

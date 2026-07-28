@@ -17,6 +17,8 @@ type BottomNavigationProps = {
   worldLocked: boolean;
   viewer: AuthenticatedViewer;
   onConnectPhone: () => void;
+  canReviewNow: boolean;
+  onReviewNow: () => void;
 };
 
 export default function BottomNavigation({
@@ -25,6 +27,8 @@ export default function BottomNavigation({
   worldLocked,
   viewer,
   onConnectPhone,
+  canReviewNow,
+  onReviewNow,
 }: BottomNavigationProps) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const accountRef = useRef<HTMLDivElement>(null);
@@ -158,6 +162,18 @@ export default function BottomNavigation({
                 Connect iMessage
               </button>
             )}
+            {canReviewNow ? (
+              <button
+                type="button"
+                className={styles.reviewNow}
+                onClick={() => {
+                  setAccountOpen(false);
+                  onReviewNow();
+                }}
+              >
+                Review Now UI
+              </button>
+            ) : null}
             <button
               type="button"
               className={styles.signOut}

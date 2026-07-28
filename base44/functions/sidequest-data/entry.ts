@@ -579,6 +579,23 @@ function weeklyPackRecord(row: Row, now = Date.now()) {
   };
 }
 
+function weeklyPackPreparationRecord(row: Row) {
+  return {
+    id: row.id,
+    ownerUserId: stringValue(row.owner_user_id),
+    weekKey: stringValue(row.week_key),
+    timezone: stringValue(row.timezone),
+    releaseAt: Number(row.release_at),
+    expiresAt: Number(row.expires_at),
+    status: stringValue(row.status),
+    design: parsedJson(row.design_json),
+    researchRuns: parsedJson(row.research_run_ids_json),
+    generationRequestId:
+      stringValue(row.generation_request_id) || undefined,
+    attemptCount: Number(row.attempt_count) || 0,
+  };
+}
+
 function firstName(user: Row | undefined, fallback = "your friend") {
   return displayName(user, fallback).split(" ")[0];
 }
@@ -588,7 +605,9 @@ function firstName(user: Row | undefined, fallback = "your friend") {
  * Chapter's own server, never from a browser holding a user token.
  */
 function trustedInternalCall(data: Row) {
-  const expected = Deno.env.get("SIDEQUEST_INTERNAL_SECRET");
+  const expected = stringValue(
+    Deno.env.get("SIDEQUEST_INTERNAL_SECRET"),
+  );
   return Boolean(expected) && data.internalSecret === expected;
 }
 
@@ -1651,6 +1670,352 @@ Deno.serve(async (req) => {
             .map((row: Row) => stringValue(row.venue_name))
             .filter(Boolean),
         },
+      });
+    }
+
+    if (action === "listWeeklyPackCandidates") {
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
+
+      const limit = Math.min(
+        Math.max(
+          typeof data.limit === "number" ? Math.floor(data.limit) : 25,
+          1,
+        ),
+        100,
+      );
+      const rows = await readWithRateLimitRetry(() =>
+        users.list("first_seen_at", Math.max(limit * 4, 100))
+      );
+      const candidates = rows
+        .filter((user: Row) =>
+          Boolean(
+            user.id &&
+              (stringValue(user.home_city) ||
+                stringValue(user.current_city)) &&
+              validTimezone(user.timezone),
+          )
+        )
+        .slice(0, limit)
+        .map((user: Row) => ({
+          ownerUserId: user.id,
+          homeCity:
+            stringValue(user.home_city) || stringValue(user.current_city),
+          timezone: validTimezone(user.timezone),
+        }));
+      return Response.json({ value: { candidates } });
+    }
+
+    if (action === "getWeeklyPackGenerationSource") {
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
+
+      const ownerUserId = stringValue(data.ownerUserId);
+      let user: Row | undefined;
+      try {
+        user = ownerUserId ? await users.get(ownerUserId) : undefined;
+      } catch {
+        user = undefined;
+      }
+      if (!user) {
+        return Response.json({ error: "user not found" }, { status: 404 });
+      }
+      const timezone = validTimezone(user.timezone);
+      const homeCity =
+        stringValue(user.home_city) || stringValue(user.current_city);
+      if (!timezone || !homeCity) {
+        return Response.json(
+          { error: "weekly pack context incomplete" },
+          { status: 409 },
+        );
+      }
+
+      const connections = base44.asServiceRole.entities.SidequestConnection;
+      const [{ memoryRows, projected }, connectionRows] = await Promise.all([
+        projectedGraphFor(base44, user),
+        readWithRateLimitRetry(() =>
+          connections.filter(
+            {
+              status: "accepted",
+              $or: [
+                { user_a_id: user.id },
+                { user_b_id: user.id },
+              ],
+            },
+            "-created_at",
+            1,
+          )
+        ),
+      ]);
+      if (memoryRows.length === 0 || projected.nodes.length < 3) {
+        return Response.json(
+          { error: "weekly pack graph not ready" },
+          { status: 409 },
+        );
+      }
+      return Response.json({
+        value: {
+          ownerUserId: user.id,
+          homeCity,
+          timezone,
+          availableCompanies: [
+            "self",
+            ...(connectionRows.length > 0 ? ["known-person"] : []),
+          ],
+          graph: {
+            memoryCount: memoryRows.length,
+            onboardingStep: user.onboarding_step,
+            nodes: projected.nodes.map((node: Row) => graphNodeRecord(node)),
+            edges: projected.edges.map(graphEdgeRecord),
+          },
+        },
+      });
+    }
+
+    if (action === "claimWeeklyPackPreparation") {
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
+
+      const ownerUserId = stringValue(data.ownerUserId);
+      const weekKey = stringValue(data.weekKey);
+      const timezone = validTimezone(data.timezone);
+      const releaseAt = Number(data.releaseAt);
+      const expiresAt = Number(data.expiresAt);
+      const generationRequestId = stringValue(data.generationRequestId).slice(
+        0,
+        160,
+      );
+      const retryOnly = data.retryOnly === true;
+      if (
+        !ownerUserId ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(weekKey) ||
+        !timezone ||
+        !Number.isFinite(releaseAt) ||
+        !Number.isFinite(expiresAt) ||
+        expiresAt <= releaseAt ||
+        !generationRequestId
+      ) {
+        return Response.json({ error: "invalid preparation" }, { status: 400 });
+      }
+
+      const packs = base44.asServiceRole.entities.WeeklyExperiencePack;
+      const existing = await readWithRateLimitRetry(() =>
+        packs.filter(
+          { owner_user_id: ownerUserId, week_key: weekKey },
+          "created_at",
+          10,
+        )
+      );
+      if (existing[0]) {
+        const previous = existing[0];
+        const attempts = Number(previous.attempt_count) || 1;
+        if (previous.status === "failed" && attempts < 3) {
+          const retried = await packs.update(previous.id, {
+            status: "preparing",
+            timezone,
+            release_at: releaseAt,
+            expires_at: expiresAt,
+            design_json: "",
+            research_json: "",
+            research_run_ids_json: "",
+            cards_json: "",
+            generation_request_id: generationRequestId,
+            attempt_count: attempts + 1,
+            last_error: "",
+            updated_at: Date.now(),
+          });
+          return Response.json({
+            value: {
+              claimed: true,
+              preparation: weeklyPackPreparationRecord(retried),
+            },
+          });
+        }
+        return Response.json({
+          value: {
+            claimed: false,
+            preparation: weeklyPackPreparationRecord(previous),
+          },
+        });
+      }
+      if (retryOnly) {
+        return Response.json({
+          value: { claimed: false, preparation: null },
+        });
+      }
+
+      const now = Date.now();
+      const created = await packs.create({
+        owner_user_id: ownerUserId,
+        week_key: weekKey,
+        timezone,
+        status: "preparing",
+        release_at: releaseAt,
+        expires_at: expiresAt,
+        generation_request_id: generationRequestId,
+        attempt_count: 1,
+        revealed_card_ids: "",
+        created_at: now,
+        updated_at: now,
+      });
+
+      // A second cron invocation can pass the first read before either create
+      // lands. Resolve that race immediately and let only the oldest claim
+      // proceed to paid work.
+      const claimedRows = await readWithRateLimitRetry(() =>
+        packs.filter(
+          { owner_user_id: ownerUserId, week_key: weekKey },
+          "created_at",
+          10,
+        )
+      );
+      const winner = claimedRows[0];
+      if (!winner) {
+        await packs.update(created.id, {
+          status: "failed",
+          last_error: "preparation claim could not be confirmed",
+          updated_at: Date.now(),
+        });
+        return Response.json(
+          { error: "preparation claim could not be confirmed" },
+          { status: 502 },
+        );
+      }
+      if (winner.id !== created.id) {
+        await packs.update(created.id, {
+          status: "failed",
+          last_error: "duplicate preparation claim",
+          updated_at: Date.now(),
+        });
+        return Response.json({
+          value: {
+            claimed: false,
+            preparation: weeklyPackPreparationRecord(winner),
+          },
+        });
+      }
+      return Response.json({
+        value: {
+          claimed: true,
+          preparation: weeklyPackPreparationRecord(created),
+        },
+      });
+    }
+
+    if (action === "setWeeklyPackResearch") {
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
+
+      const packId = stringValue(data.packId);
+      const designJson = boundedJson(data.designJson, 48_000);
+      const researchRunIdsJson = boundedJson(
+        data.researchRunIdsJson,
+        8_000,
+      );
+      const packs = base44.asServiceRole.entities.WeeklyExperiencePack;
+      let pack: Row | undefined;
+      try {
+        pack = packId ? await packs.get(packId) : undefined;
+      } catch {
+        pack = undefined;
+      }
+      if (
+        !pack ||
+        pack.status !== "preparing" ||
+        !designJson ||
+        !researchRunIdsJson
+      ) {
+        return Response.json({ error: "invalid preparation" }, { status: 409 });
+      }
+      const updated = await packs.update(pack.id, {
+        design_json: designJson,
+        research_run_ids_json: researchRunIdsJson,
+        updated_at: Date.now(),
+      });
+      return Response.json({
+        value: { preparation: weeklyPackPreparationRecord(updated) },
+      });
+    }
+
+    if (action === "listWeeklyPackPreparations") {
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
+
+      const limit = Math.min(
+        Math.max(
+          typeof data.limit === "number" ? Math.floor(data.limit) : 10,
+          1,
+        ),
+        50,
+      );
+      const packs = base44.asServiceRole.entities.WeeklyExperiencePack;
+      const rows = await readWithRateLimitRetry(() =>
+        packs.filter({ status: "preparing" }, "created_at", limit)
+      );
+      return Response.json({
+        value: {
+          preparations: rows
+            .filter((row: Row) =>
+              Boolean(row.design_json && row.research_run_ids_json)
+            )
+            .map(weeklyPackPreparationRecord),
+        },
+      });
+    }
+
+    if (action === "completeWeeklyPackPreparation") {
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
+
+      const packId = stringValue(data.packId);
+      const cardsJson = boundedJson(data.cardsJson, 36_000);
+      const researchJson = boundedJson(data.researchJson, 48_000);
+      const cards = parsedJson(cardsJson);
+      const cardIds = Array.isArray(cards)
+        ? cards.map((card: Row) => weeklyCardId(card?.id))
+        : [];
+      const packs = base44.asServiceRole.entities.WeeklyExperiencePack;
+      let pack: Row | undefined;
+      try {
+        pack = packId ? await packs.get(packId) : undefined;
+      } catch {
+        pack = undefined;
+      }
+      if (
+        !pack ||
+        pack.status !== "preparing" ||
+        !cardsJson ||
+        !researchJson ||
+        cardIds.length !== 3 ||
+        WEEKLY_CARD_IDS.some((id) => !cardIds.includes(id))
+      ) {
+        return Response.json({ error: "invalid completion" }, { status: 409 });
+      }
+      const updated = await packs.update(pack.id, {
+        status: "ready",
+        cards_json: cardsJson,
+        research_json: researchJson,
+        last_error: "",
+        updated_at: Date.now(),
+      });
+      return Response.json({ value: { pack: weeklyPackRecord(updated) } });
+    }
+
+    if (action === "failWeeklyPackPreparation") {
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
+
+      const packId = stringValue(data.packId);
+      const packs = base44.asServiceRole.entities.WeeklyExperiencePack;
+      let pack: Row | undefined;
+      try {
+        pack = packId ? await packs.get(packId) : undefined;
+      } catch {
+        pack = undefined;
+      }
+      if (!pack || pack.status !== "preparing") {
+        return Response.json({ error: "invalid preparation" }, { status: 409 });
+      }
+      const updated = await packs.update(pack.id, {
+        status: "failed",
+        last_error: stringValue(data.error).slice(0, 300),
+        updated_at: Date.now(),
+      });
+      return Response.json({
+        value: { preparation: weeklyPackPreparationRecord(updated) },
       });
     }
 

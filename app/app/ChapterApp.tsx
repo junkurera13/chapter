@@ -10,15 +10,16 @@ import type { ExperienceGraphRecord } from "../../lib/backendTypes";
 import AgentOrbVideo from "../../components/landing/agent-orb-video";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import { isDemoAccount } from "../../lib/togetherSamples";
+import { canReviewWeeklyPackUI } from "../../lib/weeklyPackReviewAccess";
 import { buildWorldGraph } from "./graphData";
-import NowView from "./NowView";
 import TogetherView from "./TogetherView";
+import WeeklyPackReviewToolbar from "./WeeklyPackReviewToolbar";
 import WeeklyPackView from "./WeeklyPackView";
 import WelcomeDialog from "../../components/welcome-dialog";
 import YouOnboarding from "./YouOnboarding";
 import YouView from "./YouView";
 import styles from "./page.module.css";
-import type { WeeklyPackPreviewMode } from "../../lib/weeklyPackPreview";
+import type { WeeklyPackReviewState } from "../../lib/weeklyPackPreview";
 
 type GraphState =
   | { status: "loading" }
@@ -36,7 +37,7 @@ export default function ChapterApp({
   onConnectPhone,
   initialTab = 0,
   justConnected = false,
-  weeklyPackPreview,
+  initialWeeklyPackReview,
 }: {
   viewer: AuthenticatedViewer;
   initialGraph: ExperienceGraphRecord;
@@ -44,9 +45,13 @@ export default function ChapterApp({
   initialTab?: ChapterTabIndex;
   /** Arrived here by accepting an invitation moments ago. */
   justConnected?: boolean;
-  weeklyPackPreview?: WeeklyPackPreviewMode;
+  initialWeeklyPackReview?: WeeklyPackReviewState;
 }) {
+  const canReviewNow = canReviewWeeklyPackUI(viewer.email);
   const [activeIndex, setActiveIndex] = useState<ChapterTabIndex>(initialTab);
+  const [weeklyPackReview, setWeeklyPackReview] = useState<
+    WeeklyPackReviewState | undefined
+  >(canReviewNow ? initialWeeklyPackReview : undefined);
   const [addingMemory, setAddingMemory] = useState(false);
   /**
    * A memory that has been sent and is still being read. It is a state of the
@@ -83,9 +88,12 @@ export default function ChapterApp({
     (nextIndex: ChapterTabIndex) => {
       if (worldLocked && nextIndex !== 0) return;
       setActiveIndex(nextIndex);
+      if (nextIndex !== 1) setWeeklyPackReview(undefined);
 
       const url = new URL(window.location.href);
       url.searchParams.set("view", TAB_VIEWS[nextIndex]);
+      if (nextIndex !== 1) url.searchParams.delete("review");
+      url.searchParams.delete("pack");
       // The invitation flag is true of an arrival, not of the page. It goes
       // the first time you move, so a reload can't replay the welcome.
       url.searchParams.delete("joined");
@@ -93,6 +101,30 @@ export default function ChapterApp({
     },
     [worldLocked],
   );
+
+  const changeWeeklyPackReview = useCallback(
+    (nextState: WeeklyPackReviewState) => {
+      if (!canReviewNow) return;
+      setActiveIndex(1);
+      setWeeklyPackReview(nextState);
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("view", "now");
+      url.searchParams.set("review", nextState);
+      url.searchParams.delete("joined");
+      url.searchParams.delete("pack");
+      window.history.replaceState(null, "", url);
+    },
+    [canReviewNow],
+  );
+
+  const exitWeeklyPackReview = useCallback(() => {
+    setWeeklyPackReview(undefined);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("review");
+    url.searchParams.delete("pack");
+    window.history.replaceState(null, "", url);
+  }, []);
 
   useEffect(() => {
     if (graphState.status !== "loading") return;
@@ -236,14 +268,10 @@ export default function ChapterApp({
 
   const activePanel =
     displayedIndex === 1 ? (
-      weeklyPackPreview ? (
-        <WeeklyPackView previewMode={weeklyPackPreview} />
-      ) : (
-        <NowView
-          onGraphAdvanced={queueGraphLoad}
-          onOpenYou={() => changeTab(0)}
-        />
-      )
+      <WeeklyPackView
+        key={weeklyPackReview ?? "live"}
+        reviewState={weeklyPackReview}
+      />
     ) : displayedIndex === 2 ? (
       <TogetherView
         nodes={worldGraph?.nodes ?? []}
@@ -329,12 +357,22 @@ export default function ChapterApp({
         />
       ) : null}
 
+      {displayedIndex === 1 && weeklyPackReview ? (
+        <WeeklyPackReviewToolbar
+          state={weeklyPackReview}
+          onChange={changeWeeklyPackReview}
+          onExit={exitWeeklyPackReview}
+        />
+      ) : null}
+
       <BottomNavigation
         activeIndex={displayedIndex}
         onChange={changeTab}
         worldLocked={worldLocked}
         viewer={viewer}
         onConnectPhone={onConnectPhone}
+        canReviewNow={canReviewNow}
+        onReviewNow={() => changeWeeklyPackReview("sealed")}
       />
     </main>
   );

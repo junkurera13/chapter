@@ -805,6 +805,16 @@ export const weeklyPackReviewModelSchema = z.object({
 
 export type WeeklyPackReview = z.infer<typeof weeklyPackReviewSchema>;
 
+export const weeklyPackDesignArtifactSchema = z.object({
+  pack: weeklyPackDesignSchema,
+  review: weeklyPackReviewSchema,
+  revisionReviews: z.array(weeklyPackReviewSchema).max(2),
+});
+
+export type WeeklyPackDesignArtifact = z.infer<
+  typeof weeklyPackDesignArtifactSchema
+>;
+
 export function enforceWeeklyPackReviewThresholds(
   review: WeeklyPackReview,
 ): WeeklyPackReview {
@@ -942,6 +952,16 @@ export function buildWeeklyPackResearchPrompt(args: {
   context: WeeklyPackContext;
   currentDate: string;
 }) {
+  const researchSafeDesign = {
+    id: args.card.id,
+    format: args.card.format,
+    stretchDimension: args.card.stretch.dimension,
+    experiencePromise: args.card.experiencePromise,
+    mechanism: args.card.mechanism,
+    requirements: args.card.requirements,
+    researchObjective: args.card.researchObjective,
+    connectionSafety: args.card.connectionSafety,
+  };
   return [
     "Prove one already-designed Chapter experience with current web research.",
     "Do not replace it with a recommendation and do not add a second unfamiliar dimension.",
@@ -956,7 +976,7 @@ export function buildWeeklyPackResearchPrompt(args: {
     "- If a requirement cannot be proved, say so in researchCaveats instead of guessing.",
     "",
     `HOME CITY: ${args.context.homeCity}`,
-    `DESIGN RECORD: ${JSON.stringify(args.card)}`,
+    `RESEARCH-SAFE DESIGN RECORD: ${JSON.stringify(researchSafeDesign)}`,
   ].join("\n");
 }
 

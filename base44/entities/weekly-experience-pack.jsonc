@@ -42,6 +42,22 @@
       "type": "string",
       "description": "Three independent research results and their evidence, retained server-side"
     },
+    "research_run_ids_json": {
+      "type": "string",
+      "description": "The small, mini, and proper Parallel run ids while a prebuilt pack is preparing"
+    },
+    "generation_request_id": {
+      "type": "string",
+      "description": "Opaque server request id for correlating model, research, and persistence logs"
+    },
+    "attempt_count": {
+      "type": "number",
+      "description": "Preparation claims made for this owner and week"
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Bounded operational failure name. Never shown to the person."
+    },
     "revealed_card_ids": {
       "type": "string",
       "description": "Comma-separated small, mini, proper ids that this person has turned over"

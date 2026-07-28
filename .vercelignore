@@ -1,0 +1,10 @@
+.git
+.next
+.output
+.eve
+.vercel
+node_modules
+coverage
+*.tsbuildinfo
+.env*
+base44/.app.jsonc

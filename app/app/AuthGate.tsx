@@ -17,7 +17,7 @@ import ChapterLoadingMark from "@/components/chapter-loading-mark";
 import ChapterApp from "./ChapterApp";
 import PhoneConnection from "./PhoneConnection";
 import type { ChapterTabIndex } from "./BottomNavigation";
-import type { WeeklyPackPreviewMode } from "@/lib/weeklyPackPreview";
+import type { WeeklyPackReviewState } from "@/lib/weeklyPackPreview";
 import styles from "./AuthGate.module.css";
 
 type GateState =
@@ -32,11 +32,11 @@ type GateState =
 export default function AuthGate({
   initialTab,
   justConnected,
-  weeklyPackPreview,
+  initialWeeklyPackReview,
 }: {
   initialTab?: ChapterTabIndex;
   justConnected?: boolean;
-  weeklyPackPreview?: WeeklyPackPreviewMode;
+  initialWeeklyPackReview?: WeeklyPackReviewState;
 }) {
   const router = useRouter();
   const [state, setState] = useState<GateState>({ status: "checking" });
@@ -116,7 +116,7 @@ export default function AuthGate({
         onConnectPhone={() => setPhoneConnectionOpen(true)}
         initialTab={initialTab}
         justConnected={justConnected}
-        weeklyPackPreview={weeklyPackPreview}
+        initialWeeklyPackReview={initialWeeklyPackReview}
       />
     );
   }
