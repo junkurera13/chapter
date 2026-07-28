@@ -243,6 +243,42 @@ function normalizeDesign(
   return canonicalizeWeeklyPackAnchors(candidate, source.graph);
 }
 
+type WeeklyPackModelAttempt<T> =
+  | { value: T }
+  | { failure: string; correction: string };
+
+export async function runWeeklyPackModelAttempts<T>(args: {
+  modelIds: readonly string[];
+  attemptsPerModel?: number;
+  attempt: (args: {
+    modelId: string;
+    attempt: number;
+    correction: string;
+  }) => Promise<WeeklyPackModelAttempt<T>>;
+}) {
+  const failures: string[] = [];
+  let correction = "";
+  const attemptsPerModel = Math.max(
+    1,
+    Math.floor(args.attemptsPerModel ?? 2),
+  );
+
+  for (const modelId of args.modelIds) {
+    for (let attempt = 1; attempt <= attemptsPerModel; attempt += 1) {
+      const result = await args.attempt({ modelId, attempt, correction });
+      if ("value" in result) {
+        return { value: result.value, failures };
+      }
+      failures.push(
+        `${modelId} attempt ${attempt}: ${result.failure}`,
+      );
+      correction = result.correction;
+    }
+  }
+
+  return { failures };
+}
+
 async function structurallyValidDesign(args: {
   prompt: string;
   source: PackGenerationSource;
@@ -251,43 +287,62 @@ async function structurallyValidDesign(args: {
   requestId: string;
   temperature: number;
 }) {
-  let correction = "";
-  const failures: string[] = [];
-  for (const modelId of args.modelIds) {
-    try {
-      const output = await generateObject({
-        prompt: [args.prompt, correction].filter(Boolean).join("\n\n"),
-        schema: weeklyPackDesignModelSchema,
-        schemaName: args.schemaName,
-        modelId,
-        temperature: args.temperature,
-        maxOutputTokens: 16_000,
-        requestId: args.requestId,
-      });
-      const pack = normalizeDesign(output, args.source);
-      const audit = auditWeeklyPackDesign({
-        pack,
-        graph: args.source.graph,
-        context: args.source.context,
-      });
-      if (audit.valid) return pack;
-      const failure = audit.errors
-        .map((issue) => `${issue.code}: ${issue.message}`)
-        .join("\n");
-      failures.push(`${modelId}: ${failure}`);
-      correction = [
-        "The previous full pack failed deterministic gates.",
-        "Return a complete corrected pack and repair every failure:",
-        failure,
-      ].join("\n");
-    } catch (error) {
-      failures.push(
-        `${modelId}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+  const result = await runWeeklyPackModelAttempts({
+    modelIds: args.modelIds,
+    attemptsPerModel: 2,
+    attempt: async ({ modelId, correction }) => {
+      try {
+        const output = await generateObject({
+          prompt: [args.prompt, correction].filter(Boolean).join("\n\n"),
+          schema: weeklyPackDesignModelSchema,
+          schemaName: args.schemaName,
+          modelId,
+          temperature: args.temperature,
+          maxOutputTokens: 16_000,
+          requestId: args.requestId,
+        });
+        const pack = normalizeDesign(output, args.source);
+        const audit = auditWeeklyPackDesign({
+          pack,
+          graph: args.source.graph,
+          context: args.source.context,
+        });
+        if (audit.valid) return { value: pack };
+
+        const failure = audit.errors
+          .map((issue) => `${issue.code}: ${issue.message}`)
+          .join("\n");
+        return {
+          failure,
+          correction: [
+            "The previous full pack failed deterministic gates.",
+            "Return all three cards again. Repair every failure without weakening the one-stretch, format, social, privacy, or evidence contracts.",
+            `PREVIOUS INVALID PACK: ${JSON.stringify(pack)}`,
+            "EXACT FAILURES:",
+            failure,
+          ].join("\n"),
+        };
+      } catch (error) {
+        const failure =
+          error instanceof Error ? error.message : String(error);
+        return {
+          failure,
+          correction: [
+            correction,
+            "The previous attempt did not return a valid structured pack.",
+            "Return one complete pack with exactly three cards and every required field. Do not include commentary outside the structured result.",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        };
+      }
+    },
+  });
+  if (result.value) {
+    return result.value;
   }
   throw new WeeklyPackGenerationError(
-    `No model produced a structurally valid pack. ${failures.join(" | ")}`,
+    `No model produced a structurally valid pack. ${result.failures.join(" | ")}`,
   );
 }
 

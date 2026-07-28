@@ -342,6 +342,7 @@ export function buildWeeklyPackDesignPrompt(args: {
     "- Every card has exactly one new dimension: place, activity, person, or time.",
     "- Set that dimension to `new` in familiarity and all other dimensions to `familiar`.",
     "- Transform the familiar thread; do not literally repeat its noun.",
+    "- A self-company card may stretch only place, activity, or time. Its person dimension must stay familiar.",
     "- A new-person card must spend its only stretch on `person`; place, activity, and time stay familiar.",
     "",
     "TRUTH AND PRIVACY",
@@ -366,6 +367,9 @@ export function buildWeeklyPackDesignPrompt(args: {
           `- SHARED SOCIAL ANCHORS: ${JSON.stringify(args.context.socialMatch.sharedAnchors)}`,
         ].join("\n")
       : "- No real matched person is available. Every card must be self company.",
+    args.context.socialMatch
+      ? ""
+      : "- Because every card is self company, no card may declare `person` as its stretch or set familiarity.person to `new`.",
     "",
     "RESEARCH BRIEFS",
     "- Write a separate objective for each card that proves what the designed experience needs.",

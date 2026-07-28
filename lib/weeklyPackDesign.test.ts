@@ -221,6 +221,16 @@ describe("weekly pack design lab", () => {
     );
   });
 
+  it("forbids a person stretch when the pack has no social candidate", () => {
+    const prompt = buildWeeklyPackDesignPrompt(fixture());
+    expect(prompt).toContain(
+      "A self-company card may stretch only place, activity, or time.",
+    );
+    expect(prompt).toContain(
+      "no card may declare `person` as its stretch",
+    );
+  });
+
   it("sends Parallel only the research-safe design cut", () => {
     const current = fixture();
     const designed = validPack().cards[0];
