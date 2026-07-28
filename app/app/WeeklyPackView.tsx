@@ -92,21 +92,40 @@ function orbCategory(category: string): WorldNodeCategory {
 }
 
 function weeklyCardLineParts(card: WeeklyExperienceCard) {
+  type CardLineMarker = {
+    label: string;
+    category: string;
+    preserveCase?: boolean;
+  };
   let parts: Array<{
     text: string;
-    anchor?: NonNullable<WeeklyExperienceCard["anchors"]>[number];
+    marker?: CardLineMarker;
   }> = [{ text: card.line ?? card.promise }];
 
-  for (const anchor of [...(card.anchors ?? [])].sort(
-    (first, second) => second.label.length - first.label.length,
-  )) {
+  const markers: CardLineMarker[] = [
+    ...(card.anchors ?? []).map((anchor) => ({
+      label: anchor.label,
+      category: anchor.category,
+    })),
+    ...(card.companion
+      ? [
+          {
+            label: card.companion.name,
+            category: "people",
+            preserveCase: true,
+          },
+        ]
+      : []),
+  ].sort((first, second) => second.label.length - first.label.length);
+
+  for (const marker of markers) {
     parts = parts.flatMap((part) => {
-      if (part.anchor) return [part];
-      const pieces = part.text.split(anchor.label);
+      if (part.marker) return [part];
+      const pieces = part.text.split(marker.label);
       if (pieces.length === 1) return [part];
       const marked: typeof parts = [];
       pieces.forEach((piece, index) => {
-        if (index > 0) marked.push({ text: anchor.label, anchor });
+        if (index > 0) marked.push({ text: marker.label, marker });
         if (piece) marked.push({ text: piece });
       });
       return marked;
@@ -133,21 +152,29 @@ function WeeklyCardLine({ card }: { card: WeeklyExperienceCard }) {
   return (
     <p className={styles.cardLine}>
       {weeklyCardLineParts(card).map((part, index) => {
-        if (!part.anchor) {
+        if (!part.marker) {
           return <span key={`${part.text}-${index}`}>{part.text}</span>;
         }
 
-        const label = titleCaseAnchorLabel(part.text);
+        const label = part.marker.preserveCase
+          ? part.text
+          : titleCaseAnchorLabel(part.text);
         const firstSpace = label.indexOf(" ");
 
         return (
-          <span className={styles.cardAnchor} key={`${part.text}-${index}`}>
+          <span
+            className={styles.cardAnchor}
+            data-weekly-person={
+              part.marker.category === "people" ? "true" : undefined
+            }
+            key={`${part.text}-${index}`}
+          >
             <span className={styles.cardAnchorLead}>
               <span
                 className={styles.cardAnchorOrb}
                 style={{
                   background: categoryOrbGradient(
-                    orbCategory(part.anchor.category),
+                    orbCategory(part.marker.category),
                   ),
                 }}
                 aria-hidden="true"
@@ -650,7 +677,7 @@ export default function WeeklyPackView({
           <span className={styles.packHeaderOrb} aria-hidden="true">
             <AgentOrbVideo playWhileMounted preload="auto" />
           </span>
-          <h1>Choose one.</h1>
+          <h1>Choose one</h1>
         </div>
       </motion.header>
 
@@ -788,14 +815,6 @@ export default function WeeklyPackView({
 
                       <div className={styles.cardSay}>
                         <WeeklyCardLine card={card} />
-                        {card.companion ? (
-                          <div className={styles.cardCompanion}>
-                            <span aria-hidden="true">
-                              {weeklyCompanionInitials(card.companion.name)}
-                            </span>
-                            <strong>{card.companion.name}</strong>
-                          </div>
-                        ) : null}
                       </div>
 
                       <WeeklyCardPhoto
