@@ -180,15 +180,38 @@ describe("buildComposePrompt", () => {
       timeWindows: ["evening"],
     });
 
-    expect(prompt).toContain("THE DAY THEY SET ASIDE: Saturday 2026-08-08");
+    expect(prompt).toContain("THE DAY: Saturday 2026-08-08");
     expect(prompt).toContain("evening");
-    expect(prompt).toContain("Never offer an alternative day");
+    expect(prompt).toContain("state it rather than asking about it");
   });
 
   it("says nothing about a day when there isn’t one", () => {
     const prompt = buildComposePrompt({ brief, finding, homeCity: "Seoul" });
-    expect(prompt).not.toContain("THE DAY THEY SET ASIDE");
-    expect(prompt).not.toContain("Never offer an alternative day");
+    expect(prompt).not.toContain("THE DAY:");
+    expect(prompt).not.toContain("state it rather than asking about it");
+  });
+
+  /*
+   * The regression this whole shape exists to prevent.
+   *
+   * Compose used to be handed the anchor labels and told to use every one of
+   * them verbatim. Given a graph node labelled "Halmoni", that instruction
+   * required the model to work somebody's grandmother into a sentence about a
+   * restaurant, and it duly wrote one that claimed she used to take them there.
+   * The memories belong on the card as its sources, which are checkable. They
+   * have no business inside a sentence about a venue.
+   */
+  it("never hands a person's memories to the sentence about a venue", () => {
+    const prompt = buildComposePrompt({
+      brief,
+      finding,
+      homeCity: "Seoul",
+      scheduledFor: "2026-08-08",
+    });
+
+    expect(prompt).not.toContain("Halmoni");
+    expect(prompt).not.toContain("ANCHOR");
+    expect(prompt).toContain("Say NOTHING about the person");
   });
 });
 
@@ -239,7 +262,7 @@ describe("now schemas", () => {
 });
 
 describe("buildComposePrompt", () => {
-  it("passes anchors verbatim and forbids invented details", () => {
+  it("carries the venue verbatim and nothing that could be embroidered", () => {
     const brief = nowBriefSchema.parse({
       threadTitle: "Charcoal nights",
       anchors: [
@@ -264,9 +287,10 @@ describe("buildComposePrompt", () => {
       homeCity: "Seoul",
     });
 
-    expect(prompt).toContain('"Eating Meat Skewers","Halmoni"');
     expect(prompt).toContain("VERBATIM");
-    expect(prompt).toContain("Do not invent details");
     expect(prompt).toContain("Halmae Yeontan Gui");
+    // The stretch steers the choice and is explicitly not for saying out loud.
+    expect(prompt).toContain("never say it");
+    expect(prompt).not.toContain("Eating Meat Skewers");
   });
 });

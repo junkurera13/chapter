@@ -1,0 +1,77 @@
+{
+  "name": "WeeklyExperiencePack",
+  "type": "object",
+  "properties": {
+    "owner_user_id": { "type": "string" },
+    "week_key": {
+      "type": "string",
+      "description": "Saturday release day as YYYY-MM-DD in the person's recorded IANA timezone"
+    },
+    "timezone": {
+      "type": "string",
+      "description": "IANA timezone used to calculate and explain the release"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "preparing",
+        "ready",
+        "chosen",
+        "lived",
+        "dismissed",
+        "failed"
+      ]
+    },
+    "release_at": {
+      "type": "number",
+      "description": "UTC epoch milliseconds. Card contents stay server-hidden before this instant."
+    },
+    "expires_at": {
+      "type": "number",
+      "description": "UTC epoch milliseconds after which an un-lived pack can no longer be chosen or scheduled"
+    },
+    "cards_json": {
+      "type": "string",
+      "description": "The three finished researched cards. Never returned before release_at."
+    },
+    "design_json": {
+      "type": "string",
+      "description": "Accepted three-card design and editor audit, retained server-side for quality review"
+    },
+    "research_json": {
+      "type": "string",
+      "description": "Three independent research results and their evidence, retained server-side"
+    },
+    "revealed_card_ids": {
+      "type": "string",
+      "description": "Comma-separated small, mini, proper ids that this person has turned over"
+    },
+    "chosen_card_id": {
+      "type": "string",
+      "enum": ["small", "mini", "proper"]
+    },
+    "scheduled_for": {
+      "type": "string",
+      "description": "Optional YYYY-MM-DD the person chose after keeping one card"
+    },
+    "lived_at": { "type": "number" },
+    "dismissed_at": { "type": "number" },
+    "created_at": { "type": "number" },
+    "updated_at": { "type": "number" }
+  },
+  "required": [
+    "owner_user_id",
+    "week_key",
+    "timezone",
+    "status",
+    "release_at",
+    "expires_at",
+    "created_at"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

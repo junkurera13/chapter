@@ -158,7 +158,7 @@
 }
 
 .stage[data-open="false"] .stageOrb {
-  width: clamp(11rem, min(24vw, 30vh), 17rem);
+  width: clamp(15rem, min(34vw, 42vh), 24rem);
 }
 
 .stageOrb video,
@@ -249,44 +249,7 @@
   }
 }
 
-/*
- * What the press would do, held back until somebody reaches for it.
- *
- * Absolute so it costs the resting screen no height at all: the orb sits
- * where it would sit with nothing under it, and stays there when the words
- * arrive. Bare at rest is the point, and a line that had to be made room for
- * would not be bare, only faint.
- */
-.orbHint {
-  position: absolute;
-  top: calc(100% + clamp(0.85rem, 2.2vh, 1.25rem));
-  left: 50%;
-  width: max-content;
-  max-width: min(20rem, 80vw);
-  color: rgba(45, 39, 34, 0.42);
-  font-size: 13px;
-  letter-spacing: -0.005em;
-  text-align: center;
-  opacity: 0;
-  transform: translate(-50%, 4px);
-  transition:
-    opacity 240ms ease,
-    transform 240ms ease;
-  pointer-events: none;
-}
-
-.orbPress:hover + .orbHint,
-.orbPress:focus-visible + .orbHint {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
-
-/* Nothing to hover with, so nothing to reveal. The orb is simply pressed. */
-@media (hover: none) {
-  .orbHint {
-    display: none;
-  }
-}
+/* Nothing is said on approach. The orb is simply pressed. */
 
 @media (prefers-reduced-motion: reduce) {
   .orbPress,
@@ -314,6 +277,37 @@
   font-size: 13px;
   letter-spacing: -0.005em;
   text-align: center;
+  /* Keyed on its own text, so each word arrives rather than swaps. */
+  animation: noteIn 620ms ease both;
+}
+
+@keyframes noteIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Said once, to anyone who cannot see the word turning over. */
+.stageStatus {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stageNote {
+    animation: none;
+  }
 }
 
 .stageBody {
@@ -321,14 +315,8 @@
   animation: stageBodyIn 440ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
 }
 
-/* A proposal deals itself out beat by beat, and one entrance is enough: the
-   container rising underneath five things that are already rising reads as
-   two animations fighting. Keyed off something that never changes while the
-   proposal is up — a rule that switches on and off would restart the
-   animation it was suppressing, and re-fade a chapter already being read. */
-.stageBody:has(.card[data-beats="true"]) {
-  animation: none;
-}
+/* A chapter arrives as one object now, so the container rising is the whole
+   of its entrance and there is no beat sequence left to get out of the way. */
 
 /* Under the resting orb, the offer is a centred column rather than a page. */
 .stage[data-open="false"] .stageBody {
@@ -400,28 +388,6 @@
 
 .offer .notice {
   margin-top: 0.9rem;
-}
-
-/* Five stages, so the wait has a length rather than only a spinner. */
-.progress {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  margin: 0.95rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.progressStep {
-  width: 20px;
-  height: 3px;
-  border-radius: 999px;
-  background: rgba(45, 39, 34, 0.12);
-  transition: background 500ms ease;
-}
-
-.progressStep[data-passed="true"] {
-  background: rgba(122, 90, 166, 0.55);
 }
 
 /*
@@ -1172,49 +1138,202 @@
   outline-offset: 1px;
 }
 
-/*
- * The chapter itself, under the orb that wrote it. It gave up its rim and its
- * lift when it moved into the stage: the headline above already says this is
- * the thing, so the card underneath only has to be readable.
- */
-.card {
-  display: grid;
-  width: 100%;
-  gap: 20px;
-}
-
-/*
- * A proposal is dealt out rather than laid down.
+/* ------------------------------------------------------------------------ *
+ * The chapter, as one card.
  *
- * Each beat arrives after the one above it has had time to be read, which is
- * what turns a card of facts into something being told to you. Keyframes
- * rather than a JavaScript animate: a chapter that has been written is the
- * whole point of this screen, and it must never be one paused frameloop away
- * from being invisible. CSS lands on its final frame on its own.
+ * Same object as the cards the landing page opens with: white, a hairline
+ * ring, ten pixels of padding around a sentence with its nouns lit up, and a
+ * photograph of the place underneath. It was always the promise on the front
+ * door, and this is the tab that has to keep it.
+ * ------------------------------------------------------------------------ */
+
+.card {
+  width: min(23rem, 100%);
+  margin-inline: auto;
+  padding: 10px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 24px 48px rgba(0, 0, 0, 0.11),
+    0 6px 14px rgba(0, 0, 0, 0.07);
+}
+
+.cardSay {
+  padding: 14px 12px 16px;
+}
+
+/*
+ * The whole of what is said, and the reason there is no paragraph anywhere on
+ * this card: prose about a person is the one thing here nothing can check.
  */
-.card[data-beats="true"] > * {
-  animation: beatIn 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+.cardLine {
+  margin: 0;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+  color: #77716f;
 }
 
-.card[data-beats="true"] > *:nth-child(1) {
-  animation-delay: 60ms;
+/*
+ * The nouns, which are the only words on the card that are dark.
+ *
+ * Plain inline rather than the landing page's inline-flex. A flex box is one
+ * atomic thing on a line: the landing cards name places like "Euljiro" so it
+ * never shows, but a real venue comes back as "우터커피 (Uter Coffee),
+ * Sadang-dong" and an unbreakable box that long takes the whole line and
+ * shoulders the rest of the sentence, punctuation included, onto the next one.
+ * Inline lets a long name wrap like the words either side of it.
+ */
+.chip {
+  font-weight: 600;
+  color: #1c1c19;
 }
 
-.card[data-beats="true"] > *:nth-child(2) {
-  animation-delay: 300ms;
+/* A mark and the first word after it, which never come apart. */
+.chipLead {
+  white-space: nowrap;
 }
 
-.card[data-beats="true"] > *:nth-child(3) {
-  animation-delay: 520ms;
+.chipOrb {
+  position: relative;
+  top: 0.16em;
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 3px;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  box-shadow:
+    inset 3px 4px 5px rgba(255, 255, 255, 0.24),
+    inset -2px -3px 5px rgba(24, 17, 13, 0.18),
+    0 2px 5px rgba(47, 34, 24, 0.13);
 }
 
-.card[data-beats="true"] > *:nth-child(4) {
-  animation-delay: 720ms;
+.chipPin {
+  position: relative;
+  top: 0.15em;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 2px;
 }
 
-/* The last beat, and anything that turns up after it — a notice, say. */
-.card[data-beats="true"] > *:nth-child(n + 5) {
-  animation-delay: 900ms;
+/* When, underlined rather than chipped: a day is not an object. */
+.chipWhen {
+  text-decoration: underline;
+  text-decoration-color: rgba(119, 113, 111, 0.7);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.cardShot {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f4f1ee;
+}
+
+.cardShot img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/*
+ * The card opens from the bottom onto its own sources.
+ *
+ * Shut, because what somebody wants from a card is the offer. Open, because
+ * the rows underneath are the only claim it makes about the person, and they
+ * are graph nodes: a chapter whose anchors are not real ones is refused
+ * before it is ever written.
+ */
+.cardDrawer {
+  margin-top: 10px;
+}
+
+.cardHandle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 2px 2px;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(119, 113, 111, 0.85);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.cardHandle:hover {
+  color: #1c1c19;
+}
+
+.cardHandle:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.cardChevron {
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 200ms ease;
+}
+
+.cardChevron[data-open="true"] {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
+.cardNodes {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.7rem 2px 0.25rem;
+  animation: beatIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cardNode {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 0;
+  color: #494440;
+  font-size: 14px;
+  letter-spacing: -0.018em;
+}
+
+.cardNode .chipOrb {
+  top: 0;
+  width: 0.85em;
+  height: 0.85em;
+}
+
+/* The day it was said yes on, under the card that was said yes to. */
+.cardPlan {
+  margin: 12px 12px 2px;
+  color: rgba(45, 39, 34, 0.55);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+/* What follows the card: the day, and the two answers. */
+.cardTail {
+  width: min(23rem, 100%);
+  margin: 22px auto 0;
 }
 
 @keyframes beatIn {
@@ -1229,120 +1348,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card[data-beats="true"] > * {
+  .cardNodes {
     animation: none;
   }
-}
-
-/*
- * Beat one: what Chapter already knew.
- *
- * The loudest thing under the headline, because it is the only sentence on
- * this screen that could not have come from anywhere but this person's own
- * world. The orbs in it are the working shown.
- */
-.known {
-  margin: 0;
-  color: #25211d;
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: clamp(1.15rem, 2.1vw, 1.4rem);
-  font-weight: 480;
-  letter-spacing: -0.028em;
-  line-height: 1.38;
-  text-wrap: pretty;
-}
-
-.known .anchorOrb {
-  width: 14px;
-  height: 14px;
-}
-
-/* Beat two: the one thing here that is not already true about them. */
-.unknown {
-  display: flex;
-  align-items: baseline;
-  gap: 11px;
-  margin: 0;
-  color: rgba(150, 96, 55, 0.95);
-  font-size: 15px;
-  font-weight: 555;
-  letter-spacing: -0.012em;
-  line-height: 1.5;
-}
-
-.unknown::before {
-  content: "";
-  width: 18px;
-  height: 1px;
-  flex: none;
-  background: rgba(160, 108, 66, 0.5);
-  transform: translateY(-0.42em);
-}
-
-/* Beat three: the writing. */
-.invitation {
-  margin: 0;
-  color: rgba(37, 33, 29, 0.85);
-  font-size: 17px;
-  line-height: 1.62;
-}
-
-.anchor {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  font-weight: 620;
-  white-space: nowrap;
-}
-
-.anchorOrb {
-  display: inline-block;
-  width: 11px;
-  height: 11px;
-  align-self: center;
-  border-radius: 50%;
-  box-shadow:
-    inset 2px 2px 3px rgba(255, 255, 255, 0.55),
-    inset -1px -2px 3px rgba(30, 20, 12, 0.28),
-    0 1px 3px rgba(50, 36, 22, 0.22);
-}
-
-/*
- * Beat four: the find, on its own plate.
- *
- * Everything above it is Chapter writing. This is the thing the research went
- * out and came back with, so it is given an edge and a surface and reads as an
- * object handed over rather than as another paragraph. Same grey as the card
- * in the corner, because both are Chapter's own.
- */
-.venue {
-  display: grid;
-  gap: 4px;
-  padding: 17px 18px 16px;
-  border-radius: 20px;
-  background: #f8f7f5;
-}
-
-.venueName {
-  margin: 0;
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-}
-
-.venueMeta {
-  margin: 0;
-  color: rgba(45, 39, 34, 0.58);
-  font-size: 13.5px;
-  line-height: 1.45;
-}
-
-.whyUncommon {
-  margin: 10px 0 0;
-  color: rgba(37, 33, 29, 0.72);
-  font-size: 14px;
-  line-height: 1.55;
 }
 
 /* Where it came from, named. Minutes of live searching reduced to "proof 1"

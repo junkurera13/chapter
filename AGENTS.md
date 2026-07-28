@@ -22,6 +22,25 @@ Do not deploy Base44 resources unless the user explicitly asks for a deployment.
 
 # Chapter product rules
 
+## Experiences are the medium for human connection
+
+Chapter is not a recommendation engine with social features attached. It uses
+real-world experiences to help someone enter life, deepen existing
+relationships, and meet people they do not know. Strangers may become friends;
+love may emerge, but Chapter must never predict compatibility or label a match
+as romantic without explicit product infrastructure for that mode.
+
+Treat experience scale (`small`, `mini`, `proper`) and social composition
+(`self`, `known-person`, `new-person`, `small-group`) as separate axes. Design
+the experience before choosing a venue; research exists to make the design
+true, current, and actionable.
+
+The weekly three-card Saturday pack is agreed product direction but is not
+shipped. Read `docs/weekly-experience-packs.md` and
+`.agents/skills/craft-chapter-experiences/SKILL.md` before changing Now,
+Together experience generation, research briefs, pack formats, or experience
+quality evaluation. Do not describe that planned flow as implemented.
+
 ## Privacy is enforced in code, not in prompts
 
 Together may only ever plan from the shareable cut of a graph — places,

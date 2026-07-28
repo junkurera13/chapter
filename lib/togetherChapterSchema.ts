@@ -1,10 +1,6 @@
 import { z } from "zod";
 
-import {
-  type NowChapterContent,
-  nowChapterContentSchema,
-  type NowEvidenceLink,
-} from "./nowChapterSchema";
+import { type NowEvidenceLink } from "./nowChapterSchema";
 
 /**
  * Together plans from two private worlds at once, so a label that was safe to
@@ -82,8 +78,30 @@ export const togetherBriefSchema = z.object({
 
 export type TogetherBrief = z.infer<typeof togetherBriefSchema>;
 
-export const togetherChapterContentSchema = nowChapterContentSchema;
-export type TogetherChapterContent = NowChapterContent;
+/**
+ * The letter-shaped proposal, which Together still is.
+ *
+ * Now used to share this definition, and no longer does: its proposal is one
+ * card with one line on it. Keeping a copy here is cheaper than keeping the two
+ * surfaces married when they have stopped agreeing about what a proposal looks
+ * like.
+ */
+export const togetherChapterContentSchema = z.object({
+  title: z.string().min(3).max(64),
+  invitation: z.string().min(40).max(600),
+  knownLine: z.string().min(10).max(300),
+  unknownLine: z.string().min(10).max(300),
+  venueName: z.string().min(1).max(160),
+  venueArea: z.string().min(1).max(160),
+  address: z.string().max(300).optional(),
+  bestTime: z.string().min(1).max(300),
+  priceNote: z.string().max(300).optional(),
+  whyUncommon: z.string().min(1).max(1200),
+});
+
+export type TogetherChapterContent = z.infer<
+  typeof togetherChapterContentSchema
+>;
 
 export type TogetherChapterRole = "initiator" | "partner";
 

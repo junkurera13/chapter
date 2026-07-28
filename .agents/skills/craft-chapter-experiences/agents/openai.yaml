@@ -1,0 +1,4 @@
+interface:
+  display_name: "Craft Chapter Experiences"
+  short_description: "Design exceptional real-world Chapter experiences"
+  default_prompt: "Use $craft-chapter-experiences to design and audit a diverse three-card weekly experience pack."

@@ -31,6 +31,7 @@ import {
 } from "../../lib/nowClient";
 import {
   type NowAnchor,
+  type NowChapterContent,
   NOW_DEFAULT_REACH,
   NOW_DEFAULT_WINDOW,
   type NowEvidenceLink,
@@ -63,13 +64,23 @@ import styles from "./NowView.module.css";
  */
 const POLL_INTERVAL_MS = 15_000;
 
-const RESEARCH_STAGES = [
-  "Reading your world",
-  "Following one thread of it",
-  "Searching where lists don’t reach",
+/*
+ * Something to read while it works, and nothing more than that.
+ *
+ * These cycle rather than march, and they go round again for as long as the
+ * wait lasts. Nothing here counts anything off or claims to be a step, because
+ * a bar that fills is a promise about time nobody on this side can keep, and a
+ * list of stages is an explanation of the machine that nobody asked for.
+ */
+const WAITING_WORDS = [
+  "Thinking",
+  "Somewhere in your city",
+  "Following a thread",
+  "Off the usual list",
   "Checking it’s really there",
-  "Writing your chapter",
 ] as const;
+
+const WAITING_WORD_MS = 4500;
 
 /**
  * The four windows read as one arc of a day: gold at the top of it, through
@@ -102,59 +113,236 @@ function orbCategory(category: string): WorldNodeCategory {
   return (known.includes(category) ? category : "pattern") as WorldNodeCategory;
 }
 
+/** The pin the landing cards put on a place, at the size of the text it sits in. */
+function PlacePin() {
+  return (
+    <svg className={styles.chipPin} viewBox="0 0 20 20" aria-hidden="true">
+      <path
+        fill="#e5484d"
+        d="M10 1.5A6.1 6.1 0 0 0 3.9 7.6c0 4.45 5.37 9.62 5.6 9.84a.72.72 0 0 0 1 0c.23-.22 5.6-5.39 5.6-9.84A6.1 6.1 0 0 0 10 1.5Z"
+      />
+      <circle cx="10" cy="7.45" r="2.15" fill="#fff" />
+    </svg>
+  );
+}
+
+/** "Sadang-dong, Seoul" is where it is; "Sadang-dong" is what you needed. */
+function neighbourhood(area: string) {
+  return area.split(",")[0]?.trim() ?? "";
+}
+
 /**
- * Renders composed copy with the person's graph anchors as inline orb chips.
- * Anchor labels appear verbatim in the text by contract with the composer.
+ * A chip's mark, tied to the first word after it.
+ *
+ * Now that a chip wraps like ordinary text, the line is free to break in the
+ * one place it must not: between a pin and the place it points at, leaving the
+ * mark hanging off the end of a line pointing at nothing. Only the first word
+ * is held to it, so a long name still wraps wherever it likes after that.
  */
-function AnchoredCopy({
-  text,
-  anchors,
+function LedBy({ mark, text }: { mark: ReactNode; text: string }) {
+  const split = text.indexOf(" ");
+  const head = split === -1 ? text : text.slice(0, split);
+  const tail = split === -1 ? "" : text.slice(split);
+
+  return (
+    <>
+      <span className={styles.chipLead}>
+        {mark}
+        {head}
+      </span>
+      {tail}
+    </>
+  );
+}
+
+/**
+ * A chapter written before the card was one line, read as though it were.
+ *
+ * Those records are letters: a title, three paragraphs, and a venue. Nothing
+ * re-composes them, because the model call that made them has already been paid
+ * for, so the title and the venue are borrowed to stand in as a line and the
+ * prose is left where it is, unread. They age out on their own.
+ */
+function readableLine(content: NowChapterContent) {
+  if (content.line) return content;
+
+  const legacy = content as NowChapterContent & { title?: string };
+  const title = legacy.title?.trim();
+  return {
+    ...content,
+    line: title ? `${title} at ${content.venueName}` : content.venueName,
+    activity: "",
+    when: "",
+  };
+}
+
+/**
+ * The line, with its chips drawn where its own strings are.
+ *
+ * Same contract the anchors have always had with composed copy: the composer
+ * puts the activity and the venue in verbatim, and this finds them and lights
+ * them up. A string that went missing is simply not drawn, so the worst a
+ * paraphrasing model can do is leave a plain sentence.
+ */
+function ChapterLine({
+  content: raw,
 }: {
-  text: string;
-  anchors: readonly NowAnchor[];
+  content: NowChapterContent;
 }) {
+  const content = readableLine(raw);
   const parts = useMemo(() => {
-    const sorted = [...anchors].sort(
-      (first, second) => second.label.length - first.label.length,
-    );
-    let segments: Array<{ text: string; anchor?: NowAnchor }> = [{ text }];
-    for (const anchor of sorted) {
+    const marks = [
+      content.activity ? { text: content.activity, kind: "activity" } : null,
+      { text: content.venueName, kind: "venue" },
+      content.when ? { text: content.when, kind: "when" } : null,
+    ]
+      .filter((mark): mark is { text: string; kind: string } => Boolean(mark))
+      .sort((first, second) => second.text.length - first.text.length);
+
+    let segments: Array<{ text: string; kind?: string }> = [
+      { text: content.line },
+    ];
+    for (const mark of marks) {
       segments = segments.flatMap((segment) => {
-        if (segment.anchor) return [segment];
-        const pieces = segment.text.split(anchor.label);
+        if (segment.kind) return [segment];
+        const pieces = segment.text.split(mark.text);
         if (pieces.length === 1) return [segment];
-        const next: Array<{ text: string; anchor?: NowAnchor }> = [];
+        const next: Array<{ text: string; kind?: string }> = [];
         pieces.forEach((piece, index) => {
-          if (index > 0) next.push({ text: anchor.label, anchor });
+          if (index > 0) next.push({ text: mark.text, kind: mark.kind });
           if (piece) next.push({ text: piece });
         });
         return next;
       });
     }
     return segments;
-  }, [text, anchors]);
+  }, [content]);
 
   return (
-    <>
-      {parts.map((part, index) =>
-        part.anchor ? (
-          <span className={styles.anchor} key={`${part.text}-${index}`}>
-            <span
-              className={styles.anchorOrb}
-              style={{
-                background: categoryOrbGradient(
-                  orbCategory(part.anchor.category),
-                ),
-              }}
-              aria-hidden="true"
-            />
-            {part.text}
-          </span>
-        ) : (
-          <span key={`plain-${index}`}>{part.text}</span>
-        ),
-      )}
-    </>
+    <p className={styles.cardLine}>
+      {parts.map((part, index) => {
+        if (part.kind === "activity") {
+          return (
+            <span className={styles.chip} key={index}>
+              <LedBy
+                mark={
+                  <span
+                    className={styles.chipOrb}
+                    style={{ background: categoryOrbGradient("activity") }}
+                    aria-hidden="true"
+                  />
+                }
+                text={part.text}
+              />
+            </span>
+          );
+        }
+        if (part.kind === "venue") {
+          /* The neighbourhood rides along with the name, because it is the half
+             of an address that decides whether somebody would go. The city does
+             not: research returns "Sadang-dong, Seoul" and the reader lives in
+             Seoul, so saying it back is furniture. */
+          const where = neighbourhood(content.venueArea);
+          return (
+            <span className={styles.chip} key={index}>
+              <LedBy
+                mark={<PlacePin />}
+                text={where ? `${part.text}, ${where}` : part.text}
+              />
+            </span>
+          );
+        }
+        if (part.kind === "when") {
+          return (
+            <span className={styles.chipWhen} key={index}>
+              {part.text}
+            </span>
+          );
+        }
+        return <span key={index}>{part.text}</span>;
+      })}
+    </p>
+  );
+}
+
+/**
+ * One chapter, as one card.
+ *
+ * Built to the shape of the cards on the landing page, because that is the
+ * thing this product has always shown people it was going to make: a sentence
+ * with the nouns lit up, and a photograph of the place under it.
+ *
+ * What it grew from is folded away underneath. Those rows are graph nodes, and
+ * the code refuses to build a chapter whose anchors are not real ones, so the
+ * drawer is the only claim on the card about the person and it is checkable.
+ */
+function ChapterCard({
+  content,
+  anchors,
+  sources,
+}: {
+  content: NowChapterContent;
+  anchors: readonly NowAnchor[];
+  sources: readonly NowEvidenceLink[];
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <article className={styles.card}>
+      <div className={styles.cardSay}>
+        <ChapterLine content={content} />
+      </div>
+
+      {content.imageUrl ? (
+        <div className={styles.cardShot}>
+          {/* Remote, and from a page this app did not write: it loads or it
+              doesn't, and the card is laid out to survive either. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={content.imageUrl}
+            alt=""
+            loading="lazy"
+            draggable={false}
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      ) : null}
+
+      {anchors.length > 0 ? (
+        <div className={styles.cardDrawer}>
+          <button
+            type="button"
+            className={styles.cardHandle}
+            aria-expanded={open}
+            aria-controls="chapter-card-sources"
+            onClick={() => setOpen((current) => !current)}
+          >
+            <span>What this came from</span>
+            <span className={styles.cardChevron} data-open={open} />
+          </button>
+
+          {open ? (
+            <div className={styles.cardNodes} id="chapter-card-sources">
+              {anchors.map((anchor) => (
+                <p className={styles.cardNode} key={anchor.nodeId}>
+                  <span
+                    className={styles.chipOrb}
+                    style={{
+                      background: categoryOrbGradient(
+                        orbCategory(anchor.category),
+                      ),
+                    }}
+                    aria-hidden="true"
+                  />
+                  {anchor.label}
+                </p>
+              ))}
+              <Sources links={sources} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -783,9 +971,7 @@ function SettingsEntry({ onOpen }: { onOpen: () => void }) {
  *
  * When there is something to be asked for, the orb is what you ask. It is the
  * only control on the screen, and it says nothing about itself: what it would
- * write for is already sitting in the card, so the press can stay a press. The
- * hint underneath surfaces on approach and is gone again at rest, which is the
- * whole of the compromise between bare and unguessable.
+ * write for is already sitting in the card, so the press can stay a press.
  *
  * When Chapter has actually written something the same orb comes down to the
  * size of a thing that is speaking, moves up beside its own headline, and the
@@ -796,18 +982,28 @@ function NowStage({
   headline,
   note,
   press,
+  working,
+  open: openOverride,
   children,
 }: {
   /** Present only when there is a chapter. Its arrival is what opens the stage. */
   headline?: string;
   /** A quiet line under the resting orb, for when it is busy thinking. */
   note?: string;
+  /** The note is a word on a loop rather than something being said. */
+  working?: boolean;
   /** Makes the orb the one thing on this screen that can be pressed. */
-  press?: { onPress: () => void; busy: boolean; label: string; hint: string };
+  press?: { onPress: () => void; busy: boolean; label: string };
+  /**
+   * Opens the stage without a headline above it. A chapter is one card now and
+   * says its own name, so there is nothing left to write over the top of it,
+   * but the orb still has to come down to the size of a thing that has spoken.
+   */
+  open?: boolean;
   children?: ReactNode;
 }) {
   const reduceMotion = useReducedMotion();
-  const open = Boolean(headline);
+  const open = openOverride ?? Boolean(headline);
   const layoutTransition = reduceMotion
     ? { duration: 0 }
     : { type: "spring" as const, bounce: 0, duration: 0.68 };
@@ -832,22 +1028,15 @@ function NowStage({
     <section className={styles.stage} data-open={open}>
       <div className={styles.stageHead}>
         {press ? (
-          <>
-            <button
-              type="button"
-              className={styles.orbPress}
-              onClick={press.onPress}
-              disabled={press.busy}
-              aria-label={press.label}
-            >
-              {orb}
-            </button>
-            {/* Sibling rather than child, so the target stays the orb and
-                hovering the words does not count as reaching for it. */}
-            <span className={styles.orbHint} aria-hidden="true">
-              {press.hint}
-            </span>
-          </>
+          <button
+            type="button"
+            className={styles.orbPress}
+            onClick={press.onPress}
+            disabled={press.busy}
+            aria-label={press.label}
+          >
+            {orb}
+          </button>
         ) : (
           orb
         )}
@@ -878,8 +1067,23 @@ function NowStage({
       </div>
 
       {note ? (
-        <p className={styles.stageNote} aria-live="polite">
+        /* Keyed, so a word that replaces another fades in rather than cutting.
+           Hidden from screen readers while it is only turning over: five words
+           on a loop are something to look at, not something to be told every
+           four seconds. The one line below says the useful part once. */
+        <p
+          className={styles.stageNote}
+          key={note}
+          aria-hidden={working || undefined}
+          aria-live={working ? "off" : "polite"}
+        >
           {note}
+        </p>
+      ) : null}
+
+      {working ? (
+        <p className={styles.stageStatus} aria-live="polite">
+          Chapter is writing you one. This takes a few minutes.
         </p>
       ) : null}
 
@@ -918,7 +1122,6 @@ export default function NowView({
   const [declining, setDeclining] = useState(false);
   const [declineDraft, setDeclineDraft] = useState("");
   const [reflectionDraft, setReflectionDraft] = useState("");
-  const [stageIndex, setStageIndex] = useState(0);
   /**
    * A chapter that has just become a memory. The record is already `lived`, so
    * without this the screen would drop straight back to offering another one,
@@ -930,6 +1133,7 @@ export default function NowView({
   const [cityDraft, setCityDraft] = useState("");
   const [windowDraft, setWindowDraft] = useState<NowTimeWindow[]>([]);
   const [reachDraft, setReachDraft] = useState<NowReach>(NOW_DEFAULT_REACH);
+  const [wordIndex, setWordIndex] = useState(0);
   const pollRef = useRef<number | null>(null);
 
   const refresh = useCallback(async () => {
@@ -985,20 +1189,32 @@ export default function NowView({
     const poll = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, POLL_INTERVAL_MS);
-    const stage = window.setInterval(
-      () =>
-        setStageIndex((index) =>
-          Math.min(index + 1, RESEARCH_STAGES.length - 1),
-        ),
-      14_000,
-    );
     pollRef.current = poll;
     return () => {
       window.clearInterval(poll);
-      window.clearInterval(stage);
       pollRef.current = null;
     };
   }, [researching, refresh]);
+
+  /*
+   * One line, turning over, from the press until the chapter lands.
+   *
+   * The press and the research used to be two different screens with two
+   * different things to read, and the join between them was a caption sitting
+   * on its own while a model read a whole graph. It is one wait to the person
+   * doing it, so it is one line now, and it starts the moment they press.
+   */
+  const waiting = busy || researching;
+  useEffect(() => {
+    if (!waiting) return;
+
+    setWordIndex(0);
+    const words = window.setInterval(
+      () => setWordIndex((index) => (index + 1) % WAITING_WORDS.length),
+      WAITING_WORD_MS,
+    );
+    return () => window.clearInterval(words);
+  }, [waiting]);
 
   const runAction = useCallback(
     async (action: () => Promise<unknown>, failureNotice: string) => {
@@ -1090,7 +1306,7 @@ export default function NowView({
   /*
    * What the orb would write for if pressed this second, as it reads on screen.
    *
-   * Only ever said in the hover hint: the server reads the real thing off the
+   * Only ever said in the press label: the server reads the real thing off the
    * account when the press arrives, so this is a description of what will
    * happen rather than the instruction that makes it happen. There is always
    * an answer, which is the whole design — nobody has to fill anything in to
@@ -1230,14 +1446,11 @@ export default function NowView({
           onPress: writeOne,
           busy,
           label: `Write me a chapter for ${phrase}`,
-          hint: `Write me one for ${phrase}`,
         }}
+        working={busy}
         note={
           busy
-            ? // Between the press and the first research stage a model is
-              // reading a whole world. Said out loud, because a bare screen
-              // that has just been pressed and does nothing looks broken.
-              "Reading your world"
+            ? WAITING_WORDS[wordIndex]
             : chapter?.status === "failed"
               ? "The last search came home empty."
               : undefined
@@ -1249,20 +1462,9 @@ export default function NowView({
   }
 
   if (chapter.status === "researching") {
-    return shell(
-      <NowStage note={RESEARCH_STAGES[stageIndex]}>
-        {/* Five stages, so the wait has a length rather than just a spinner. */}
-        <ul className={styles.progress} aria-hidden="true">
-          {RESEARCH_STAGES.map((stage, index) => (
-            <li
-              key={stage}
-              className={styles.progressStep}
-              data-passed={index <= stageIndex}
-            />
-          ))}
-        </ul>
-      </NowStage>,
-    );
+    // The same orb and the same turning line the press put up. Nothing changes
+    // here on the way through, because to the person waiting nothing has.
+    return shell(<NowStage note={WAITING_WORDS[wordIndex]} working />);
   }
 
   const content = chapter.content;
@@ -1290,40 +1492,16 @@ export default function NowView({
      * it reads as the answer to something rather than as a listing.
      */
     return shell(
-      <NowStage headline={content.title}>
-        <article className={styles.card} data-beats="true">
-          {/* One. What it already knew. The orbs are its working shown: every
-              one of them is a node out of this person's own world. */}
-          <p className={styles.known}>
-            <AnchoredCopy text={content.knownLine} anchors={anchors} />
-          </p>
+      <NowStage open>
+        <ChapterCard
+          content={content}
+          anchors={anchors}
+          sources={chapter.evidence ?? []}
+        />
 
-          {/* Two. The one thing here that isn't already true about them. */}
-          <p className={styles.unknown}>{content.unknownLine}</p>
-
-          {/* Three. The writing. */}
-          <p className={styles.invitation}>
-            <AnchoredCopy text={content.invitation} anchors={anchors} />
-          </p>
-
-          {/* Four. The find, on its own plate, because it is the object the
-              research went and came back with. */}
-          <div className={styles.venue}>
-            <p className={styles.venueName}>{content.venueName}</p>
-            <p className={styles.venueMeta}>
-              {content.venueArea}
-              {content.address ? ` · ${content.address}` : ""}
-            </p>
-            <p className={styles.venueMeta}>
-              {content.bestTime}
-              {content.priceNote ? ` · ${content.priceNote}` : ""}
-            </p>
-            <p className={styles.whyUncommon}>{content.whyUncommon}</p>
-            <Sources links={chapter.evidence ?? []} />
-          </div>
-
-          {/* Five. The only question left, asked once the answer is worth
-              something: a day, chosen now that there is a reason to.
+        <div className={styles.cardTail}>
+          {/* The only question left, asked once the answer is worth something:
+              a day, chosen now that there is a reason to.
 
               The slot around it is what stays put. Saying "not this one"
               swaps what is inside it, and a beat that remounted there would
@@ -1396,7 +1574,7 @@ export default function NowView({
           )}
           {notice ? <p className={styles.notice}>{notice}</p> : null}
           </div>
-        </article>
+        </div>
       </NowStage>,
     );
   }
@@ -1406,20 +1584,18 @@ export default function NowView({
     Boolean(chapter.scheduledFor) && chapter.scheduledFor! <= today;
 
   return shell(
-    <NowStage headline={dayArrived ? "How was it?" : content.title}>
+    <NowStage headline={dayArrived ? "How was it?" : undefined} open>
       <article className={styles.card}>
-        <div className={styles.venue}>
-          <p className={styles.venueName}>{content.venueName}</p>
-          <p className={styles.venueMeta}>
-            {content.venueArea}
-            {content.address ? ` · ${content.address}` : ""}
-          </p>
-          <p className={styles.venueMeta}>
-            {chapter.scheduledFor
-              ? `${formatDay(chapter.scheduledFor, today)} · ${content.bestTime}`
-              : content.bestTime}
-          </p>
+        {/* The plan, which is the same card with the day it was said yes on. */}
+        <div className={styles.cardSay}>
+          <ChapterLine content={content} />
         </div>
+        <p className={styles.cardPlan}>
+          {chapter.scheduledFor
+            ? `${formatDay(chapter.scheduledFor, today)} · ${content.bestTime}`
+            : content.bestTime}
+          {content.address ? ` · ${content.address}` : ""}
+        </p>
 
         {dayArrived ? (
           <form

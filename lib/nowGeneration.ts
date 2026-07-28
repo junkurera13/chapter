@@ -9,7 +9,7 @@ import {
   type NowBrief,
   nowBriefSchema,
   type NowChapterContent,
-  nowChapterContentSchema,
+  nowComposedSchema,
   type NowEvidenceLink,
   type NowResearchFinding,
   nowResearchFindingSchema,
@@ -297,28 +297,37 @@ export function buildComposePrompt(args: {
 }) {
   const windows = args.timeWindows ?? [];
   return [
-    "Compose one experience proposal for the Chapter app: a short letter-like invitation built from this person's own world plus one verified real-world find.",
-    "Voice: a thoughtful friend texting. Warm, specific, unhurried. No marketing language, no exclamation marks, no emoji, no bullet points.",
+    "Write the one line on a Chapter card: a friend asking whether somebody wants to do a specific thing at a specific place.",
+    "Voice: a thoughtful friend texting. Warm, plain, unhurried. No marketing language, no exclamation marks, no emoji.",
     "",
     "Rules:",
-    "- title: at most 7 words, no punctuation at the end.",
-    "- invitation: 2-4 sentences. It must mention each anchor label VERBATIM (exact casing) so the app can render the person's memory orbs inline, and it must name the venue.",
-    "- knownLine: one sentence starting with 'Because' explaining which thread of their world this grew from, using anchor labels verbatim.",
-    "- unknownLine: one sentence naming what is new — the single stretch.",
-    "- Keep venue facts exactly as researched. Do not invent details.",
+    "- line: ONE sentence, at most 20 words. It names the activity and the venue and nothing else.",
+    "- The line must contain the `activity` string and the venue name VERBATIM, because the app draws those as chips by finding them in it.",
+    `- Use the venue name exactly as researched: ${args.finding.venue_name}`,
+    "- activity: 2 to 8 words for the thing itself, lower case unless it is a proper noun. Never the venue name, never a whole sentence.",
+    /*
+     * The hard rule, and the reason this prompt exists in this shape. Anything
+     * said about the person is unverifiable by the time it reaches the screen,
+     * so nothing may be said about them at all. Why this was chosen for them is
+     * carried by the anchors, which are real nodes out of their own graph, and
+     * the card shows those separately as its sources.
+     */
+    "- Say NOTHING about the person. No claims about their past, their family, their habits, what they have done or felt or would like. No 'you loved', no 'like the one you went to', no second-guessing why this suits them. The card shows their memories separately; the line is only the offer.",
+    "- Do not describe the venue beyond what a friend would say in passing. No adjectives borrowed from reviews.",
     args.scheduledFor
-      ? "- The day is already settled: name it plainly, in the tone of a plan being confirmed rather than a date being suggested. Never offer an alternative day or ask when they are free."
-      : "",
+      ? "- The day is settled, so state it rather than asking about it, and put it in `when` exactly as it appears in the line."
+      : "- If the line names a day or a time of day, put that phrase in `when` exactly as it appears in the line. Otherwise leave `when` empty.",
+    "",
+    "Good: How about a ceramics class at Sungjae Studio in Euljiro this Saturday afternoon?",
+    "Bad: Because you loved the pottery you made with your grandmother, how about...",
     "",
     `HOME CITY: ${args.homeCity}`,
     args.scheduledFor
-      ? `THE DAY THEY SET ASIDE: ${formatWeekday(args.scheduledFor)} ${args.scheduledFor}${
+      ? `THE DAY: ${formatWeekday(args.scheduledFor)} ${args.scheduledFor}${
           windows.length > 0 ? `, ${windows.join(" or ")}` : ""
         }`
       : "",
-    "ANCHOR LABELS (use verbatim):",
-    JSON.stringify(args.brief.anchors.map((anchor) => anchor.label)),
-    "THE STRETCH:",
+    "THE STRETCH (what makes this worth offering, for your judgement only — never say it):",
     JSON.stringify(args.brief.stretch),
     "RESEARCH FINDING (verified):",
     JSON.stringify(args.finding),
@@ -345,7 +354,7 @@ export async function composeNowChapter(args: {
     );
   }
 
-  const content = await generateStructured({
+  const composed = await generateStructured({
     prompt: buildComposePrompt({
       brief: args.brief,
       finding: finding.data,
@@ -354,22 +363,31 @@ export async function composeNowChapter(args: {
       timeWindows: args.timeWindows,
     }),
     schemaName: "now_chapter",
-    schemaDescription:
-      "The composed Chapter proposal presented to the person.",
-    schema: nowChapterContentSchema,
+    schemaDescription: "The one line on the card, and the chips inside it.",
+    schema: nowComposedSchema,
     requestId: args.requestId,
     signal: args.signal,
   });
 
+  /*
+   * The chips are found by looking for these strings in the line. A model that
+   * paraphrased itself would leave the card with a name it cannot draw, so the
+   * ones that went missing are dropped rather than rendered against nothing.
+   */
   return {
     content: {
-      ...content,
+      ...composed,
+      activity: composed.line.includes(composed.activity)
+        ? composed.activity
+        : "",
+      when: composed.when && composed.line.includes(composed.when)
+        ? composed.when
+        : "",
       venueName: finding.data.venue_name,
       venueArea: finding.data.venue_area,
       address: finding.data.address ?? undefined,
       bestTime: finding.data.best_time,
       priceNote: finding.data.price_note ?? undefined,
-      whyUncommon: finding.data.why_uncommon,
     },
     evidence: args.citations.slice(0, 4),
   };

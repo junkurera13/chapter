@@ -1,8 +1,9 @@
 # Together — build plan
 
-> **Status, July 28 2026.** Phase 1 has shipped. Phases 2–4 are still plan.
-> Phase 0 was never needed as written. What actually landed, and where it
-> diverged from this document, is recorded under each phase below. Everything
+> **Status, July 28 2026.** Phase 1 and the stranger-introduction core from
+> Phase 3 have shipped. Phases 2 and 4 remain plans. Phase 0 was never needed
+> as written. The shipped introduction differs materially from the original
+> Phase 3 proposal; current behaviour is recorded under that phase. Everything
 > not marked shipped is a proposal, not a description of the code.
 
 Together is the tab that owns the **person axis** of Chapter's bridge principle.
@@ -14,6 +15,18 @@ stretches the person — in two directions:
 - **Wing 2 — unknown person:** Chapter introduces you to someone you've never
   met, through something your graph says you deeply know (or are curious
   about). New friends, maybe more.
+
+This person axis is not an optional social feature. Chapter uses experiences as
+the medium for human connection: to deepen existing relationships and to let
+strangers meet without browsing profiles. Friendship may form and love may
+emerge, but Chapter does not predict either, score compatibility, or label a
+match as romantic.
+
+The planned Now rebuild treats experience scale and social composition as
+separate axes, allowing a small activity, mini adventure, or proper adventure
+to be lived alone, with someone known, or with someone new. See
+[`weekly-experience-packs.md`](./weekly-experience-packs.md). That plan is not
+shipped.
 
 The one-stretch contract (`lib/nowChapterSchema.ts`) is the governing law in
 both wings. In Wing 2 it doubles as a safety principle: when the person is the
@@ -197,7 +210,30 @@ The soul of Wing 1: a shared lived chapter grows *both* private worlds.
   visibly bonded (edge or material treatment via `orbMaterial.ts` /
   `categoryAppearance.ts`). This is the screenshot moment; design it properly.
 
-## Phase 3 — Wing 2: the introduction (unknown person)
+## Phase 3 — Wing 2: the introduction (unknown person) — **core shipped**
+
+The original proposal below was superseded by a smaller, stricter flow that is
+now in the code. Current behaviour:
+
+- The entity is `Introduction`.
+- The pool is same-home-city rather than friends-of-friends.
+- Taking part is the default when a home city exists because no one-sided fact
+  crosses; a person can mute introductions, which also withdraws live offers.
+- Matching uses the strict intersection of shareable places, activities, and
+  interests, with at least two and at most three anchors.
+- The candidate scan, graph reads, concurrency, live offers, and expiry are
+  bounded in `base44/shared/introductions.ts`.
+- An introduction names nobody and exposes no face, other-side answer, or
+  compatibility score. Each reader sees a sentence already true in their own
+  world.
+- A single yes reveals nothing. The second yes creates an accepted connection
+  and reciprocal person nodes. A no silently closes the offer for both.
+- Mutual acceptance creates a connection, not an automatic researched
+  Together chapter.
+
+The remaining subsections in this phase are the historical proposal. Do not
+implement their entity, opt-in, friends-of-friends, or automatic-chapter details
+as though they describe the current system.
 
 ### Entity: `base44/entities/together-introduction.jsonc`
 
@@ -308,7 +344,7 @@ The BUILD_JOURNAL entry should say exactly that — seeded pool, real flow.
 | 0 | Schema groundwork | S | dropped — folded into Phase 1 |
 | 1 | Wing 1 shared chapters + gists | L | **shipped July 27** |
 | 2 | Memory loop + nudges | M | next |
-| 3 | Wing 2 introductions | L | planned (behind opt-in) |
+| 3 | Wing 2 introduction core | L | **shipped July 28**, without opt-in or automatic chapter |
 | 4 | Polish + funnel | M | planned, minus the superseded item |
 
 Sequencing rationale: Phase 1 works with the accounts that exist today and
@@ -323,9 +359,10 @@ matchmaking with nobody to match.
    triggers a re-send.
 2. **Phase 2:** if Photon can't send proactively, is the in-app nudge
    acceptable for v1?
-3. **Phase 3:** minimum graph depth before someone is matchable (suggest: at
-   least one memory extracted and homeCity set — same bar as Now).
-4. **Phase 3:** does Wing 2 need age/comfort constraints beyond opt-in for
-   the "maybe love" framing, or does v1 stay strictly
-   friendship-of-activity? (v1 lean: strictly activity-framed; romance is an
-   outcome, never a promise in copy.)
+3. ~~**Phase 3:** minimum graph depth before someone is matchable.~~
+   **Decided:** a home city plus at least two shared, shareable anchors.
+4. ~~**Phase 3:** should v1 frame introductions as dating?~~ **Decided:**
+   introductions stay activity-framed and relationship-undefined. Romance is a
+   possible outcome, never a promise or label. An explicit dating mode would
+   require age, intent, orientation, consent, blocking, reporting, and
+   moderation decisions first.

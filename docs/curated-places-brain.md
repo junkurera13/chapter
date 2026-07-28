@@ -11,6 +11,12 @@ Chapter's Now pipeline finds venues by deep research over the open web. That
 finds what is *written down*. The best places often aren't: they live in a
 TikTok with 400 views, or in one person's head.
 
+The agreed weekly-pack direction does not change this brain's supporting role.
+Chapter must design an experience before choosing a place; this list may seed
+research after an experience lane exists, but it must never become the thing
+that decides what a person should live. See
+[`weekly-experience-packs.md`](./weekly-experience-packs.md).
+
 The brain is Chapter's own list of those places — entered by hand, vouched for
 by a human. It is **strictly additive**:
 

@@ -168,6 +168,54 @@ export function fetchMyNow(accessToken: string) {
   }>({ action: "getMyNow" }, accessToken);
 }
 
+export function fetchMyWeeklyPack(timezone: string, accessToken: string) {
+  return invokeSidequestData<{
+    pack: import("./weeklyPackSchema").WeeklyExperiencePack | null;
+    timezone: string;
+  }>({ action: "getMyWeeklyPack", timezone }, accessToken);
+}
+
+export function updateMyWeeklyPack(
+  args:
+    | {
+        packId: string;
+        transition: "reveal" | "choose";
+        cardId: import("./weeklyPackDesign").WeeklyPackScale;
+      }
+    | {
+        packId: string;
+        transition: "schedule";
+        scheduledFor: string;
+      }
+    | {
+        packId: string;
+        transition: "dismiss" | "lived";
+      },
+  accessToken: string,
+) {
+  return invokeSidequestData<{
+    pack: import("./weeklyPackSchema").WeeklyExperiencePack;
+  }>({ action: "updateWeeklyPack", ...args }, accessToken);
+}
+
+export function storeWeeklyPack(
+  args: {
+    ownerUserId: string;
+    weekKey: string;
+    timezone: string;
+    releaseAt: number;
+    expiresAt: number;
+    cardsJson: string;
+    designJson: string;
+    researchJson: string;
+  },
+  internalSecret: string,
+) {
+  return invokeSidequestData<{
+    pack: import("./weeklyPackSchema").WeeklyExperiencePack;
+  }>({ action: "storeWeeklyPack", internalSecret, ...args });
+}
+
 export function setMyHomeCity(homeCity: string, accessToken: string) {
   return invokeSidequestData<{ homeCity: string }>(
     { action: "setMyHomeCity", homeCity },

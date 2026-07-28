@@ -228,25 +228,7 @@
     --candy-ink var(--tabs-dur) var(--tabs-ease);
 }
 
-/* Cool blue-teal crystal — Now */
-.tabs[data-active="1"] {
-  --candy-hi: #b9dfe2;
-  --candy-mid: #81c8cd;
-  --candy-lo: #5ca8ae;
-  --candy-deep: #407f85;
-  --candy-glow: rgba(82, 166, 172, 0.25);
-  --candy-ink: #173638;
-}
-
-/* Grape crystal — Together */
-.tabs[data-active="2"] {
-  --candy-hi: #ead7f5;
-  --candy-mid: #d7a6f3;
-  --candy-lo: #b77ae0;
-  --candy-deep: #7f4dac;
-  --candy-glow: rgba(174, 111, 216, 0.25);
-  --candy-ink: #2b1739;
-}
+/* Now and Together keep the same pink crystal as You — only the slider moves. */
 
 .candy {
   position: absolute;

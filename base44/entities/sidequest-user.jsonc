@@ -35,6 +35,10 @@
       "enum": ["walk", "near", "city", "beyond"],
       "description": "How far this person will usually travel for a chapter, as travel time rather than distance: walk (15 min on foot), near (~30 min), city (~1 hour), beyond (~2 hours, deliberately outside the home city). Absent means near."
     },
+    "timezone": {
+      "type": "string",
+      "description": "IANA timezone last observed in the app. Used only to release prebuilt weekly packs on Saturday in the person's own calendar."
+    },
     "notes": { "type": "string" },
     "memory_updated_at": { "type": "number" },
     "eve_session_id": {

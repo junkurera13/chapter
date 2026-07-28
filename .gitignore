@@ -44,6 +44,14 @@ next-env.d.ts
 .claude/
 .agents/
 
+# Chapter's product-specific experience-design skill is shared project source.
+!.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/craft-chapter-experiences/
+!.agents/skills/craft-chapter-experiences/**
+
 # Base44 local app link (app ID is documented in README instead)
 base44/.app.jsonc
 

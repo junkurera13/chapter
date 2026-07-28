@@ -183,17 +183,46 @@ export const NOW_RESEARCH_OUTPUT_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export const nowChapterContentSchema = z.object({
-  title: z.string().min(3).max(64),
-  invitation: z.string().min(40).max(600),
-  knownLine: z.string().min(10).max(300),
-  unknownLine: z.string().min(10).max(300),
+/**
+ * One card, one line.
+ *
+ * There is no prose here on purpose. The paragraph this replaced was the only
+ * part of a chapter nothing could check: anchors are verified against the
+ * person's real graph and venue facts come back from research with citations
+ * attached, but the sentences around them were free to invent a grandmother who
+ * never existed, and did. A card with nowhere to put a paragraph cannot.
+ *
+ * `line` is the whole of what is said. It contains `activity` and `venueName`
+ * verbatim so the card can find them and draw them as chips, the same contract
+ * the memory anchors have always had with composed copy.
+ */
+export const nowComposedSchema = z.object({
+  line: z.string().min(20).max(200),
+  /** The thing being proposed, exactly as it reads inside `line`. */
+  activity: z.string().min(2).max(70),
+  /** When, exactly as it reads inside `line`. Empty when the line names no day. */
+  when: z.string().max(60),
+});
+
+export type NowComposed = z.infer<typeof nowComposedSchema>;
+
+export const nowChapterContentSchema = nowComposedSchema.extend({
+  /* Both may end up empty: a chip whose string went missing from the line is
+     dropped rather than drawn against nothing. */
+  activity: z.string().max(70),
+  when: z.string().max(60),
+  /** Copied off the research finding rather than written, so it cannot drift. */
   venueName: z.string().min(1).max(160),
   venueArea: z.string().min(1).max(160),
   address: z.string().max(300).optional(),
   bestTime: z.string().min(1).max(300),
   priceNote: z.string().max(300).optional(),
-  whyUncommon: z.string().min(1).max(1200),
+  /**
+   * Lifted off one of the pages the research already cited, so the photo on the
+   * card is a photo of the place and not a photo of somewhere like it. Absent
+   * when none of those pages carried one.
+   */
+  imageUrl: z.string().max(2000).optional(),
 });
 
 export type NowChapterContent = z.infer<typeof nowChapterContentSchema>;

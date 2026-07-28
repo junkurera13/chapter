@@ -34,6 +34,7 @@ import {
   ParallelResearchError,
   startParallelResearch,
 } from "@/lib/parallelResearch";
+import { findVenuePhoto } from "@/lib/venuePhoto";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -217,11 +218,14 @@ export async function GET(request: Request) {
         requestId,
         signal: request.signal,
       });
+      // Off the evidence rather than off a stock library, so the picture is of
+      // the place. A chapter is worth having without one, so this never throws.
+      const imageUrl = await findVenuePhoto(composed.evidence);
       const proposed = await updateNowChapter(
         {
           chapterId: chapter.id,
           status: "proposed",
-          contentJson: JSON.stringify(composed.content),
+          contentJson: JSON.stringify({ ...composed.content, imageUrl }),
           evidenceJson: JSON.stringify(composed.evidence),
           venueName: composed.content.venueName,
         },

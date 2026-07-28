@@ -513,6 +513,72 @@ function nowChapterRecord(row: Row) {
   };
 }
 
+const WEEKLY_CARD_IDS = ["small", "mini", "proper"] as const;
+
+function weeklyCardId(value: unknown) {
+  const id = stringValue(value);
+  return (WEEKLY_CARD_IDS as readonly string[]).includes(id) ? id : undefined;
+}
+
+function weeklyCardIdList(value: unknown) {
+  const values = Array.isArray(value)
+    ? value.map((entry) => stringValue(entry))
+    : stringValue(value).split(",");
+  return WEEKLY_CARD_IDS.filter((id) => values.includes(id));
+}
+
+function validTimezone(value: unknown) {
+  const timezone = stringValue(value).slice(0, 80);
+  if (!timezone) return undefined;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: timezone }).format();
+    return timezone;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The release is enforced where the private row becomes a browser record.
+ * Before release_at there is no cards field to uncover in devtools.
+ */
+function weeklyPackRecord(row: Row, now = Date.now()) {
+  const storedStatus = stringValue(row.status);
+  const releaseAt = Number(row.release_at);
+  const expiresAt = Number(row.expires_at);
+  const status =
+    storedStatus === "failed"
+      ? "failed"
+      : storedStatus === "lived"
+        ? "lived"
+        : storedStatus === "dismissed"
+          ? "dismissed"
+          : now >= expiresAt
+            ? "expired"
+            : storedStatus === "chosen"
+              ? "chosen"
+              : storedStatus === "preparing" || now < releaseAt
+                ? "locked"
+                : "available";
+  const released = now >= releaseAt && storedStatus !== "preparing";
+
+  return {
+    id: row.id,
+    weekKey: stringValue(row.week_key),
+    status,
+    releaseAt,
+    expiresAt,
+    ...(released ? { cards: parsedJson(row.cards_json) } : {}),
+    revealedCardIds: released ? weeklyCardIdList(row.revealed_card_ids) : [],
+    chosenCardId: released ? weeklyCardId(row.chosen_card_id) : undefined,
+    scheduledFor:
+      released && stringValue(row.scheduled_for)
+        ? stringValue(row.scheduled_for)
+        : undefined,
+    livedAt: Number(row.lived_at) || undefined,
+  };
+}
+
 function firstName(user: Row | undefined, fallback = "your friend") {
   return displayName(user, fallback).split(" ")[0];
 }
@@ -1586,6 +1652,187 @@ Deno.serve(async (req) => {
             .filter(Boolean),
         },
       });
+    }
+
+    if (action === "getMyWeeklyPack") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const timezone = validTimezone(data.timezone);
+      if (timezone && timezone !== user.timezone) {
+        await users.update(user.id, { timezone });
+      }
+      const packs = base44.asServiceRole.entities.WeeklyExperiencePack;
+      const rows = await readWithRateLimitRetry(() =>
+        packs.filter({ owner_user_id: user.id }, "-release_at", 1)
+      );
+      return Response.json({
+        value: {
+          pack: rows[0] ? weeklyPackRecord(rows[0]) : null,
+          timezone: timezone || validTimezone(user.timezone) || "UTC",
+        },
+      });
+    }
+
+    if (action === "updateWeeklyPack") {
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const packs = base44.asServiceRole.entities.WeeklyExperiencePack;
+      const packId = stringValue(data.packId);
+      let pack: Row | undefined;
+      try {
+        pack = packId ? await packs.get(packId) : undefined;
+      } catch {
+        pack = undefined;
+      }
+      if (!pack || pack.owner_user_id !== user.id) {
+        return Response.json({ error: "pack not found" }, { status: 404 });
+      }
+
+      const now = Date.now();
+      if (now < Number(pack.release_at) || pack.status === "preparing") {
+        return Response.json({ error: "pack is still sealed" }, { status: 409 });
+      }
+      if (
+        now >= Number(pack.expires_at) &&
+        data.transition !== "lived"
+      ) {
+        return Response.json({ error: "pack has expired" }, { status: 409 });
+      }
+
+      const transition = stringValue(data.transition);
+      const patch: Row = { updated_at: now };
+      if (transition === "reveal") {
+        if (pack.status !== "ready") {
+          return Response.json({ error: "pack cannot be revealed" }, { status: 409 });
+        }
+        const cardId = weeklyCardId(data.cardId);
+        if (!cardId) {
+          return Response.json({ error: "invalid card" }, { status: 400 });
+        }
+        patch.revealed_card_ids = Array.from(
+          new Set([...weeklyCardIdList(pack.revealed_card_ids), cardId]),
+        ).join(",");
+      } else if (transition === "choose") {
+        if (pack.status !== "ready" || pack.chosen_card_id) {
+          return Response.json({ error: "a card is already chosen" }, { status: 409 });
+        }
+        const cardId = weeklyCardId(data.cardId);
+        const cards = parsedJson(pack.cards_json);
+        if (
+          !cardId ||
+          !Array.isArray(cards) ||
+          !cards.some((card: Row) => card?.id === cardId)
+        ) {
+          return Response.json({ error: "invalid card" }, { status: 400 });
+        }
+        patch.status = "chosen";
+        patch.chosen_card_id = cardId;
+        patch.revealed_card_ids = Array.from(
+          new Set([...weeklyCardIdList(pack.revealed_card_ids), cardId]),
+        ).join(",");
+      } else if (transition === "schedule") {
+        if (pack.status !== "chosen" || !pack.chosen_card_id) {
+          return Response.json({ error: "choose a card first" }, { status: 409 });
+        }
+        const scheduledFor = stringValue(data.scheduledFor);
+        const latestDay = new Date(Number(pack.expires_at))
+          .toISOString()
+          .slice(0, 10);
+        if (
+          !/^\d{4}-\d{2}-\d{2}$/.test(scheduledFor) ||
+          scheduledFor > latestDay
+        ) {
+          return Response.json({ error: "invalid date" }, { status: 400 });
+        }
+        patch.scheduled_for = scheduledFor;
+      } else if (transition === "dismiss") {
+        if (pack.status !== "ready" && pack.status !== "chosen") {
+          return Response.json({ error: "pack cannot be dismissed" }, { status: 409 });
+        }
+        patch.status = "dismissed";
+        patch.dismissed_at = now;
+      } else if (transition === "lived") {
+        if (pack.status !== "chosen" && pack.status !== "lived") {
+          return Response.json({ error: "choose a card first" }, { status: 409 });
+        }
+        patch.status = "lived";
+        patch.lived_at = Number(pack.lived_at) || now;
+      } else {
+        return Response.json({ error: "invalid transition" }, { status: 400 });
+      }
+
+      const updated = await packs.update(pack.id, patch);
+      return Response.json({ value: { pack: weeklyPackRecord(updated) } });
+    }
+
+    /**
+     * Precomputation writes a finished, independently-reviewed pack here.
+     * The internal secret is mandatory because this accepts private output for
+     * another account and runs without that person's browser token.
+     */
+    if (action === "storeWeeklyPack") {
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
+
+      const ownerUserId = stringValue(data.ownerUserId);
+      const weekKey = stringValue(data.weekKey);
+      const timezone = validTimezone(data.timezone);
+      const releaseAt = Number(data.releaseAt);
+      const expiresAt = Number(data.expiresAt);
+      const cardsJson = boundedJson(data.cardsJson, 36_000);
+      const designJson = boundedJson(data.designJson, 36_000);
+      const researchJson = boundedJson(data.researchJson, 48_000);
+      const cards = parsedJson(cardsJson);
+      const cardIds = Array.isArray(cards)
+        ? cards.map((card: Row) => weeklyCardId(card?.id))
+        : [];
+      if (
+        !ownerUserId ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(weekKey) ||
+        !timezone ||
+        !Number.isFinite(releaseAt) ||
+        !Number.isFinite(expiresAt) ||
+        expiresAt <= releaseAt ||
+        !cardsJson ||
+        cardIds.length !== 3 ||
+        WEEKLY_CARD_IDS.some((id) => !cardIds.includes(id))
+      ) {
+        return Response.json({ error: "invalid weekly pack" }, { status: 400 });
+      }
+
+      const packs = base44.asServiceRole.entities.WeeklyExperiencePack;
+      const existing = await readWithRateLimitRetry(() =>
+        packs.filter({ owner_user_id: ownerUserId, week_key: weekKey }, "-created_at", 1)
+      );
+      if (existing[0]) {
+        return Response.json({
+          value: { pack: weeklyPackRecord(existing[0]) },
+        });
+      }
+
+      const now = Date.now();
+      const created = await packs.create({
+        owner_user_id: ownerUserId,
+        week_key: weekKey,
+        timezone,
+        status: "ready",
+        release_at: releaseAt,
+        expires_at: expiresAt,
+        cards_json: cardsJson,
+        design_json: designJson || "{}",
+        research_json: researchJson || "[]",
+        revealed_card_ids: "",
+        created_at: now,
+        updated_at: now,
+      });
+      return Response.json({ value: { pack: weeklyPackRecord(created) } });
     }
 
     /**

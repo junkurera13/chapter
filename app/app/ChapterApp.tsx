@@ -13,10 +13,12 @@ import { isDemoAccount } from "../../lib/togetherSamples";
 import { buildWorldGraph } from "./graphData";
 import NowView from "./NowView";
 import TogetherView from "./TogetherView";
+import WeeklyPackView from "./WeeklyPackView";
 import WelcomeDialog from "../../components/welcome-dialog";
 import YouOnboarding from "./YouOnboarding";
 import YouView from "./YouView";
 import styles from "./page.module.css";
+import type { WeeklyPackPreviewMode } from "../../lib/weeklyPackPreview";
 
 type GraphState =
   | { status: "loading" }
@@ -34,6 +36,7 @@ export default function ChapterApp({
   onConnectPhone,
   initialTab = 0,
   justConnected = false,
+  weeklyPackPreview,
 }: {
   viewer: AuthenticatedViewer;
   initialGraph: ExperienceGraphRecord;
@@ -41,6 +44,7 @@ export default function ChapterApp({
   initialTab?: ChapterTabIndex;
   /** Arrived here by accepting an invitation moments ago. */
   justConnected?: boolean;
+  weeklyPackPreview?: WeeklyPackPreviewMode;
 }) {
   const [activeIndex, setActiveIndex] = useState<ChapterTabIndex>(initialTab);
   const [addingMemory, setAddingMemory] = useState(false);
@@ -232,7 +236,14 @@ export default function ChapterApp({
 
   const activePanel =
     displayedIndex === 1 ? (
-      <NowView onGraphAdvanced={queueGraphLoad} onOpenYou={() => changeTab(0)} />
+      weeklyPackPreview ? (
+        <WeeklyPackView previewMode={weeklyPackPreview} />
+      ) : (
+        <NowView
+          onGraphAdvanced={queueGraphLoad}
+          onOpenYou={() => changeTab(0)}
+        />
+      )
     ) : displayedIndex === 2 ? (
       <TogetherView
         nodes={worldGraph?.nodes ?? []}
