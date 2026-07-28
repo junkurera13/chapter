@@ -1,17 +1,22 @@
 "use client";
 
 import Image from "next/image";
+import type { StaticImageData } from "next/image";
 import {
   AnimatePresence,
   motion,
   useReducedMotion,
 } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import ceramicImage from "@/app/assets/ceramics-class.jpg";
+import stationImage from "@/app/assets/mojiko-memory/station.webp";
+import coastalRideImage from "@/app/assets/coastal-ride-solo.jpg";
 import ChapterLoadingMark from "@/components/chapter-loading-mark";
 import AgentOrbVideo from "@/components/landing/agent-orb-video";
 import EmbossedCardBack from "@/components/weekly-pack/EmbossedCardBack";
 import type { BubblegumTone } from "@/components/weekly-pack/emboss-engine";
+import type { WorldNodeCategory } from "@/app/app/graphData";
 import type { WeeklyPackScale } from "@/lib/weeklyPackDesign";
 import {
   WEEKLY_COMPANY_LABELS,
@@ -33,6 +38,7 @@ import {
   type WeeklyPackReviewState,
 } from "@/lib/weeklyPackPreview";
 
+import { categoryOrbGradient } from "./categoryAppearance";
 import styles from "./WeeklyPackView.module.css";
 
 type PackState =
@@ -41,6 +47,154 @@ type PackState =
   | { status: "ready"; pack: WeeklyExperiencePack | null };
 
 const BUBBLEGUM_TONES: BubblegumTone[] = ["blue", "pink", "green"];
+const REVIEW_CARD_IMAGES: Record<WeeklyPackScale, StaticImageData> = {
+  small: stationImage,
+  mini: ceramicImage,
+  proper: coastalRideImage,
+};
+const WORLD_CATEGORIES: readonly WorldNodeCategory[] = [
+  "experience",
+  "people",
+  "place",
+  "activity",
+  "interest",
+  "feeling",
+  "condition",
+  "pattern",
+];
+const LOWERCASE_ANCHOR_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "as",
+  "at",
+  "but",
+  "by",
+  "for",
+  "from",
+  "in",
+  "is",
+  "nor",
+  "of",
+  "on",
+  "or",
+  "the",
+  "to",
+  "via",
+  "with",
+]);
+
+function orbCategory(category: string): WorldNodeCategory {
+  return WORLD_CATEGORIES.includes(category as WorldNodeCategory)
+    ? (category as WorldNodeCategory)
+    : "pattern";
+}
+
+function weeklyCardLineParts(card: WeeklyExperienceCard) {
+  let parts: Array<{
+    text: string;
+    anchor?: NonNullable<WeeklyExperienceCard["anchors"]>[number];
+  }> = [{ text: card.line ?? card.promise }];
+
+  for (const anchor of [...(card.anchors ?? [])].sort(
+    (first, second) => second.label.length - first.label.length,
+  )) {
+    parts = parts.flatMap((part) => {
+      if (part.anchor) return [part];
+      const pieces = part.text.split(anchor.label);
+      if (pieces.length === 1) return [part];
+      const marked: typeof parts = [];
+      pieces.forEach((piece, index) => {
+        if (index > 0) marked.push({ text: anchor.label, anchor });
+        if (piece) marked.push({ text: piece });
+      });
+      return marked;
+    });
+  }
+
+  return parts;
+}
+
+function titleCaseAnchorLabel(label: string) {
+  return label
+    .split(/(\s+)/)
+    .map((word) => {
+      if (!word.trim()) return word;
+      if (LOWERCASE_ANCHOR_WORDS.has(word.toLocaleLowerCase())) {
+        return word.toLocaleLowerCase();
+      }
+      return word.replace(/\p{L}/u, (letter) => letter.toLocaleUpperCase());
+    })
+    .join("");
+}
+
+function WeeklyCardLine({ card }: { card: WeeklyExperienceCard }) {
+  return (
+    <p className={styles.cardLine}>
+      {weeklyCardLineParts(card).map((part, index) => {
+        if (!part.anchor) {
+          return <span key={`${part.text}-${index}`}>{part.text}</span>;
+        }
+
+        const label = titleCaseAnchorLabel(part.text);
+        const firstSpace = label.indexOf(" ");
+
+        return (
+          <span className={styles.cardAnchor} key={`${part.text}-${index}`}>
+            <span className={styles.cardAnchorLead}>
+              <span
+                className={styles.cardAnchorOrb}
+                style={{
+                  background: categoryOrbGradient(
+                    orbCategory(part.anchor.category),
+                  ),
+                }}
+                aria-hidden="true"
+              />
+              {firstSpace === -1 ? label : label.slice(0, firstSpace)}
+            </span>
+            {firstSpace === -1 ? "" : label.slice(firstSpace)}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+function WeeklyCardPhoto({
+  card,
+  preview,
+}: {
+  card: WeeklyExperienceCard;
+  preview: boolean;
+}) {
+  const previewImage = preview ? REVIEW_CARD_IMAGES[card.scale] : undefined;
+
+  return (
+    <div className={styles.cardShot} data-empty={!card.image && !previewImage}>
+      {card.image ? (
+        // The photograph comes from one of the pages already accepted as
+        // evidence. It may be hosted anywhere that research can cite.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={card.image.url}
+          alt={card.image.alt}
+          loading="lazy"
+          draggable={false}
+          referrerPolicy="no-referrer"
+        />
+      ) : previewImage ? (
+        <Image
+          src={previewImage}
+          alt=""
+          fill
+          sizes="(max-width: 760px) 78vw, 360px"
+          placeholder="blur"
+        />
+      ) : null}
+    </div>
+  );
+}
 
 function localIsoDay(date = new Date()) {
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
@@ -94,6 +248,10 @@ export default function WeeklyPackView({
   const initialReview = reviewState
     ? weeklyPackReviewFixture(reviewState)
     : undefined;
+  const initialReviewPack =
+    initialReview?.state.status === "ready"
+      ? initialReview.state.pack
+      : null;
   const [state, setState] = useState<PackState>(
     () => initialReview?.state ?? { status: "loading" },
   );
@@ -110,6 +268,10 @@ export default function WeeklyPackView({
   const [scheduledFor, setScheduledFor] = useState(
     initialReview?.scheduledFor ?? "",
   );
+  const hydratedPackId = useRef(initialReviewPack?.id);
+  const [settledCardIds, setSettledCardIds] = useState<
+    Set<WeeklyPackScale>
+  >(() => new Set(initialReviewPack?.revealedCardIds ?? []));
 
   useEffect(() => {
     if (reviewState) return;
@@ -136,10 +298,30 @@ export default function WeeklyPackView({
   }, [reviewState]);
 
   const pack = state.status === "ready" ? state.pack : null;
+
+  useEffect(() => {
+    if (!pack) return;
+
+    setSettledCardIds((current) => {
+      if (hydratedPackId.current !== pack.id) {
+        hydratedPackId.current = pack.id;
+        return new Set(pack.revealedCardIds);
+      }
+
+      const stillRevealed = new Set(
+        [...current].filter((cardId) =>
+          pack.revealedCardIds.includes(cardId),
+        ),
+      );
+      return stillRevealed.size === current.size ? current : stillRevealed;
+    });
+  }, [pack]);
+
   const orderedCards = useMemo(
     () => stableCardOrder(pack?.cards ?? [], pack?.weekKey ?? ""),
     [pack?.cards, pack?.weekKey],
   );
+  const pendingCard = orderedCards.find((card) => card.id === pendingChoice);
 
   async function reveal(cardId: WeeklyPackScale) {
     if (!pack || busy || pack.revealedCardIds.includes(cardId)) return;
@@ -476,6 +658,8 @@ export default function WeeklyPackView({
           const revealed = pack.revealedCardIds.includes(card.id);
           const committing = Boolean(committingChoice);
           const isChosen = committingChoice === card.id;
+          const selected = pendingChoice === card.id;
+          const dimmed = Boolean(pendingChoice) && !selected;
           return (
             <motion.li
               key={card.id}
@@ -494,13 +678,33 @@ export default function WeeklyPackView({
               animate={
                 committing
                   ? isChosen
-                    ? { opacity: 1, y: -8, scale: 1.025, filter: "blur(0px)" }
+                    ? { opacity: 1, y: -8, scale: 1.025, filter: "none" }
                     : { opacity: 0, y: 22, scale: 0.94, filter: "blur(3px)" }
-                  : { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }
+                  : selected
+                    ? {
+                        opacity: 1,
+                        y: -5,
+                        scale: 1,
+                        filter: "none",
+                      }
+                    : dimmed
+                      ? {
+                          opacity: 0.38,
+                          y: 3,
+                          scale: 0.985,
+                          filter: "saturate(0.55)",
+                        }
+                      : {
+                          opacity: 1,
+                          y: 0,
+                          scale: 1,
+                          filter: "none",
+                        }
               }
               transition={{
-                duration: committing ? 0.48 : 0.68,
-                delay: committing ? 0 : 0.18 + index * 0.09,
+                duration: committing ? 0.48 : pendingChoice ? 0.35 : 0.68,
+                delay:
+                  committing || pendingChoice ? 0 : 0.18 + index * 0.09,
                 ease: [0.22, 1, 0.36, 1],
               }}
             >
@@ -525,7 +729,28 @@ export default function WeeklyPackView({
                   <div
                     className={styles.cardInner}
                     data-revealed={revealed ? "true" : "false"}
+                    data-settled={
+                      revealed &&
+                      (Boolean(reduceMotion) || settledCardIds.has(card.id))
+                        ? "true"
+                        : "false"
+                    }
                     data-reduced-motion={reduceMotion ? "true" : "false"}
+                    onTransitionEnd={(event) => {
+                      if (
+                        event.target !== event.currentTarget ||
+                        event.propertyName !== "transform" ||
+                        !revealed
+                      ) {
+                        return;
+                      }
+                      setSettledCardIds((current) => {
+                        if (current.has(card.id)) return current;
+                        const next = new Set(current);
+                        next.add(card.id);
+                        return next;
+                      });
+                    }}
                   >
                     <button
                       type="button"
@@ -544,72 +769,30 @@ export default function WeeklyPackView({
 
                     <article
                       className={`${styles.cardFace} ${styles.cardFront}`}
-                      data-scale={card.scale}
-                      data-tone={
-                        BUBBLEGUM_TONES[index % BUBBLEGUM_TONES.length]
-                      }
+                      data-selected={selected ? "true" : "false"}
                       aria-hidden={!revealed}
                       inert={!revealed}
                     >
-                      <div>
-                        <p className={styles.formatLabel}>
-                          {WEEKLY_SCALE_LABELS[card.scale]}
-                        </p>
-                        <h2>{card.title}</h2>
-                        <p className={styles.cardPromise}>{card.promise}</p>
+                      <button
+                        type="button"
+                        className={styles.cardSelectHit}
+                        aria-label={`Select ${card.title}`}
+                        aria-pressed={selected}
+                        onClick={(event) => {
+                          if (event.detail > 0) event.currentTarget.blur();
+                          setPendingChoice(card.id);
+                        }}
+                        disabled={busy || committing}
+                      />
+
+                      <div className={styles.cardSay}>
+                        <WeeklyCardLine card={card} />
                       </div>
 
-                      <div className={styles.cardFoot}>
-                        <div className={styles.cardMeta}>
-                          <span>{formatWeeklyDuration(card.durationMinutes)}</span>
-                          <span>{WEEKLY_COMPANY_LABELS[card.company]}</span>
-                        </div>
-                        <AnimatePresence mode="wait" initial={false}>
-                          {pendingChoice === card.id ? (
-                            <motion.div
-                              key="confirm"
-                              className={styles.confirmChoice}
-                              initial={
-                                reduceMotion ? false : { opacity: 0, y: 5 }
-                              }
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0 }}
-                            >
-                              <button
-                                type="button"
-                                className={styles.keepAction}
-                                onClick={() => void choose(card.id)}
-                                disabled={busy}
-                              >
-                                Keep it
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.backAction}
-                                onClick={() => setPendingChoice(null)}
-                                disabled={busy}
-                              >
-                                Back
-                              </button>
-                            </motion.div>
-                          ) : (
-                            <motion.button
-                              key="keep"
-                              type="button"
-                              className={styles.keepAction}
-                              onClick={() => setPendingChoice(card.id)}
-                              disabled={busy}
-                              initial={
-                                reduceMotion ? false : { opacity: 0, y: 5 }
-                              }
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0 }}
-                            >
-                              Keep this
-                            </motion.button>
-                          )}
-                        </AnimatePresence>
-                      </div>
+                      <WeeklyCardPhoto
+                        card={card}
+                        preview={Boolean(reviewState)}
+                      />
                     </article>
                   </div>
                 </div>
@@ -618,6 +801,44 @@ export default function WeeklyPackView({
           );
         })}
       </ol>
+
+      <div className={styles.packContinueSlot}>
+        <AnimatePresence initial={false}>
+          {pendingCard && !committingChoice ? (
+            <motion.button
+              key="continue"
+              type="button"
+              className={styles.packContinue}
+              aria-label={`Continue with ${pendingCard.title}`}
+              onClick={() => void choose(pendingCard.id)}
+              disabled={busy}
+              initial={
+                reduceMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: 5, scale: 0.9 }
+              }
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              whileHover={reduceMotion ? undefined : { y: -1 }}
+              whileTap={
+                reduceMotion ? undefined : { y: 2, scale: 0.985 }
+              }
+              exit={
+                reduceMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: 4, scale: 0.95 }
+              }
+              transition={{
+                duration: reduceMotion ? 0.12 : 0.22,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </motion.button>
+          ) : null}
+        </AnimatePresence>
+      </div>
 
       {actionError ? (
         <div className={styles.packFooter}>

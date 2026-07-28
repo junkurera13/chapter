@@ -49,6 +49,20 @@ const previewCards: WeeklyExperienceCard[] = [
     scale: "small",
     company: "self",
     title: "Map a street by sound",
+    line:
+      "How about making a tiny field recording while walking one familiar street before sunset?",
+    anchors: [
+      {
+        nodeId: "preview-field-recording",
+        label: "field recording",
+        category: "activity",
+      },
+      {
+        nodeId: "preview-familiar-street",
+        label: "familiar street",
+        category: "place",
+      },
+    ],
     promise:
       "Walk one familiar street without headphones and leave with a tiny field recording made from five sounds you normally pass through.",
     opening:
@@ -78,6 +92,20 @@ const previewCards: WeeklyExperienceCard[] = [
     scale: "mini",
     company: "new-person",
     title: "Make one bowl beside someone new",
+    line:
+      "How about making one bowl at a beginner pottery table beside someone new?",
+    anchors: [
+      {
+        nodeId: "preview-pottery",
+        label: "pottery",
+        category: "activity",
+      },
+      {
+        nodeId: "preview-someone-new",
+        label: "someone new",
+        category: "people",
+      },
+    ],
     promise:
       "Join a bounded beginner pottery table where conversation has something to orbit, then leave with one imperfect object of your own.",
     opening:
@@ -107,6 +135,20 @@ const previewCards: WeeklyExperienceCard[] = [
     scale: "proper",
     company: "known-person",
     title: "Follow the water out of the city",
+    line:
+      "How about following the river out of the city with someone you already know?",
+    anchors: [
+      {
+        nodeId: "preview-river",
+        label: "river",
+        category: "place",
+      },
+      {
+        nodeId: "preview-someone-known",
+        label: "someone you already know",
+        category: "people",
+      },
+    ],
     promise:
       "Take someone you already know from the last dense stretch of river to its quieter edge, collecting one small proof of each change along the way.",
     opening:

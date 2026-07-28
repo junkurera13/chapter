@@ -1,14 +1,9 @@
 /**
- * A photograph of the place, taken from the pages the research already cited.
+ * Last-resort fallback when the generated environmental image is unavailable.
  *
- * Chapter has no image provider and should not get one that returns stock
- * photography: a picture of somewhere *like* the venue is the same lie as a
- * paragraph about a grandmother who never existed, just harder to catch. So the
- * only pictures allowed on a card are ones already hanging on a page that was
- * good enough to cite as evidence for the venue itself.
- *
- * Most pages carry one in their Open Graph tags, which is the picture their own
- * author chose to represent them. When none of them do, the card goes without.
+ * Most researched pages carry an Open Graph photograph chosen by their author.
+ * This keeps a pack usable during a provider outage without allowing image
+ * generation failure to erase three days of design and research work.
  */
 
 const FETCH_TIMEOUT_MS = 4000;

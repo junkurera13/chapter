@@ -145,3 +145,24 @@ tests across 38 files, ESLint, TypeScript, local and Vercel production builds,
 live Base44 internal authentication, production HTTP checks, and no Vercel
 runtime errors. A signed-in human pass through the production Now tab remains
 the final account-specific check.
+
+## July 29, 2026 — every experience gets its own place
+
+The revealed cards no longer depend on finding a coincidentally suitable image
+on a researched webpage:
+
+- each accepted experience gets one environment-led image during the existing
+  pre-Saturday composition job;
+- the prompt uses only the research-safe action, setting type, broad area,
+  route, and format atmosphere—not private graph evidence or an exact venue
+  name and address;
+- Krea 2 Large runs through OpenRouter with ZDR and data collection denied;
+- finished bytes move to a non-expiring fal CDN object before Base44 stores the
+  card, while the old researched photograph remains an outage-only fallback;
+  and
+- one live 1184 × 896 sample confirmed the intended clean, naturally lit,
+  professional hospitality-photography grade at $0.06.
+
+Verification passed with 288 tests across 41 files, ESLint, TypeScript, a
+production build, one real OpenRouter generation, and one real fal persistence
+upload.

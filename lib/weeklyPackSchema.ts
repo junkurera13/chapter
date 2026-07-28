@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   WEEKLY_PACK_COMPANIES,
   WEEKLY_PACK_SCALES,
+  weeklyPackAnchorSchema,
 } from "./weeklyPackDesign";
 
 export const WEEKLY_PACK_PUBLIC_STATUSES = [
@@ -22,6 +23,8 @@ export const weeklyExperienceCardSchema = z.object({
   scale: z.enum(WEEKLY_PACK_SCALES),
   company: z.enum(WEEKLY_PACK_COMPANIES),
   title: z.string().trim().min(3).max(120),
+  line: z.string().trim().min(20).max(240).optional(),
+  anchors: z.array(weeklyPackAnchorSchema).min(1).max(4).optional(),
   promise: z.string().trim().min(20).max(500),
   opening: z.string().trim().min(20).max(1_000),
   durationMinutes: z.object({
@@ -50,6 +53,7 @@ export const weeklyExperienceCardSchema = z.object({
     .object({
       url: z.string().url(),
       alt: z.string().trim().min(2).max(240),
+      kind: z.enum(["generated", "photograph"]).optional(),
       credit: z.string().trim().min(2).max(240).optional(),
     })
     .nullable(),
@@ -102,4 +106,3 @@ export function formatWeeklyDuration(
     ? format(duration.min)
     : `${format(duration.min)}–${format(duration.max)}`;
 }
-

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import type { ExperienceGraphRecord } from "./backendTypes";
 import { fetchParallelResearchResult, startParallelResearch } from "./parallelResearch";
+import { findVenuePhoto } from "./venuePhoto";
 import {
   auditWeeklyPackDesign,
   auditWeeklyPackResearch,
@@ -24,11 +25,13 @@ import {
   type WeeklyPackDesign,
   type WeeklyPackReview,
   type WeeklyPackResearchFinding,
+  type WeeklyPackScale,
 } from "./weeklyPackDesign";
 import {
   weeklyExperienceCardSchema,
   type WeeklyExperienceCard,
 } from "./weeklyPackSchema";
+import { generateWeeklyPackImage } from "./weeklyPackImageGeneration";
 
 const PACK_MODEL_ID =
   process.env.CHAPTER_PACK_MODEL || "anthropic/claude-sonnet-5";
@@ -110,6 +113,7 @@ const weeklyPackCopyModelSchema = z.object({
     z.object({
       id: z.enum(["small", "mini", "proper"]),
       title: z.string(),
+      line: z.string(),
       promise: z.string(),
       opening: z.string(),
       steps: z.array(z.string()),
@@ -123,6 +127,7 @@ const weeklyPackCopySchema = z.object({
       z.object({
         id: z.enum(["small", "mini", "proper"]),
         title: z.string().trim().min(3).max(120),
+        line: z.string().trim().min(20).max(240),
         promise: z.string().trim().min(20).max(500),
         opening: z.string().trim().min(20).max(1_000),
         steps: z.array(z.string().trim().min(8).max(500)).min(1).max(8),
@@ -456,6 +461,7 @@ export function buildWeeklyPackCompositionPrompt(args: {
     "- Preserve the researched action, place, route, company, scale, and logistics. Do not redesign anything.",
     "- Use only claims present in the design and research. Do not invent biography, preference, emotion, safety, availability, cost, or travel facts.",
     "- Title: plain, specific, 3-9 words.",
+    "- Line: one natural sentence, 12-32 words, that presents the experience as an invitation. Use 1-3 accepted anchor labels verbatim where they fit naturally so the interface can mark those real graph nodes.",
     "- Promise: one concrete sentence stating what the person will actually do.",
     "- Opening: 1-2 unhurried sentences that make the action legible without explaining personalization.",
     "- Steps: 2-5 concise actions forming the researched rhythm or route. Do not pad a small activity into an itinerary.",
@@ -484,6 +490,12 @@ export function materializeWeeklyExperienceCards(args: {
   pack: WeeklyPackDesign;
   research: WeeklyPackResearchResult[];
   copy: z.infer<typeof weeklyPackCopySchema>;
+  images?: Partial<
+    Record<
+      WeeklyPackScale,
+      NonNullable<WeeklyExperienceCard["image"]> | undefined
+    >
+  >;
 }): WeeklyExperienceCard[] {
   const cards = args.pack.cards.map((design) => {
     const result = args.research.find(
@@ -508,6 +520,8 @@ export function materializeWeeklyExperienceCards(args: {
       scale: design.format.scale,
       company: design.format.company,
       title: copy.title,
+      line: copy.line,
+      anchors: design.anchors,
       promise: copy.promise,
       opening: copy.opening,
       durationMinutes: design.format.durationMinutes,
@@ -523,7 +537,7 @@ export function materializeWeeklyExperienceCards(args: {
         }),
       ),
       sourceUrls,
-      image: null,
+      image: args.images?.[design.id] ?? null,
     });
   });
   return z.array(weeklyExperienceCardSchema).length(3).parse(cards);
@@ -544,9 +558,64 @@ export async function composeWeeklyExperienceCards(args: {
     requestId: args.requestId,
   });
   const copy = weeklyPackCopySchema.parse(output);
+  const images = Object.fromEntries(
+    await Promise.all(
+      args.pack.cards.map(async (design) => {
+        const result = args.research.find(
+          (candidate) => candidate.cardId === design.id,
+        );
+        const cardCopy = copy.cards.find(
+          (candidate) => candidate.id === design.id,
+        );
+        if (!result || !cardCopy) {
+          throw new WeeklyPackGenerationError(
+            `Image input for ${design.id} is incomplete.`,
+          );
+        }
+
+        try {
+          return [
+            design.id,
+            await generateWeeklyPackImage({
+              design,
+              finding: result.finding,
+              copy: cardCopy,
+              requestId: args.requestId,
+            }),
+          ] as const;
+        } catch (error) {
+          console.warn("[weekly-pack:image] generation unavailable", {
+            requestId: args.requestId,
+            cardId: design.id,
+            errorName:
+              error instanceof Error ? error.name : "UnknownError",
+          });
+          const fallbackUrl = await findVenuePhoto(result.citations);
+          return [
+            design.id,
+            fallbackUrl
+              ? {
+                  url: fallbackUrl,
+                  alt: result.finding.primaryPlace
+                    ? `A view of ${result.finding.primaryPlace.name}`
+                    : `A photograph connected to ${cardCopy.title}`,
+                  kind: "photograph" as const,
+                }
+              : undefined,
+          ] as const;
+        }
+      }),
+    ),
+  ) as Partial<
+    Record<
+      WeeklyPackScale,
+      NonNullable<WeeklyExperienceCard["image"]> | undefined
+    >
+  >;
   return materializeWeeklyExperienceCards({
     pack: args.pack,
     research: args.research,
     copy,
+    images,
   });
 }

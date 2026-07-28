@@ -155,7 +155,7 @@
 }
 
 .packPage {
-  padding: clamp(112px, 15vh, 150px) 24px 72px;
+  padding: clamp(112px, 12vh, 120px) 24px 72px;
 }
 
 .packHeader {
@@ -208,7 +208,7 @@
 
 .cardGrid {
   display: grid;
-  width: min(1120px, 100%);
+  width: min(1000px, 100%);
   margin: clamp(40px, 6vh, 62px) auto 0;
   padding: 0;
   gap: clamp(14px, 2vw, 24px);
@@ -232,7 +232,7 @@
 }
 
 .cardScene {
-  height: clamp(410px, 51vh, 480px);
+  height: clamp(390px, 49vh, 460px);
   perspective: 1400px;
 }
 
@@ -250,6 +250,22 @@
 
 .cardInner[data-reduced-motion="true"] {
   transition-duration: 0.01ms;
+}
+
+.cardInner[data-settled="true"] {
+  transform: none;
+  transform-style: flat;
+  transition: none;
+}
+
+.cardInner[data-settled="true"] .cardBack {
+  visibility: hidden;
+}
+
+.cardInner[data-settled="true"] .cardFront {
+  transform: none;
+  backface-visibility: visible;
+  -webkit-backface-visibility: visible;
 }
 
 .cardFace {
@@ -278,8 +294,6 @@
 }
 
 .cardBack:focus-visible,
-.keepAction:focus-visible,
-.backAction:focus-visible,
 .darkAction:focus-visible,
 .lightAction:focus-visible,
 .textAction:focus-visible,
@@ -291,22 +305,174 @@
 .cardFront {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: clamp(24px, 3vw, 32px);
+  padding: 15px;
   transform: rotateY(180deg);
-  background: #f9f5ec;
+  background: #fff;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.11),
+    0 6px 14px rgba(0, 0, 0, 0.07);
 }
 
-.cardFront[data-tone="blue"] {
-  background: #73c7ff;
+.cardFront[data-selected="true"] {
+  box-shadow:
+    0 28px 54px rgba(0, 0, 0, 0.13),
+    0 7px 16px rgba(0, 0, 0, 0.08);
 }
 
-.cardFront[data-tone="pink"] {
-  background: #ff78b8;
+.cardSelectHit {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.cardFront[data-tone="green"] {
-  background: #78e69f;
+.cardSelectHit:focus-visible {
+  outline: 2px solid rgba(28, 28, 25, 0.72);
+  outline-offset: -4px;
+}
+
+.cardSelectHit:disabled {
+  cursor: default;
+}
+
+.cardSay {
+  padding: 12px 12px 16px;
+}
+
+.cardLine {
+  margin: 0;
+  color: #77716f;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(17px, 1.45vw, 19px);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.27;
+}
+
+.cardAnchor {
+  color: #1c1c19;
+  font-weight: 600;
+}
+
+.cardAnchorLead {
+  white-space: nowrap;
+}
+
+.cardAnchorOrb {
+  position: relative;
+  top: 0.11em;
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  box-shadow:
+    inset 3px 4px 5px rgba(255, 255, 255, 0.24),
+    inset -2px -3px 5px rgba(24, 17, 13, 0.18),
+    0 2px 5px rgba(47, 34, 24, 0.13);
+}
+
+.cardShot {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  flex: 1;
+  border-radius: 10px;
+  background: #f4f1ee;
+}
+
+.cardShot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cardShot[data-empty="true"] {
+  background:
+    radial-gradient(circle at 38% 34%, rgba(255, 255, 255, 0.72), transparent 38%),
+    #f0eeeb;
+}
+
+.packContinueSlot {
+  display: grid;
+  min-height: 52px;
+  margin: 32px auto 0;
+  place-items: start center;
+}
+
+.packContinue {
+  position: relative;
+  display: grid;
+  width: 2.8rem;
+  height: 2.8rem;
+  padding: 0;
+  place-items: center;
+  appearance: none;
+  border: 1px solid #d95b86;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 30% 10%,
+      rgba(255, 255, 255, 0.58),
+      transparent 26%
+    ),
+    linear-gradient(180deg, #ffd6e3 0%, #fba6c1 48%, #ee7fa4 100%);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -2px 3px rgba(125, 35, 70, 0.2),
+    0 3px 0 #cf527d,
+    0 6px 12px rgba(201, 70, 116, 0.16);
+  color: #371521;
+  cursor: pointer;
+  line-height: 1;
+  transform-origin: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.packContinue::before {
+  position: absolute;
+  inset: -0.3rem;
+  border-radius: 50%;
+  content: "";
+}
+
+.packContinue svg {
+  position: relative;
+  z-index: 1;
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.packContinue:focus-visible {
+  outline: 2px solid #c94674;
+  outline-offset: 3px;
+}
+
+.packContinue:active:not(:disabled) {
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.62),
+    inset 0 -2px 3px rgba(125, 35, 70, 0.24),
+    0 1px 0 #cf527d,
+    0 3px 7px rgba(201, 70, 116, 0.15);
+}
+
+.packContinue:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .formatLabel {
@@ -317,38 +483,6 @@
   text-transform: uppercase;
 }
 
-.cardFront h2 {
-  max-width: 300px;
-  margin: 18px 0 0;
-  font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: clamp(28px, 3vw, 38px);
-  font-weight: 530;
-  letter-spacing: -0.05em;
-  line-height: 0.98;
-}
-
-.cardPromise {
-  max-width: 330px;
-  margin: 20px 0 0;
-  color: rgba(37, 33, 29, 0.67);
-  font-family: var(--font-chapter-serif), Georgia, serif;
-  font-size: clamp(16px, 1.65vw, 19px);
-  line-height: 1.36;
-}
-
-.cardFoot {
-  margin-top: 26px;
-}
-
-.cardMeta {
-  display: flex;
-  min-height: 22px;
-  gap: 7px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.cardMeta span,
 .chosenMeta span {
   display: inline-flex;
   min-height: 25px;
@@ -360,8 +494,6 @@
   font: 570 11px/1 var(--font-chapter-instrument), system-ui, sans-serif;
 }
 
-.keepAction,
-.backAction,
 .darkAction,
 .lightAction,
 .textAction {
@@ -375,7 +507,6 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.keepAction,
 .darkAction,
 .lightAction {
   min-height: 45px;
@@ -383,45 +514,11 @@
   font: 620 13px/1 var(--font-chapter-instrument), system-ui, sans-serif;
 }
 
-.keepAction {
-  width: 100%;
-  margin-top: 18px;
-  background: #28241f;
-  color: #fff;
-}
-
-.keepAction:hover,
 .darkAction:hover {
   background: #11100e;
   transform: translateY(-1px);
 }
 
-.confirmChoice {
-  display: grid;
-  margin-top: 18px;
-  gap: 8px;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.confirmChoice .keepAction {
-  margin-top: 0;
-}
-
-.backAction {
-  min-width: 64px;
-  border: 1px solid rgba(37, 33, 29, 0.13);
-  border-radius: 999px;
-  background: transparent;
-  color: rgba(37, 33, 29, 0.62);
-  font: 600 12px/1 var(--font-chapter-instrument), system-ui, sans-serif;
-}
-
-.backAction:hover {
-  color: #25211d;
-}
-
-.keepAction:disabled,
-.backAction:disabled,
 .darkAction:disabled,
 .lightAction:disabled,
 .textAction:disabled {
@@ -762,7 +859,7 @@
 
 @media (max-width: 760px) {
   .packPage {
-    padding: 90px 0 96px;
+    padding: 80px 0 96px;
   }
 
   .packHeader {
@@ -799,27 +896,19 @@
   }
 
   .cardSlot {
-    width: min(78vw, 330px);
-    flex: 0 0 min(78vw, 330px);
+    width: min(74vw, 300px);
+    flex: 0 0 min(74vw, 300px);
     margin-top: 0;
     scroll-snap-align: center;
   }
 
   .cardScene {
-    height: min(455px, 58svh);
-    min-height: 420px;
+    height: min(435px, 56svh);
+    min-height: 400px;
   }
 
   .cardFront {
-    padding: 27px 25px 25px;
-  }
-
-  .cardFront h2 {
-    font-size: 32px;
-  }
-
-  .cardPromise {
-    font-size: 17px;
+    padding: 15px;
   }
 
   .packFooter {
@@ -851,12 +940,12 @@
 
 @media (max-width: 390px) {
   .cardSlot {
-    width: 82vw;
-    flex-basis: 82vw;
+    width: 76vw;
+    flex-basis: 76vw;
   }
 
   .cardScene {
-    min-height: 408px;
+    min-height: 390px;
   }
 
   .statePage {
@@ -869,8 +958,7 @@
   .cardInner,
   .backMark,
   .openerButton::before,
-  .keepAction,
-  .backAction,
+  .packContinue,
   .darkAction,
   .lightAction,
   .textAction {

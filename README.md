@@ -61,6 +61,7 @@ web research. Every model choice is overridable by environment variable.
 | Onboarding memory extraction (multimodal) | `google/gemini-3.1-flash-lite`, falling back to `moonshotai/kimi-k2.6` | `CHAPTER_MEMORY_MODEL`, `CHAPTER_MEMORY_FALLBACK_MODEL` |
 | Eve conversation (web + iMessage) | `deepseek/deepseek-v4-flash` for text, `moonshotai/kimi-k2.6` for image-bearing turns | none |
 | Weekly-pack design, review, and copy | `anthropic/claude-sonnet-5`, falling back to `moonshotai/kimi-k2.6` | `CHAPTER_PACK_MODEL`, `CHAPTER_PACK_FALLBACK_MODEL`, `CHAPTER_PACK_REVIEW_MODEL`, `CHAPTER_PACK_REVISION_MODEL`, `CHAPTER_PACK_COMPOSITION_MODEL` |
+| Weekly-pack environmental images | OpenRouter Image API with `krea/krea-2-large`; durable media on fal CDN | `CHAPTER_PACK_IMAGE_MODEL` |
 | Together briefs, chapters, gists and legacy Now fallback | `moonshotai/kimi-k2.6`, falling back to `deepseek/deepseek-v4-flash` | `CHAPTER_NOW_MODEL`, `CHAPTER_NOW_FALLBACK_MODEL` |
 | Now / Together web research | Parallel AI `core` processor | `CHAPTER_NOW_PROCESSOR` |
 
@@ -154,7 +155,7 @@ Base44 app:
 NEXT_PUBLIC_BASE44_APP_ID=your_app_id npm run dev
 ```
 
-Runtime secrets: `OPENROUTER_API_KEY`, `PARALLEL_API_KEY`,
+Runtime secrets: `OPENROUTER_API_KEY`, `PARALLEL_API_KEY`, `FAL_KEY`,
 `SIDEQUEST_INTERNAL_SECRET`, `IMESSAGE_WEBHOOK_SECRET`, and the Photon /
 iMessage project credentials. Never commit these values.
 
@@ -172,7 +173,7 @@ npx eve info --json
 npx eve channels list --json
 ```
 
-`npm test` currently runs 282 tests across 38 files.
+`npm test` currently runs 288 tests across 41 files.
 
 The production pass should additionally verify Google sign-in, phone linking,
 the iMessage webhook health route, one real memory turn, private graph
