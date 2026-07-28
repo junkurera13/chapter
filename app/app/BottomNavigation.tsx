@@ -163,16 +163,28 @@ export default function BottomNavigation({
               </button>
             )}
             {canReviewNow ? (
-              <button
-                type="button"
-                className={styles.reviewNow}
-                onClick={() => {
-                  setAccountOpen(false);
-                  onReviewNow();
-                }}
-              >
-                Review Now UI
-              </button>
+              <>
+                <button
+                  type="button"
+                  className={styles.reviewNow}
+                  onClick={() => {
+                    setAccountOpen(false);
+                    onReviewNow();
+                  }}
+                >
+                  Review Now UI
+                </button>
+                <button
+                  type="button"
+                  className={styles.testGenerator}
+                  onClick={() => {
+                    setAccountOpen(false);
+                    window.location.assign("/experience-generator");
+                  }}
+                >
+                  Test experience generator
+                </button>
+              </>
             ) : null}
             <button
               type="button"

@@ -312,14 +312,18 @@ function LockedPackState({
 export default function WeeklyPackView({
   reviewState,
   onReviewStateChange,
+  reviewPack,
 }: {
   reviewState?: WeeklyPackReviewState;
   onReviewStateChange?: (state: WeeklyPackReviewState) => void;
+  reviewPack?: WeeklyExperiencePack;
 }) {
   const reduceMotion = useReducedMotion();
-  const initialReview = reviewState
-    ? weeklyPackReviewFixture(reviewState)
-    : undefined;
+  const initialReview = reviewPack
+    ? { state: { status: "ready" as const, pack: reviewPack } }
+    : reviewState
+      ? weeklyPackReviewFixture(reviewState)
+      : undefined;
   const initialReviewPack =
     initialReview?.state.status === "ready" ? initialReview.state.pack : null;
   const [state, setState] = useState<PackState>(
@@ -538,6 +542,24 @@ export default function WeeklyPackView({
   function replayPreview() {
     if (onReviewStateChange) {
       onReviewStateChange("sealed");
+      return;
+    }
+    if (reviewPack) {
+      setState({
+        status: "ready",
+        pack: {
+          ...reviewPack,
+          status: "available",
+          revealedCardIds: [],
+          chosenCardId: undefined,
+          scheduledFor: undefined,
+          livedAt: undefined,
+        },
+      });
+      setPendingChoice(null);
+      setShowDatePicker(false);
+      setScheduledFor("");
+      setOpenedPackId(reviewPack.id);
       return;
     }
     const fixture = weeklyPackReviewFixture("sealed");
@@ -1019,6 +1041,9 @@ function ChosenExperience({
 }) {
   const latestDay = localIsoDay(new Date(pack.expiresAt - 1));
   const showCalendar = showDatePicker || Boolean(pack.scheduledFor);
+  const canMarkLived = Boolean(
+    pack.scheduledFor && pack.scheduledFor <= localIsoDay(),
+  );
   const mapQuery = `${card.place.name}, ${card.place.address}`;
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
   const kakaoMapsUrl = `https://m.map.kakao.com/scheme/search?q=${encodeURIComponent(mapQuery)}`;
@@ -1181,14 +1206,16 @@ function ChosenExperience({
                     </button>
                   </div>
                   <div className={styles.secondaryActions}>
-                    <button
-                      type="button"
-                      className={styles.textAction}
-                      onClick={onLived}
-                      disabled={busy}
-                    >
-                      I did this
-                    </button>
+                    {canMarkLived ? (
+                      <button
+                        type="button"
+                        className={styles.textAction}
+                        onClick={onLived}
+                        disabled={busy}
+                      >
+                        I did this
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className={styles.textAction}

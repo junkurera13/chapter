@@ -591,10 +591,10 @@
 .chosenLayout {
   display: grid;
   width: min(1040px, 100%);
-  gap: clamp(54px, 8vw, 104px);
+  gap: clamp(40px, 5vw, 72px);
   align-items: center;
   justify-content: center;
-  grid-template-columns: minmax(320px, 460px) minmax(260px, 340px);
+  grid-template-columns: minmax(320px, 460px) minmax(340px, 440px);
 }
 
 .chosenExperienceCard {
@@ -630,15 +630,17 @@
 }
 
 .chosenDetails {
+  --detail-icon-size: clamp(28px, 3vw, 35px);
+
   width: 100%;
-  max-width: 340px;
+  max-width: 440px;
 }
 
 .detailIcon {
   display: block;
-  width: 20px;
-  height: 20px;
-  margin: 4px 0 0;
+  width: var(--detail-icon-size);
+  height: var(--detail-icon-size);
+  margin: 0;
   flex: 0 0 auto;
   color: rgba(37, 33, 29, 0.64);
   stroke: currentColor;
@@ -660,13 +662,12 @@
 .chosenLocation,
 .chosenWhen {
   display: grid;
-  gap: 13px;
+  gap: 14px;
   align-items: start;
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: var(--detail-icon-size) minmax(0, 1fr);
 }
 
 .chosenLocation h2 {
-  max-width: 13ch;
   margin: 0;
   color: #24211d;
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
@@ -733,6 +734,10 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.chosenWhen .detailIcon {
+  margin-top: 2px;
+}
+
 .chosenWhenContent {
   min-width: 0;
 }
@@ -743,10 +748,11 @@
 
 .primaryActions {
   display: grid;
+  justify-items: start;
 }
 
 .primaryActions .darkAction {
-  width: 100%;
+  width: auto;
 }
 
 .secondaryActions {
@@ -771,7 +777,7 @@
   margin: 0 0 17px;
   color: #29251f;
   font-family: var(--font-chapter-sans), system-ui, sans-serif;
-  font-size: 23px;
+  font-size: clamp(28px, 3vw, 37px);
   font-weight: 520;
   letter-spacing: -0.035em;
   line-height: 1.1;
@@ -807,7 +813,7 @@
 }
 
 .dateChoice .darkAction {
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 .visuallyHidden {

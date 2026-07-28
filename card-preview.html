@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Chapter — recommendation card slideshow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+  :root { --sans: "DM Sans", system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    background: #fff;
+    font-family: var(--sans);
+    color: #1c1c19;
+    padding: 48px 24px;
+  }
+
+  /* ---- stage ---- */
+  .stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+  }
+  .cardScaler { zoom: 2; }
+  .nav, .chrome { position: relative; z-index: 5; }
+
+  /* ---- the card (faithful to InteractiveCardStack kind:"moment") ---- */
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 320px;
+    padding: 10px;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.08),
+      0 24px 48px rgba(0,0,0,0.28),
+      0 6px 14px rgba(0,0,0,0.16);
+  }
+  .cardText { position: relative; padding: 12px 12px 16px; }
+  .cardText p {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.32;
+    letter-spacing: -0.025em;
+    color: #77716f;
+  }
+  .ent {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 2px;
+    font-weight: 600;
+    color: #1c1c19;
+  }
+  .orb {
+    position: relative;
+    top: 0.16em;
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    flex: 0 0 auto;
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 50%;
+    box-shadow:
+      inset 3px 4px 5px rgba(255,255,255,0.24),
+      inset -2px -3px 5px rgba(24,17,13,0.18),
+      0 2px 5px rgba(47,34,24,0.13);
+  }
+  .glyph { position: relative; top: 0.15em; width: 1em; height: 1em; flex: 0 0 auto; }
+  .u { text-decoration: underline; text-decoration-color: rgba(119,113,111,0.7); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+  .cardImage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+  .cardImage img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+  .cardImage .veil {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 55%, rgba(50,30,24,0.16));
+    pointer-events: none;
+  }
+
+  /* ---- chrome (not part of the card — hidden when you press H) ---- */
+  .nav {
+    display: flex;
+    height: 40px;
+    width: 40px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.9);
+    color: #393735;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.09);
+    cursor: pointer;
+  }
+  .nav:hover { background: #fff; }
+  .chrome { display: flex; align-items: center; gap: 14px; font-size: 13px; color: #77716f; }
+  .chrome select, .chrome button {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: #393735;
+    padding: 6px 10px;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+  }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(0,0,0,0.15); cursor: pointer; }
+  .dot.on { background: #1c1c19; }
+  body.clean .chrome, body.clean .nav { visibility: hidden; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="nav" id="prev" title="Previous">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 6.5-5 5.5 5 5.5"/></svg>
+  </div>
+
+  <div class="cardScaler" id="scaler">
+    <div class="card" id="card">
+      <div class="cardText"><p id="copy"></p></div>
+      <div class="cardImage">
+        <img id="img" alt="" draggable="false" />
+        <span class="veil"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav" id="next" title="Next">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9.5 6.5 5 5.5-5 5.5"/></svg>
+  </div>
+</div>
+
+<div class="chrome">
+  <div class="dots" id="dots"></div>
+  <select id="scale">
+    <option value="1">1×</option>
+    <option value="1.5">1.5×</option>
+    <option value="2" selected>2×</option>
+    <option value="3">3×</option>
+  </select>
+  <button id="hide">Hide chrome (H)</button>
+</div>
+
+<script>
+/* ============================================================
+   EDIT BELOW. One entry per card.
+
+   Markup inside `copy`:
+     {people:Samuel}     pink orb  + bold name
+     {place:Mojiko}      red map pin + bold name
+     {activity:Pottery}  green orb + bold name
+     {interest:Sushi}    blue orb  + bold name
+     {feeling:Calm}      violet orb
+     {experience:X}      warm orb
+     {date:4pm Meeting}  calendar glyph + bold
+     {u:this Saturday}   underlined (soft, no icon)
+
+   `image` is a path relative to this file, e.g. app/assets/foo.jpg
+   ============================================================ */
+const CARDS = [
+  {
+    copy: "You and {people:Elena} both keep saying you want {feeling:slower mornings}. There's a {activity:Bread Workshop} in {place:Seongsu} {u:this Sunday at 9am}.",
+    image: "app/assets/recommendations/bread-baking.png",
+    focus: "45% 40%"
+  },
+  {
+    copy: "Found you a {activity:Hiking Trail} in {place:Kiso Valley} that the tour buses skip. {u:20 minutes} from your hotel, quiet until noon.",
+    image: "app/assets/recommendations/mountain-trail.png",
+    focus: "40% center",
+    ratio: "16 / 10"
+  },
+  {
+    copy: "{people:Mio} rides around {place:Mojiko} at dusk, same as you. You've never met. {u:This Saturday}, you could.",
+    image: "app/assets/recommendations/mojiko-riders-crop.png",
+    focus: "center 72%",
+    ratio: "1 / 1"
+  },
+  {
+    copy: "You and {people:Samuel} both went {activity:Boat Riding} around {place:Ine} and have a deep connection to this experience.",
+    image: "app/assets/mojiko-waterfront.jpg",
+    focus: "center"
+  },
+  {
+    copy: "How about a {activity:Ceramics Class} in {place:Euljiro} {u:this Saturday at 2pm}?",
+    image: "app/assets/ceramics-class.jpg",
+    focus: "center"
+  },
+  {
+    copy: "You've never tried {interest:Sushi}, but I think you'll like it. This spot in {place:Nishi-Ogikubo} has Udon and Tempura too, just in case.",
+    image: "app/assets/sushi-shibuya.webp",
+    focus: "center"
+  },
+  {
+    copy: "Your {date:4pm Meeting} moved. There are 4 seats in rows J–K for {interest:The Odyssey} at {place:Babylon}. Want to go?",
+    image: "app/assets/odyssey-cinema.png",
+    focus: "center 45%"
+  }
+];
+
+/* ---- rendering ---- */
+const PALETTES = {
+  self:       ["#ffffff", "#c7d9de", "#5f6677"],
+  experience: ["#fff1e8", "#c7795f", "#442422"],
+  people:     ["#ffe9ed", "#c97687", "#603846"],
+  place:      ["#dff7f4", "#4d9997", "#173f48"],
+  activity:   ["#edf4de", "#7f9a65", "#304634"],
+  interest:   ["#e8edff", "#7889b5", "#343c65"],
+  feeling:    ["#f3eaff", "#9a7eb8", "#4b395d"],
+  condition:  ["#ededeb", "#84837e", "#292a29"],
+  pattern:    ["#f5f0df", "#aaa185", "#4d4b42"]
+};
+const orbGradient = (k) => {
+  const p = PALETTES[k] || PALETTES.interest;
+  return `radial-gradient(circle at 34% 24%, ${p[0]}, ${p[1]} 48%, ${p[2]} 100%)`;
+};
+const PIN = '<svg class="glyph" viewBox="0 0 20 20" aria-hidden="true"><path fill="#e5484d" d="M10 1.5A6.1 6.1 0 0 0 3.9 7.6c0 4.45 5.37 9.62 5.6 9.84a.72.72 0 0 0 1 0c.23-.22 5.6-5.39 5.6-9.84A6.1 6.1 0 0 0 10 1.5Z"/><circle cx="10" cy="7.45" r="2.15" fill="#fff"/></svg>';
+const CAL = '<svg class="glyph" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12" rx="2.2"/><path d="M6.5 2.8v3.1M13.5 2.8v3.1M3 8h14"/></svg>';
+
+function render(copy) {
+  return copy.replace(/\{(\w+):([^}]+)\}/g, (_m, kind, label) => {
+    if (kind === "u")
+      return `<span class="u">${label}</span>`;
+    if (kind === "place")
+      return `<span class="ent">${PIN}${label}</span>`;
+    if (kind === "date")
+      return `<span class="ent">${CAL}${label}</span>`;
+    return `<span class="ent"><span class="orb" style="background:${orbGradient(kind)}"></span>${label}</span>`;
+  });
+}
+
+let i = 0;
+const copyEl = document.getElementById("copy");
+const imgEl = document.getElementById("img");
+const dotsEl = document.getElementById("dots");
+
+function paint() {
+  const c = CARDS[i];
+  copyEl.innerHTML = render(c.copy);
+  imgEl.src = c.image;
+  imgEl.style.objectPosition = c.focus || "center";
+  imgEl.parentElement.style.aspectRatio = c.ratio || "1 / 1";
+  dotsEl.innerHTML = CARDS.map((_, n) => `<span class="dot ${n === i ? "on" : ""}" data-n="${n}"></span>`).join("");
+}
+const go = (d) => { i = (i + d + CARDS.length) % CARDS.length; paint(); };
+
+document.getElementById("next").onclick = () => go(1);
+document.getElementById("prev").onclick = () => go(-1);
+dotsEl.onclick = (e) => { const n = e.target.dataset.n; if (n != null) { i = +n; paint(); } };
+document.getElementById("scale").onchange = (e) => {
+  document.getElementById("scaler").style.zoom = e.target.value;
+};
+document.getElementById("hide").onclick = () => document.body.classList.toggle("clean");
+window.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight") go(1);
+  if (e.key === "ArrowLeft") go(-1);
+  if (e.key.toLowerCase() === "h") document.body.classList.toggle("clean");
+});
+
+paint();
+</script>
+</body>
+</html>
