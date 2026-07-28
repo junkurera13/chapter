@@ -6,7 +6,7 @@ import type { WeeklyPackScale } from "./weeklyPackDesign";
 
 export const WEEKLY_PACK_REVIEW_STATES = [
   { id: "loading", label: "Loading" },
-  { id: "empty", label: "No pack yet" },
+  { id: "opener", label: "Ready to open" },
   { id: "locked", label: "Locked until Saturday" },
   { id: "sealed", label: "Three sealed cards" },
   { id: "one-revealed", label: "One card revealed" },
@@ -180,8 +180,10 @@ export function weeklyPackReviewFixture(
           message: "Chapter couldn’t open this week’s pack.",
         },
       };
-    case "empty":
-      return { state: { status: "ready", pack: null } };
+    case "opener":
+      return {
+        state: { status: "ready", pack: previewPack() },
+      };
     case "locked":
       return {
         state: { status: "ready", pack: previewPack({ status: "locked" }) },

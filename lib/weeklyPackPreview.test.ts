@@ -32,11 +32,20 @@ describe("weekly pack UI review fixtures", () => {
   });
 
   it("starts the interactive states at the intended point", () => {
+    const opener = weeklyPackReviewFixture("opener");
     const sealed = weeklyPackReviewFixture("sealed");
     const revealed = weeklyPackReviewFixture("all-revealed");
     const confirming = weeklyPackReviewFixture("confirming");
     const datePicker = weeklyPackReviewFixture("date-picker");
 
+    expect(
+      opener.state.status === "ready"
+        ? opener.state.pack
+        : null,
+    ).toMatchObject({
+      status: "available",
+      revealedCardIds: [],
+    });
     expect(
       sealed.state.status === "ready"
         ? sealed.state.pack?.revealedCardIds

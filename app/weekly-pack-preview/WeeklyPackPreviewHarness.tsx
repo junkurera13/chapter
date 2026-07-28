@@ -17,7 +17,11 @@ export default function WeeklyPackPreviewHarness({
 
   return (
     <>
-      <WeeklyPackView key={state} reviewState={state} />
+      <WeeklyPackView
+        key={state}
+        reviewState={state}
+        onReviewStateChange={changeState}
+      />
       <WeeklyPackReviewToolbar
         state={state}
         onChange={changeState}

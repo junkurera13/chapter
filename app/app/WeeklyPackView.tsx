@@ -9,6 +9,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import ChapterLoadingMark from "@/components/chapter-loading-mark";
+import AgentOrbVideo from "@/components/landing/agent-orb-video";
 import type { WeeklyPackScale } from "@/lib/weeklyPackDesign";
 import {
   WEEKLY_COMPANY_LABELS,
@@ -80,8 +81,10 @@ function chosenCard(pack: WeeklyExperiencePack) {
 
 export default function WeeklyPackView({
   reviewState,
+  onReviewStateChange,
 }: {
   reviewState?: WeeklyPackReviewState;
+  onReviewStateChange?: (state: WeeklyPackReviewState) => void;
 }) {
   const reduceMotion = useReducedMotion();
   const initialReview = reviewState
@@ -261,6 +264,18 @@ export default function WeeklyPackView({
     }
   }
 
+  function openPack() {
+    const firstCard = orderedCards[0];
+    if (!firstCard || busy) return;
+
+    if (reviewState && onReviewStateChange) {
+      onReviewStateChange("one-revealed");
+      return;
+    }
+
+    void reveal(firstCard.id);
+  }
+
   if (state.status === "loading") {
     return (
       <section className={styles.statePage} aria-busy="true">
@@ -302,15 +317,34 @@ export default function WeeklyPackView({
   if (pack.status === "locked") {
     return (
       <section className={styles.statePage}>
-        <SealedStack />
+        <motion.div
+          className={styles.lockedLoader}
+          initial={reduceMotion ? false : { opacity: 0, scale: 0.975 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: reduceMotion ? 0 : 0.55 }}
+          aria-hidden="true"
+        >
+          <Image
+            className={styles.lockedLoaderMark}
+            src="/chapter-mark.svg"
+            alt=""
+            width={112}
+            height={112}
+          />
+        </motion.div>
         <motion.div
           className={styles.stateCopy}
           initial={reduceMotion ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.14 }}
         >
-          <h1>Saturday</h1>
-          <p>{dayLabel(pack.releaseAt)}. Your cards are already inside.</p>
+          <h1>Your experiences are taking shape.</h1>
+          <p>
+            Ready{" "}
+            <span className={styles.dateUnderline}>
+              Saturday, {dayLabel(pack.releaseAt, { weekday: undefined })}
+            </span>
+          </p>
         </motion.div>
       </section>
     );
@@ -391,6 +425,21 @@ export default function WeeklyPackView({
         onReplay={() =>
           setState(weeklyPackReviewFixture("sealed").state)
         }
+      />
+    );
+  }
+
+  if (
+    pack.status === "available" &&
+    pack.revealedCardIds.length === 0 &&
+    orderedCards.length > 0 &&
+    reviewState !== "sealed"
+  ) {
+    return (
+      <PackOpener
+        busy={busy}
+        reduceMotion={Boolean(reduceMotion)}
+        onOpen={openPack}
       />
     );
   }
@@ -550,6 +599,45 @@ export default function WeeklyPackView({
           </p>
         ) : null}
       </div>
+    </section>
+  );
+}
+
+function PackOpener({
+  busy,
+  reduceMotion,
+  onOpen,
+}: {
+  busy: boolean;
+  reduceMotion: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <section className={styles.openerPage}>
+      <motion.div
+        className={styles.opener}
+        initial={reduceMotion ? false : { opacity: 0, scale: 0.975 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: reduceMotion ? 0 : 0.55 }}
+      >
+        <motion.button
+          type="button"
+          className={styles.openerButton}
+          onClick={onOpen}
+          disabled={busy}
+          aria-label="See your experiences"
+          whileHover={reduceMotion ? undefined : { scale: 1.035 }}
+          whileTap={reduceMotion ? undefined : { scale: 0.985 }}
+          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <span className={styles.openerOrb} aria-hidden="true">
+            <AgentOrbVideo playWhileMounted preload="auto" />
+          </span>
+        </motion.button>
+        <div className={styles.stateCopy}>
+          <h1>Your experiences are ready.</h1>
+        </div>
+      </motion.div>
     </section>
   );
 }

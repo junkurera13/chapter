@@ -271,6 +271,7 @@ export default function ChapterApp({
       <WeeklyPackView
         key={weeklyPackReview ?? "live"}
         reviewState={weeklyPackReview}
+        onReviewStateChange={changeWeeklyPackReview}
       />
     ) : displayedIndex === 2 ? (
       <TogetherView
