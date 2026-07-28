@@ -98,6 +98,7 @@ export default function WeeklyPackView({
   const [committingChoice, setCommittingChoice] =
     useState<WeeklyPackScale | null>(null);
   const [busy, setBusy] = useState(false);
+  const [openedPackId, setOpenedPackId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(
     initialReview?.showDatePicker ?? false,
@@ -265,15 +266,14 @@ export default function WeeklyPackView({
   }
 
   function openPack() {
-    const firstCard = orderedCards[0];
-    if (!firstCard || busy) return;
+    if (!pack || orderedCards.length === 0 || busy) return;
 
     if (reviewState && onReviewStateChange) {
-      onReviewStateChange("one-revealed");
+      onReviewStateChange("sealed");
       return;
     }
 
-    void reveal(firstCard.id);
+    setOpenedPackId(pack.id);
   }
 
   if (state.status === "loading") {
@@ -433,7 +433,8 @@ export default function WeeklyPackView({
     pack.status === "available" &&
     pack.revealedCardIds.length === 0 &&
     orderedCards.length > 0 &&
-    reviewState !== "sealed"
+    reviewState !== "sealed" &&
+    openedPackId !== pack.id
   ) {
     return (
       <PackOpener
@@ -448,12 +449,17 @@ export default function WeeklyPackView({
     <section className={styles.packPage}>
       <motion.header
         className={styles.packHeader}
-        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.42 }}
+        initial={
+          reduceMotion ? false : { opacity: 0, y: 12, filter: "blur(3px)" }
+        }
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        transition={{
+          duration: reduceMotion ? 0 : 0.55,
+          delay: reduceMotion ? 0 : 0.08,
+          ease: [0.22, 1, 0.36, 1],
+        }}
       >
         <h1>Choose one.</h1>
-        <p>Turn them over. Keep one.</p>
       </motion.header>
 
       <ol className={styles.cardGrid} aria-label="This week’s three cards">
@@ -470,7 +476,9 @@ export default function WeeklyPackView({
                   ? false
                   : {
                       opacity: 0,
-                      y: 24,
+                      y: 28,
+                      scale: 0.98,
+                      filter: "blur(4px)",
                       rotate: index === 0 ? -1.4 : index === 2 ? 1.4 : 0,
                     }
               }
@@ -482,8 +490,8 @@ export default function WeeklyPackView({
                   : { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }
               }
               transition={{
-                duration: committing ? 0.48 : 0.55,
-                delay: committing ? 0 : index * 0.07,
+                duration: committing ? 0.48 : 0.68,
+                delay: committing ? 0 : 0.18 + index * 0.09,
                 ease: [0.22, 1, 0.36, 1],
               }}
             >
@@ -589,16 +597,13 @@ export default function WeeklyPackView({
         })}
       </ol>
 
-      <div className={styles.packFooter}>
-        <p className={styles.expiry}>
-          Keep one by {dayLabel(pack.expiresAt, { weekday: undefined })}.
-        </p>
-        {actionError ? (
+      {actionError ? (
+        <div className={styles.packFooter}>
           <p className={styles.actionError} role="alert">
             {actionError}
           </p>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -612,6 +617,13 @@ function PackOpener({
   reduceMotion: boolean;
   onOpen: () => void;
 }) {
+  const [opening, setOpening] = useState(false);
+
+  function beginOpening() {
+    if (busy || opening) return;
+    setOpening(true);
+  }
+
   return (
     <section className={styles.openerPage}>
       <motion.div
@@ -623,20 +635,57 @@ function PackOpener({
         <motion.button
           type="button"
           className={styles.openerButton}
-          onClick={onOpen}
-          disabled={busy}
+          data-opening={opening ? "true" : "false"}
+          onClick={beginOpening}
+          disabled={busy || opening}
           aria-label="See your experiences"
-          whileHover={reduceMotion ? undefined : { scale: 1.035 }}
-          whileTap={reduceMotion ? undefined : { scale: 0.985 }}
-          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          animate={
+            opening
+              ? {
+                  opacity: [1, 1, 0],
+                  scale: [1, 1.08, 1.72],
+                  filter: ["blur(0px)", "blur(0px)", "blur(12px)"],
+                }
+              : { opacity: 1, scale: 1, filter: "blur(0px)" }
+          }
+          whileHover={
+            reduceMotion || opening ? undefined : { scale: 1.035 }
+          }
+          whileTap={
+            reduceMotion || opening ? undefined : { scale: 0.985 }
+          }
+          transition={
+            opening
+              ? {
+                  duration: reduceMotion ? 0 : 1.18,
+                  delay: reduceMotion ? 0 : 0.08,
+                  times: [0, 0.48, 1],
+                  ease: "easeInOut",
+                }
+              : { duration: 0.2, ease: [0.22, 1, 0.36, 1] }
+          }
+          onAnimationComplete={() => {
+            if (opening) onOpen();
+          }}
         >
           <span className={styles.openerOrb} aria-hidden="true">
             <AgentOrbVideo playWhileMounted preload="auto" />
           </span>
         </motion.button>
-        <div className={styles.stateCopy}>
+        <motion.div
+          className={styles.stateCopy}
+          animate={
+            opening
+              ? { opacity: 0, y: -4, filter: "blur(2px)" }
+              : { opacity: 1, y: 0, filter: "blur(0px)" }
+          }
+          transition={{
+            duration: reduceMotion ? 0 : 0.24,
+            ease: "easeOut",
+          }}
+        >
           <h1>Your experiences are ready.</h1>
-        </div>
+        </motion.div>
       </motion.div>
     </section>
   );

@@ -56,9 +56,19 @@
   outline-offset: 4px;
 }
 
-.openerButton:disabled {
+.openerButton:disabled:not([data-opening="true"]) {
   cursor: default;
   opacity: 0.65;
+}
+
+.openerButton[data-opening="true"] {
+  cursor: default;
+}
+
+.openerButton[data-opening="true"]::before {
+  animation: none;
+  opacity: 0;
+  transition: opacity 240ms ease;
 }
 
 .openerOrb {
@@ -145,7 +155,7 @@
 }
 
 .packPage {
-  padding: clamp(66px, 8vh, 104px) 24px 142px;
+  padding: clamp(112px, 15vh, 150px) 24px 72px;
 }
 
 .packHeader {
@@ -184,7 +194,7 @@
 .cardGrid {
   display: grid;
   width: min(1120px, 100%);
-  margin: clamp(34px, 5vh, 56px) auto 0;
+  margin: clamp(40px, 6vh, 62px) auto 0;
   padding: 0;
   gap: clamp(14px, 2vw, 24px);
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -449,17 +459,12 @@
   text-align: center;
 }
 
-.expiry,
 .previewNote,
 .actionError {
   margin: 0;
   font-family: var(--font-chapter-instrument), system-ui, sans-serif;
   font-size: 11px;
   line-height: 1.4;
-}
-
-.expiry {
-  color: rgba(36, 33, 29, 0.42);
 }
 
 .previewNote {
@@ -779,7 +784,7 @@
 
 @media (max-width: 760px) {
   .packPage {
-    padding: 56px 0 132px;
+    padding: 90px 0 96px;
   }
 
   .packHeader {
@@ -793,7 +798,7 @@
   .cardGrid {
     display: flex;
     width: 100%;
-    margin-top: 34px;
+    margin-top: 50px;
     padding: 0 9vw 12px;
     gap: 12px;
     overflow-x: auto;
