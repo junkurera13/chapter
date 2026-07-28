@@ -64,10 +64,13 @@ function validTimezone(value: string) {
 }
 
 function failure(error: unknown, requestId: string) {
-  console.error("[experience-generator] request failed", {
-    requestId,
-    errorName: error instanceof Error ? error.name : "UnknownError",
-  });
+  console.error(
+    [
+      "[experience-generator] request failed",
+      `requestId=${requestId}`,
+      `error=${error instanceof Error ? `${error.name}: ${error.message}` : "UnknownError"}`,
+    ].join(" "),
+  );
   const message =
     error instanceof Error
       ? error.message

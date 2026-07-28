@@ -187,21 +187,27 @@ async function generateObject<T>(args: {
       maxRetries: 0,
       timeout: { totalMs: 120_000 },
     });
-    console.info("[weekly-pack:generate] call completed", {
-      requestId: args.requestId,
-      schemaName: args.schemaName,
-      model: args.modelId,
-      elapsedMs: Date.now() - startedAt,
-    });
+    console.info(
+      [
+        "[weekly-pack:generate] call completed",
+        `requestId=${args.requestId}`,
+        `schema=${args.schemaName}`,
+        `model=${args.modelId}`,
+        `elapsedMs=${Date.now() - startedAt}`,
+      ].join(" "),
+    );
     return args.schema.parse(result.output);
   } catch (error) {
-    console.warn("[weekly-pack:generate] call failed", {
-      requestId: args.requestId,
-      schemaName: args.schemaName,
-      model: args.modelId,
-      elapsedMs: Date.now() - startedAt,
-      errorName: error instanceof Error ? error.name : "UnknownError",
-    });
+    console.warn(
+      [
+        "[weekly-pack:generate] call failed",
+        `requestId=${args.requestId}`,
+        `schema=${args.schemaName}`,
+        `model=${args.modelId}`,
+        `elapsedMs=${Date.now() - startedAt}`,
+        `error=${error instanceof Error ? `${error.name}: ${error.message}` : "UnknownError"}`,
+      ].join(" "),
+    );
     throw error;
   }
 }
@@ -290,21 +296,42 @@ async function reviewDesign(args: {
   source: PackGenerationSource;
   requestId: string;
 }) {
-  const output = await generateObject({
-    prompt: buildWeeklyPackReviewPrompt({
-      pack: args.pack,
-      graph: args.source.graph,
-      context: args.source.context,
-    }),
-    schema: weeklyPackReviewModelSchema,
-    schemaName: "weekly_pack_review",
-    modelId: PACK_REVIEW_MODEL_ID,
-    temperature: 0.15,
-    maxOutputTokens: 8_000,
-    requestId: args.requestId,
+  const prompt = buildWeeklyPackReviewPrompt({
+    pack: args.pack,
+    graph: args.source.graph,
+    context: args.source.context,
   });
-  return enforceWeeklyPackReviewThresholds(
-    weeklyPackReviewSchema.parse(output),
+  const modelIds = [
+    PACK_REVIEW_MODEL_ID,
+    ...(PACK_FALLBACK_MODEL_ID === PACK_REVIEW_MODEL_ID
+      ? []
+      : [PACK_FALLBACK_MODEL_ID]),
+  ];
+  const failures: string[] = [];
+
+  for (const modelId of modelIds) {
+    try {
+      const output = await generateObject({
+        prompt,
+        schema: weeklyPackReviewModelSchema,
+        schemaName: "weekly_pack_review",
+        modelId,
+        temperature: 0.15,
+        maxOutputTokens: 8_000,
+        requestId: args.requestId,
+      });
+      return enforceWeeklyPackReviewThresholds(
+        weeklyPackReviewSchema.parse(output),
+      );
+    } catch (error) {
+      failures.push(
+        `${modelId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  throw new WeeklyPackGenerationError(
+    `No model produced a valid independent review. ${failures.join(" | ")}`,
   );
 }
 
