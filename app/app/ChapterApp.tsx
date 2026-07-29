@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BottomNavigation, {
   type ChapterTabIndex,
 } from "./BottomNavigation";
@@ -9,6 +9,13 @@ import { loadMyExperienceGraph } from "../../lib/base44Graph";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
 import AgentOrbVideo from "../../components/landing/agent-orb-video";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
+import {
+  firstExperienceWatch as nextWatch,
+  isFirstExperienceRefusal,
+  NO_FIRST_EXPERIENCE_WATCH,
+  type FirstExperienceOutcome,
+} from "../../lib/firstExperienceWatch";
+import { startFirstExperience } from "../../lib/nowClient";
 import { buildWorldGraph } from "./graphData";
 import NowLocationNode from "./NowLocationNode";
 import TogetherView from "./TogetherView";
@@ -60,13 +67,52 @@ export default function ChapterApp({
   const [extracting, setExtracting] = useState(false);
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   /**
-   * Bumped whenever a first experience has just been asked for, by sending a
-   * first memory or by finally giving Chapter a location. A counter rather
-   * than a flag so a second ask restarts the watch that the first one ended.
+   * Whether a first experience is on its way, and which ask it belongs to.
+   * The count is there so a second ask restarts a watch the first one gave up
+   * on; the status is the whole of what Now has to go on while there is still
+   * no chapter to read.
    */
-  const [firstExperienceWatch, setFirstExperienceWatch] = useState(0);
-  const watchForFirstExperience = useCallback(
-    () => setFirstExperienceWatch((count) => count + 1),
+  const [firstExperienceWatch, setFirstExperienceWatch] = useState(
+    NO_FIRST_EXPERIENCE_WATCH,
+  );
+  const asks = useRef(0);
+
+  /**
+   * Ask for the first experience, from wherever the last missing piece was
+   * finally given: the memory itself, or the location without which one
+   * cannot be written. Asking and watching are the same act, so they are one
+   * call, and there is a single place that knows how it went.
+   */
+  const watchForFirstExperience = useCallback(() => {
+    const attempt = (asks.current += 1);
+    setFirstExperienceWatch((current) =>
+      nextWatch(current, { kind: "asked", attempt }),
+    );
+
+    void startFirstExperience().catch((error: unknown) => {
+      const refused = isFirstExperienceRefusal(error);
+      if (!refused) {
+        console.error("Could not start the first experience", error);
+      }
+      setFirstExperienceWatch((current) =>
+        nextWatch(current, {
+          kind: refused ? "refused" : "failed",
+          attempt,
+        }),
+      );
+    });
+  }, []);
+
+  /**
+   * Now has stopped waiting, either because the chapter arrived or because it
+   * never did. Both end the wait; only one of them is worth telling anybody
+   * about.
+   */
+  const settleFirstExperience = useCallback(
+    (outcome: FirstExperienceOutcome) =>
+      setFirstExperienceWatch((current) =>
+        nextWatch(current, { kind: "settled", outcome }),
+      ),
     [],
   );
   const [graphState, setGraphState] = useState<GraphState>({
@@ -206,8 +252,10 @@ export default function ChapterApp({
         onMemoryCreated={() => {
           // Their world is the payoff for sending a first memory, so You is
           // where they land and what they get to look at. The first experience
-          // is being written meanwhile, and Now picks it up whenever they walk
-          // over to it.
+          // is asked for here and written meanwhile, and Now picks it up
+          // whenever they walk over to it. Nothing has a location yet on a
+          // world this new, so the ask is usually refused and Now asks for
+          // one; the refusal is why this cannot promise anything on its own.
           watchForFirstExperience();
           setActiveIndex(0);
           const url = new URL(window.location.href);
@@ -299,8 +347,9 @@ export default function ChapterApp({
           key={weeklyPackReview ?? "live"}
           reviewState={weeklyPackReview}
           onReviewStateChange={changeWeeklyPackReview}
-          watchFirstExperience={firstExperienceWatch}
+          firstExperienceWatch={firstExperienceWatch}
           onFirstExperienceStarted={watchForFirstExperience}
+          onFirstExperienceSettled={settleFirstExperience}
         />
         <NowLocationNode onFirstExperienceStarted={watchForFirstExperience} />
       </>

@@ -28,7 +28,6 @@ import {
   uploadMemoryPhoto,
   validateMemoryPhoto,
 } from "../../lib/base44Memory";
-import { startFirstExperience } from "../../lib/nowClient";
 
 import styles from "./YouOnboarding.module.css";
 import MemoryProcessingScreen from "./MemoryProcessingScreen";
@@ -74,8 +73,9 @@ export default function YouOnboarding({
    */
   onSubmitStarted?: (work: Promise<unknown>) => void;
   /**
-   * The first send also asks Chapter to make the person's first experience.
-   * Later memories only advance the world.
+   * This is the send a first experience is owed for, which is what the screen
+   * says while it goes. Asking for it belongs to whoever handles
+   * `onMemoryCreated`; later memories only advance the world.
    */
   createFirstExperience?: boolean;
 }) {
@@ -270,20 +270,6 @@ export default function YouOnboarding({
         images: uploadedPhotos,
         source: "onboarding",
       });
-
-      if (createFirstExperience) {
-        // The world exists the moment the graph lands, and that is what the
-        // person is waiting to see. Writing the first experience takes its own
-        // model call, so it starts here and finishes on its own; Now watches
-        // for it and shows it when it arrives. Nobody waits twice.
-        //
-        // The memory is already safely part of the person's world. A missing
-        // location or an unavailable research provider must not turn that
-        // successful send into a destructive retry.
-        void startFirstExperience().catch((error) => {
-          console.error("Could not start the first experience", error);
-        });
-      }
     };
 
     // Sent from a world that already exists: the send goes on without this

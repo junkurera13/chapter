@@ -28,23 +28,101 @@ function scheduledDayLabel(day: string) {
   }).format(new Date(`${day}T12:00:00`));
 }
 
+/**
+ * One first experience, on its way.
+ *
+ * Shown from the moment somebody asks for one rather than from the moment a
+ * chapter row exists to read. Writing the brief is its own model call, so a
+ * screen that waits for the row to appear spends that whole time saying
+ * something else, and what it says instead points at Saturday.
+ */
+function FirstExperiencePending({
+  failed = false,
+  onRetry,
+}: {
+  /** The ask never landed, so nothing is coming unless it is asked again. */
+  failed?: boolean;
+  onRetry?: () => void;
+}) {
+  const reduceMotion = useReducedMotion();
+
+  if (failed) {
+    return (
+      <section className={styles.statusPage} role="alert">
+        <div className={styles.statusCopy}>
+          <h1>That first experience didn’t start.</h1>
+          <p>Your memory is safe. Chapter can look again.</p>
+          {onRetry ? (
+            <button
+              type="button"
+              className={styles.primaryAction}
+              onClick={onRetry}
+            >
+              Try again
+            </button>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className={styles.statusPage} aria-live="polite">
+      <motion.div
+        className={styles.statusOrb}
+        initial={reduceMotion ? false : { opacity: 0, scale: 0.975 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: reduceMotion ? 0 : 0.5 }}
+        aria-hidden="true"
+      >
+        <AgentOrbVideo playWhileMounted preload="auto" />
+      </motion.div>
+      <motion.div
+        className={styles.statusCopy}
+        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          duration: reduceMotion ? 0 : 0.42,
+          delay: reduceMotion ? 0 : 0.1,
+        }}
+      >
+        <h1>Your first experience is taking shape.</h1>
+        <p>Chapter is looking around your city now.</p>
+      </motion.div>
+    </section>
+  );
+}
+
 export default function FirstExperienceView({
   chapter,
   onChapterChange,
+  askFailed = false,
+  onAskAgain,
 }: {
-  chapter: NowChapterRecord;
+  /**
+   * Null while the experience has been asked for and no chapter has been
+   * written down yet. One component across the whole wait, so the screen it
+   * puts up does not blink when the row finally lands.
+   */
+  chapter: NowChapterRecord | null;
   onChapterChange: (chapter: NowChapterRecord) => void;
+  /** The ask itself never landed, so nothing is on its way. */
+  askFailed?: boolean;
+  onAskAgain?: () => void;
 }) {
   const reduceMotion = useReducedMotion();
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [scheduledFor, setScheduledFor] = useState(
-    chapter.scheduledFor ?? localIsoDay(),
-  );
+  /**
+   * Empty until a day is picked. The day to fall back on is read at use, not
+   * captured at mount: the chapter that carries one may not have arrived yet.
+   */
+  const [pickedDay, setPickedDay] = useState("");
+  const scheduledFor = pickedDay || chapter?.scheduledFor || localIsoDay();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function chooseDay() {
-    if (!scheduledFor || busy) return;
+    if (!scheduledFor || busy || !chapter) return;
     setBusy(true);
     setError("");
     try {
@@ -63,7 +141,7 @@ export default function FirstExperienceView({
   }
 
   async function decline() {
-    if (busy) return;
+    if (busy || !chapter) return;
     setBusy(true);
     setError("");
     try {
@@ -81,7 +159,7 @@ export default function FirstExperienceView({
   }
 
   async function markLived() {
-    if (busy) return;
+    if (busy || !chapter) return;
     setBusy(true);
     setError("");
     try {
@@ -116,31 +194,18 @@ export default function FirstExperienceView({
     }
   }
 
-  if (chapter.status === "researching") {
+  /*
+   * Asked for and not written down yet, or written down and still being
+   * looked into. One screen for the whole wait: the brief is its own model
+   * call, and where the work has got to internally is not news to anybody
+   * watching. Only a wait that has ended badly reads differently.
+   */
+  if (!chapter || chapter.status === "researching") {
     return (
-      <section className={styles.statusPage} aria-live="polite">
-        <motion.div
-          className={styles.statusOrb}
-          initial={reduceMotion ? false : { opacity: 0, scale: 0.975 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: reduceMotion ? 0 : 0.5 }}
-          aria-hidden="true"
-        >
-          <AgentOrbVideo playWhileMounted preload="auto" />
-        </motion.div>
-        <motion.div
-          className={styles.statusCopy}
-          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{
-            duration: reduceMotion ? 0 : 0.42,
-            delay: reduceMotion ? 0 : 0.1,
-          }}
-        >
-          <h1>Your first experience is taking shape.</h1>
-          <p>Chapter is looking around your city now.</p>
-        </motion.div>
-      </section>
+      <FirstExperiencePending
+        failed={!chapter && askFailed}
+        onRetry={onAskAgain}
+      />
     );
   }
 
@@ -273,7 +338,7 @@ export default function FirstExperienceView({
                   type="date"
                   min={localIsoDay()}
                   value={scheduledFor}
-                  onChange={(event) => setScheduledFor(event.target.value)}
+                  onChange={(event) => setPickedDay(event.target.value)}
                 />
               </label>
               <div className={styles.actions}>

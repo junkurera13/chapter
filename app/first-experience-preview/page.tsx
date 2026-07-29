@@ -2,7 +2,14 @@ import { notFound } from "next/navigation";
 
 import FirstExperiencePreviewHarness from "./FirstExperiencePreviewHarness";
 
+/**
+ * Every screen this surface can be on, including the two that exist before a
+ * chapter does: the wait that starts the moment somebody asks for a first
+ * experience, and the ask that never landed.
+ */
 const PREVIEW_STATUSES = [
+  "writing",
+  "ask-failed",
   "researching",
   "proposed",
   "accepted",

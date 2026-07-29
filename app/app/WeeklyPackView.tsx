@@ -11,6 +11,11 @@ import coastalRideImage from "@/app/assets/coastal-ride-solo.jpg";
 import ChapterLoadingMark from "@/components/chapter-loading-mark";
 import AgentOrbVideo from "@/components/landing/agent-orb-video";
 import EmbossedCardBack from "@/components/weekly-pack/EmbossedCardBack";
+import {
+  NO_FIRST_EXPERIENCE_WATCH,
+  type FirstExperienceOutcome,
+  type FirstExperienceWatch,
+} from "@/lib/firstExperienceWatch";
 import type { NowChapterRecord } from "@/lib/nowChapterSchema";
 import { loadNow } from "@/lib/nowClient";
 import type { BubblegumTone } from "@/components/weekly-pack/emboss-engine";
@@ -362,21 +367,29 @@ export default function WeeklyPackView({
   reviewState,
   onReviewStateChange,
   reviewPack,
-  watchFirstExperience = 0,
+  firstExperienceWatch = NO_FIRST_EXPERIENCE_WATCH,
   onFirstExperienceStarted,
+  onFirstExperienceSettled,
 }: {
   reviewState?: WeeklyPackReviewState;
   onReviewStateChange?: (state: WeeklyPackReviewState) => void;
   reviewPack?: WeeklyExperiencePack;
-  /** A location was just given here, so an experience may now be on its way. */
-  onFirstExperienceStarted?: () => void;
   /**
-   * Counts the times a first experience has been asked for. Non-zero means one
-   * is being written even though no chapter exists to read yet, and a fresh
-   * number restarts the wait after an earlier one gave up.
+   * Ask for the first experience: a location was just given here, or the last
+   * ask failed and somebody pressed to try again.
    */
-  watchFirstExperience?: number;
+  onFirstExperienceStarted?: () => void;
+  /** This screen has stopped waiting, and why. */
+  onFirstExperienceSettled?: (outcome: FirstExperienceOutcome) => void;
+  /**
+   * Whether one is being written. "writing" means it was asked for and no
+   * chapter has been written down yet, and a fresh attempt number restarts the
+   * wait after an earlier one gave up.
+   */
+  firstExperienceWatch?: FirstExperienceWatch;
 }) {
+  const watchAttempt = firstExperienceWatch.attempt;
+  const watchStatus = firstExperienceWatch.status;
   const reduceMotion = useReducedMotion();
   const initialReview = reviewPack
     ? { state: { status: "ready" as const, pack: reviewPack } }
@@ -425,9 +438,11 @@ export default function WeeklyPackView({
         if (!active) return;
         setState({ status: "ready", pack });
         const chapter = now?.chapter;
-        setFirstExperience(
-          chapter?.brief?.basis === "world" ? chapter : null,
-        );
+        const found = chapter?.brief?.basis === "world" ? chapter : null;
+        setFirstExperience(found);
+        // Walking over to a chapter that was written while this screen was
+        // somewhere else ends the wait just as arriving at one does.
+        if (found) onFirstExperienceSettled?.("found");
         if (now) setHomeCity(now.homeCity || "");
       })
       .catch((error) => {
@@ -444,6 +459,8 @@ export default function WeeklyPackView({
     return () => {
       active = false;
     };
+    // The settle callback is stable and is not a reason to read the pack again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewState]);
 
   const firstExperienceStatus = firstExperience?.status;
@@ -453,7 +470,7 @@ export default function WeeklyPackView({
     if (reviewState) return;
     // Either an experience is being researched, or one is on its way and has
     // not been written down yet. Both are worth waiting on.
-    const awaitingArrival = watchFirstExperience > 0 && !hasFirstExperience;
+    const awaitingArrival = watchStatus === "writing" && !hasFirstExperience;
     if (firstExperienceStatus !== "researching" && !awaitingArrival) return;
 
     let active = true;
@@ -461,6 +478,15 @@ export default function WeeklyPackView({
     // A first experience that never appears must not leave the tab polling for
     // the rest of the session.
     const giveUpAt = Date.now() + 4 * 60 * 1000;
+    const waitAgain = (delay: number) => {
+      // Giving up is the answer that a screen still saying "taking shape" has
+      // been waiting for. It is told, rather than left to keep promising.
+      if (Date.now() < giveUpAt) {
+        timer = window.setTimeout(() => void poll(), delay);
+        return;
+      }
+      onFirstExperienceSettled?.("gaveUp");
+    };
     const poll = async () => {
       try {
         const now = await loadNow();
@@ -469,15 +495,13 @@ export default function WeeklyPackView({
         const found = chapter?.brief?.basis === "world" ? chapter : null;
         setFirstExperience(found);
         setHomeCity(now.homeCity || "");
+        if (found) onFirstExperienceSettled?.("found");
         const stillComing =
-          chapter?.status === "researching" || (!found && watchFirstExperience > 0);
-        if (stillComing && Date.now() < giveUpAt) {
-          timer = window.setTimeout(() => void poll(), 5000);
-        }
+          chapter?.status === "researching" ||
+          (!found && watchStatus === "writing");
+        if (stillComing) waitAgain(5000);
       } catch {
-        if (active && Date.now() < giveUpAt) {
-          timer = window.setTimeout(() => void poll(), 8000);
-        }
+        if (active) waitAgain(8000);
       }
     };
 
@@ -491,7 +515,9 @@ export default function WeeklyPackView({
   }, [
     firstExperienceStatus,
     hasFirstExperience,
-    watchFirstExperience,
+    watchAttempt,
+    watchStatus,
+    onFirstExperienceSettled,
     reviewState,
   ]);
 
@@ -697,15 +723,24 @@ export default function WeeklyPackView({
     showDatePicker,
   });
 
-  if (
-    !reviewState &&
+  /*
+   * A first experience holds this screen from the moment it is asked for,
+   * not from the moment a chapter exists to read. That gap is most of the
+   * wait: the brief is its own model call, and standing on Saturday's locked
+   * pack until it comes back promises the wrong thing about the wrong day.
+   */
+  const writingFirstExperience = !firstExperience && watchStatus !== "idle";
+  const readingFirstExperience =
     firstExperience &&
-    !["scheduled", "declined", "lived"].includes(firstExperience.status)
-  ) {
+    !["scheduled", "declined", "lived"].includes(firstExperience.status);
+
+  if (!reviewState && (writingFirstExperience || readingFirstExperience)) {
     return (
       <FirstExperienceView
         chapter={firstExperience}
         onChapterChange={setFirstExperience}
+        askFailed={watchStatus === "failed"}
+        onAskAgain={onFirstExperienceStarted}
       />
     );
   }

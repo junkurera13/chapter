@@ -4,9 +4,22 @@ import FirstExperienceView from "@/app/app/FirstExperienceView";
 import type { NowChapterRecord } from "@/lib/nowChapterSchema";
 import { useState } from "react";
 
-function previewChapter(
-  status: "researching" | "proposed" | "accepted" | "lived" | "failed",
-): NowChapterRecord {
+export type FirstExperiencePreviewStatus =
+  | "writing"
+  | "ask-failed"
+  | "researching"
+  | "proposed"
+  | "accepted"
+  | "lived"
+  | "failed";
+
+/** The two states that exist before there is any chapter to preview. */
+type ChapterStatus = Exclude<
+  FirstExperiencePreviewStatus,
+  "writing" | "ask-failed"
+>;
+
+function previewChapter(status: ChapterStatus): NowChapterRecord {
   const base: NowChapterRecord = {
     id: "preview-first-experience",
     status,
@@ -47,13 +60,18 @@ function previewChapter(
 export default function FirstExperiencePreviewHarness({
   status,
 }: {
-  status: "researching" | "proposed" | "accepted" | "lived" | "failed";
+  status: FirstExperiencePreviewStatus;
 }) {
-  const [chapter, setChapter] = useState(() => previewChapter(status));
+  const waiting = status === "writing" || status === "ask-failed";
+  const [chapter, setChapter] = useState<NowChapterRecord | null>(() =>
+    waiting ? null : previewChapter(status as ChapterStatus),
+  );
   return (
     <FirstExperienceView
       chapter={chapter}
       onChapterChange={setChapter}
+      askFailed={status === "ask-failed"}
+      onAskAgain={() => setChapter(previewChapter("researching"))}
     />
   );
 }
