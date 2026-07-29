@@ -292,9 +292,15 @@ function chosenCard(pack: WeeklyExperiencePack) {
 function LockedPackState({
   releaseAt,
   reduceMotion,
+  needsLocation = false,
 }: {
   releaseAt: number;
   reduceMotion: boolean;
+  /**
+   * Nothing can be researched without somewhere to research, so promising a
+   * Saturday that cannot arrive is worse than asking for the missing piece.
+   */
+  needsLocation?: boolean;
 }) {
   return (
     <section className={styles.statePage}>
@@ -319,13 +325,24 @@ function LockedPackState({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.14 }}
       >
-        <h1>Your experiences are taking shape.</h1>
-        <p>
-          Ready{" "}
-          <span className={styles.dateUnderline}>
-            Saturday, {dayLabel(releaseAt, { weekday: undefined })}
-          </span>
-        </p>
+        {needsLocation ? (
+          <>
+            <h1>Chapter needs to know where you are.</h1>
+            <p>
+              Set your location and your first experience starts straight away.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1>Your experiences are taking shape.</h1>
+            <p>
+              Ready{" "}
+              <span className={styles.dateUnderline}>
+                Saturday, {dayLabel(releaseAt, { weekday: undefined })}
+              </span>
+            </p>
+          </>
+        )}
       </motion.div>
     </section>
   );
@@ -335,17 +352,17 @@ export default function WeeklyPackView({
   reviewState,
   onReviewStateChange,
   reviewPack,
-  expectFirstExperience = false,
+  watchFirstExperience = 0,
 }: {
   reviewState?: WeeklyPackReviewState;
   onReviewStateChange?: (state: WeeklyPackReviewState) => void;
   reviewPack?: WeeklyExperiencePack;
   /**
-   * A first memory was just sent, so its experience is being written even
-   * though no chapter exists to read yet. Without this, the first load finds
-   * nothing and there is nothing to wait on.
+   * Counts the times a first experience has been asked for. Non-zero means one
+   * is being written even though no chapter exists to read yet, and a fresh
+   * number restarts the wait after an earlier one gave up.
    */
-  expectFirstExperience?: boolean;
+  watchFirstExperience?: number;
 }) {
   const reduceMotion = useReducedMotion();
   const initialReview = reviewPack
@@ -360,6 +377,8 @@ export default function WeeklyPackView({
   );
   const [firstExperience, setFirstExperience] =
     useState<NowChapterRecord | null>(null);
+  /** null until Now has been read once, so nothing is claimed before then. */
+  const [homeCity, setHomeCity] = useState<string | null>(null);
   const [pendingChoice, setPendingChoice] = useState<WeeklyPackScale | null>(
     initialReview?.pendingChoice ?? null,
   );
@@ -396,6 +415,7 @@ export default function WeeklyPackView({
         setFirstExperience(
           chapter?.brief?.basis === "world" ? chapter : null,
         );
+        if (now) setHomeCity(now.homeCity || "");
       })
       .catch((error) => {
         if (active) {
@@ -420,7 +440,7 @@ export default function WeeklyPackView({
     if (reviewState) return;
     // Either an experience is being researched, or one is on its way and has
     // not been written down yet. Both are worth waiting on.
-    const awaitingArrival = expectFirstExperience && !hasFirstExperience;
+    const awaitingArrival = watchFirstExperience > 0 && !hasFirstExperience;
     if (firstExperienceStatus !== "researching" && !awaitingArrival) return;
 
     let active = true;
@@ -435,8 +455,9 @@ export default function WeeklyPackView({
         const chapter = now.chapter;
         const found = chapter?.brief?.basis === "world" ? chapter : null;
         setFirstExperience(found);
+        setHomeCity(now.homeCity || "");
         const stillComing =
-          chapter?.status === "researching" || (!found && expectFirstExperience);
+          chapter?.status === "researching" || (!found && watchFirstExperience > 0);
         if (stillComing && Date.now() < giveUpAt) {
           timer = window.setTimeout(() => void poll(), 5000);
         }
@@ -457,7 +478,7 @@ export default function WeeklyPackView({
   }, [
     firstExperienceStatus,
     hasFirstExperience,
-    expectFirstExperience,
+    watchFirstExperience,
     reviewState,
   ]);
 
@@ -713,6 +734,9 @@ export default function WeeklyPackView({
       <LockedPackState
         releaseAt={releaseAt}
         reduceMotion={Boolean(reduceMotion)}
+        // Only once Now has actually been read: an empty string means asked
+        // and answered with nothing, null means not asked yet.
+        needsLocation={homeCity === ""}
       />
     );
   }

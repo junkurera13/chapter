@@ -12,13 +12,22 @@ import {
   loadNow,
   saveHomeCity,
   searchPlaceSuggestions,
+  startFirstExperience,
   type PlaceSuggestion,
 } from "@/lib/nowClient";
 
 import { categoryOrbGradient } from "./categoryAppearance";
 import styles from "./NowLocationNode.module.css";
 
-export default function NowLocationNode() {
+export default function NowLocationNode({
+  onFirstExperienceStarted,
+}: {
+  /**
+   * A location has been saved for the first time, so an experience that could
+   * not be written before may be on its way now.
+   */
+  onFirstExperienceStarted?: () => void;
+} = {}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsId = useId();
@@ -115,6 +124,7 @@ export default function NowLocationNode() {
 
     setSaving(true);
     setError("");
+    const hadHomeCity = Boolean(homeCity);
     try {
       const saved = await saveHomeCity(nextHomeCity);
       setHomeCity(saved.homeCity);
@@ -124,6 +134,18 @@ export default function NowLocationNode() {
       setDirty(false);
       setSuggestions([]);
       setActiveIndex(-1);
+
+      if (!hadHomeCity) {
+        // A first experience cannot be written without somewhere to write it
+        // about, so the one that was refused at onboarding starts now. The
+        // route decides whether it is owed: it answers with the existing
+        // chapter, or refuses again if there is still no memory.
+        void startFirstExperience().catch(() => {
+          // Nothing is owed, or one is already running. Either way the
+          // location is saved and that was what this control promised.
+        });
+        onFirstExperienceStarted?.();
+      }
     } catch (caught) {
       setError(
         caught instanceof Error

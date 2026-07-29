@@ -59,8 +59,16 @@ export default function ChapterApp({
    */
   const [extracting, setExtracting] = useState(false);
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
-  /** A first memory was just sent and its experience is still being written. */
-  const [awaitingFirstExperience, setAwaitingFirstExperience] = useState(false);
+  /**
+   * Bumped whenever a first experience has just been asked for, by sending a
+   * first memory or by finally giving Chapter a location. A counter rather
+   * than a flag so a second ask restarts the watch that the first one ended.
+   */
+  const [firstExperienceWatch, setFirstExperienceWatch] = useState(0);
+  const watchForFirstExperience = useCallback(
+    () => setFirstExperienceWatch((count) => count + 1),
+    [],
+  );
   const [graphState, setGraphState] = useState<GraphState>({
     status: "ready",
     graph: initialGraph,
@@ -200,7 +208,7 @@ export default function ChapterApp({
           // where they land and what they get to look at. The first experience
           // is being written meanwhile, and Now picks it up whenever they walk
           // over to it.
-          setAwaitingFirstExperience(true);
+          watchForFirstExperience();
           setActiveIndex(0);
           const url = new URL(window.location.href);
           url.searchParams.set("view", "you");
@@ -291,9 +299,9 @@ export default function ChapterApp({
           key={weeklyPackReview ?? "live"}
           reviewState={weeklyPackReview}
           onReviewStateChange={changeWeeklyPackReview}
-          expectFirstExperience={awaitingFirstExperience}
+          watchFirstExperience={firstExperienceWatch}
         />
-        <NowLocationNode />
+        <NowLocationNode onFirstExperienceStarted={watchForFirstExperience} />
       </>
     ) : displayedIndex === 2 ? (
       <TogetherView
