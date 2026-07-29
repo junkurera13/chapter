@@ -172,10 +172,17 @@ rewritten anyone's history.
   outside Eve.
 - `lib/graphRepair.ts`: read-time structural lint over the projection.
 
-The graph produced here is what **Now** and **Together** plan from. Together
-reads it through a shareable cut — places, activities, interests only — so the
-pillars this document treats as private (people, feelings, conditions, patterns)
-are exactly the ones that never cross an account boundary.
+The graph produced here is what **Now** and **Together** plan from. Now spends
+it once a week: every Saturday at 9:00 a.m. local time it opens a sealed pack of
+three independently researched experiences, one small activity, one mini
+adventure, and one proper adventure, and the person may reveal all three but
+keep only one. That weekly choice is the main thing a private graph is *for*, so
+extraction quality is felt most in what shows up on Saturday. See
+[`weekly-experience-packs.md`](./weekly-experience-packs.md) for that contract.
+
+Together reads the graph through a shareable cut — places, activities, interests
+only — so the pillars this document treats as private (people, feelings,
+conditions, patterns) are exactly the ones that never cross an account boundary.
 
 ## Operational versioning
 
