@@ -189,5 +189,4 @@ retrieval, a Saturday pack from three research runs through reveal and choice,
 a two-account connection acceptance, a Together gist and chapter across two
 accounts, and mobile overflow.
 
-See [`BUILD_JOURNAL.md`](./BUILD_JOURNAL.md) for the build history and
-[`SUBMISSION.md`](./SUBMISSION.md) for the competition draft.
+See [`BUILD_JOURNAL.md`](./BUILD_JOURNAL.md) for the build history.
