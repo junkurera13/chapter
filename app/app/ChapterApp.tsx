@@ -196,12 +196,14 @@ export default function ChapterApp({
       <YouOnboarding
         createFirstExperience
         onMemoryCreated={() => {
-          // The first experience is already being written. Now opens straight
-          // away and waits for it there rather than holding this screen.
+          // Their world is the payoff for sending a first memory, so You is
+          // where they land and what they get to look at. The first experience
+          // is being written meanwhile, and Now picks it up whenever they walk
+          // over to it.
           setAwaitingFirstExperience(true);
-          setActiveIndex(1);
+          setActiveIndex(0);
           const url = new URL(window.location.href);
-          url.searchParams.set("view", "now");
+          url.searchParams.set("view", "you");
           url.searchParams.delete("joined");
           window.history.replaceState(null, "", url);
           queueGraphLoad();
