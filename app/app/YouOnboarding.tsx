@@ -28,6 +28,7 @@ import {
   uploadMemoryPhoto,
   validateMemoryPhoto,
 } from "../../lib/base44Memory";
+import { startFirstExperience } from "../../lib/nowClient";
 
 import styles from "./YouOnboarding.module.css";
 import MemoryProcessingScreen from "./MemoryProcessingScreen";
@@ -57,6 +58,7 @@ export default function YouOnboarding({
   onMemoryCreated,
   composerOnly = false,
   onSubmitStarted,
+  createFirstExperience = false,
 }: {
   onMemoryCreated: () => void;
   /**
@@ -71,6 +73,11 @@ export default function YouOnboarding({
    * next; this component is finished the instant it is called.
    */
   onSubmitStarted?: (work: Promise<unknown>) => void;
+  /**
+   * The first send also asks Chapter to make the person's first experience.
+   * Later memories only advance the world.
+   */
+  createFirstExperience?: boolean;
 }) {
   const [started, setStarted] = useState(composerOnly);
   const [memoryText, setMemoryText] = useState("");
@@ -263,6 +270,17 @@ export default function YouOnboarding({
         images: uploadedPhotos,
         source: "onboarding",
       });
+
+      if (createFirstExperience) {
+        try {
+          await startFirstExperience();
+        } catch (error) {
+          // The memory is already safely part of the person's world. A missing
+          // location or an unavailable research provider must not turn that
+          // successful send into a destructive retry.
+          console.error("Could not start the first experience", error);
+        }
+      }
     };
 
     // Sent from a world that already exists: the send goes on without this
@@ -794,7 +812,9 @@ export default function YouOnboarding({
 
                   <AnimatePresence initial={false}>
                     {submitting ? (
-                      <MemoryProcessingScreen />
+                      <MemoryProcessingScreen
+                        firstExperience={createFirstExperience}
+                      />
                     ) : null}
                   </AnimatePresence>
 

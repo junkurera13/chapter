@@ -1,6 +1,6 @@
 ---
 name: craft-chapter-experiences
-description: Design, research, critique, and evaluate exceptional real-world Chapter experiences from private memory graphs or privacy-safe graph intersections. Use when creating weekly Now packs, choosing experience formats, designing personal or social chapters, writing research briefs, reviewing research findings, auditing three-card diversity, or diagnosing why an experience feels generic, invasive, impractical, repetitive, or emotionally false.
+description: Design, research, critique, and evaluate exceptional real-world Chapter experiences from the current world, private memory graphs, or privacy-safe graph intersections. Use when creating weekly Now packs, choosing experience formats, designing personal or social chapters, writing research briefs, reviewing research findings, auditing three-card diversity, or diagnosing why an experience feels generic, invasive, impractical, repetitive, over-personalized, or emotionally false.
 ---
 
 # Craft Chapter Experiences
@@ -44,25 +44,28 @@ widen either boundary.
 
 ## Design a three-card pack
 
-1. Read the usable graph evidence and recent outcomes. Identify several living
-   threads; do not lock onto the most obvious noun.
-2. Assign three format contracts before researching. Treat experience scale and
-   social composition as separate axes.
-3. Create the pack as one composition. Give each card a different primary
-   thread, scale, experience mechanism, and meaningful stretch.
-4. Design the experience itself: the human action, setting, constraint, rhythm,
+1. Read the current-world context, usable graph evidence, and recent outcomes.
+   The present world is a source of experiences; the graph is one influence.
+2. Assign three format and basis contracts before researching. Treat experience
+   scale, social composition, and basis as separate axes.
+3. Use two world-led cards and one anchored card. Normally the anchored card is
+   graph-led. When a real social candidate is supplied, the social card is the
+   sole anchored card.
+4. Create the pack as one composition. Give each card a different familiar
+   frame, scale, experience mechanism, and meaningful stretch.
+5. Design the experience itself: the human action, setting, constraint, rhythm,
    and reason the moment may become memorable.
-5. Spend exactly one novelty dimension per card. Keep the other dimensions
+6. Spend exactly one novelty dimension per card. Keep the other dimensions
    familiar enough that the stretch can be lived rather than merely admired.
-6. Write three separate research briefs. Make each brief prove the facts and
+7. Write three separate research briefs. Make each brief prove the facts and
    logistics its designed experience needs; do not reduce every brief to
    finding a venue.
-7. Run independent research for diversity. Reject closed, generic, unsafe,
+8. Run independent research for diversity. Reject closed, generic, unsafe,
    overexposed, or weakly evidenced findings.
-8. Compose each card without claiming why the person will like it. Let verified
-   graph anchors show the familiar side and let the invitation state the
-   experience plainly.
-9. Audit each card and then the pack. Regenerate a weak or colliding card rather
+9. Compose each card without claiming why the person will like it. Show graph
+   anchors only on graph or social cards. Let world cards stand on the current
+   action and verified place without invented personalization.
+10. Audit each card and then the pack. Regenerate a weak or colliding card rather
    than rationalizing it.
 
 ## Preserve these distinct axes
@@ -85,8 +88,9 @@ a settings panel.
 
 For each candidate, record:
 
-- exact graph anchors and evidence strength;
-- the familiar thread in one plain sentence;
+- basis: `world`, `graph`, or `social`;
+- exact graph anchors and evidence strength when the basis is anchored;
+- the familiar frame in one plain sentence;
 - the single stretch and its dimension;
 - the format contract;
 - the experience promise: what the person will actually do;
@@ -101,7 +105,8 @@ Do not proceed when the design cannot explain its value without naming a venue.
 
 Reject any candidate that:
 
-- could have been generated without this person's graph;
+- pretends to come from the graph when its basis is world-led;
+- forces weak graph evidence into an experience to make it look personal;
 - repeats a memory instead of transforming it;
 - requires two or more unfamiliar dimensions;
 - mistakes an unusual venue for an experience;

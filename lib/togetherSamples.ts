@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { TogetherGist } from "./togetherGistSchema";
 
 /**
@@ -5,18 +7,11 @@ import type { TogetherGist } from "./togetherGistSchema";
  * hardest thing in Chapter to demo — it needs two graphs that overlap — so one
  * account is allowed to see the shape of it before the pool exists.
  *
- * Deliberately readable from the browser as well as the server. A sample is a
- * constant, and a constant that has to be fetched is a constant that arrives
- * five seconds late. The server keeps its own variable so the list can be
- * changed in production without a rebuild; the browser falls back to the same
- * default the server ships with.
+ * The allowlist is server-only. The browser learns only whether the API
+ * returned samples; it never receives the email addresses that enable them.
  */
 export function demoAccounts(): string[] {
-  return (
-    process.env.CHAPTER_DEMO_ACCOUNTS ??
-    process.env.NEXT_PUBLIC_CHAPTER_DEMO_ACCOUNTS ??
-    "parkjundk@gmail.com"
-  )
+  return (process.env.CHAPTER_DEMO_ACCOUNTS ?? "")
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);

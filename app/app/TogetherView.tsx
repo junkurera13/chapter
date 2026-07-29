@@ -31,12 +31,12 @@ import {
   OPENED_INTRODUCTIONS,
   OPENED_TOGETHER,
 } from "../../lib/openedViews";
+import { subscribeToRealtimeInbox } from "../../lib/realtimeInbox";
 import { buildEntries, isOpen } from "../../lib/togetherEntries";
 import type {
   TogetherGist,
   TogetherGistsState,
 } from "../../lib/togetherGistSchema";
-import { demoGists } from "../../lib/togetherSamples";
 import { categoryOrbGradient } from "./categoryAppearance";
 import type { WorldNode } from "./graphData";
 import HumanMessages from "./HumanMessages";
@@ -52,7 +52,8 @@ import styles from "./TogetherView.module.css";
  * rate limit the reads that people are waiting on also have to pass through.
  */
 const RESEARCH_POLL_MS = 15_000;
-const MESSAGE_POLL_MS = 8_000;
+const MESSAGE_FALLBACK_POLL_MS = 30_000;
+const REALTIME_REFRESH_DEBOUNCE_MS = 180;
 
 const RESEARCH_STAGES = [
   "Reading both your worlds",
@@ -102,13 +103,10 @@ type ViewState =
 
 export default function TogetherView({
   nodes,
-  showSamples = false,
   onOpenYou,
   onGraphAdvanced,
 }: {
   nodes: readonly WorldNode[];
-  /** This account sees sample gists behind whatever is real. */
-  showSamples?: boolean;
   onOpenYou: () => void;
   onGraphAdvanced?: () => void;
 }) {
@@ -126,10 +124,8 @@ export default function TogetherView({
   const [state, setState] = useState<ViewState>(
     opened ? { status: "ready", together: opened } : { status: "loading" },
   );
-  // Samples are constants. They have no business waiting on a round trip, let
-  // alone on the model call that writes the real ones.
   const [gists, setGists] = useState<TogetherGist[]>(
-    openedGists?.gists ?? (showSamples ? demoGists() : []),
+    openedGists?.gists ?? [],
   );
   const [introductions, setIntroductions] = useState<IntroductionRecord[]>(
     openedIntroductions?.introductions ?? [],
@@ -386,13 +382,58 @@ export default function TogetherView({
     (introduction) =>
       introduction.state === "sent" || introduction.state === "received",
   );
+
+  useEffect(() => {
+    let active = true;
+    let refreshPending = false;
+    let refreshTimer: number | undefined;
+
+    const refreshInbox = () => {
+      if (!active) return;
+      if (document.visibilityState !== "visible") {
+        refreshPending = true;
+        return;
+      }
+      refreshPending = false;
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        if (!active) return;
+        void Promise.all([readIntroductions(), readConversations()]);
+      }, REALTIME_REFRESH_DEBOUNCE_MS);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && refreshPending) {
+        refreshInbox();
+      }
+    };
+
+    let unsubscribe = () => {};
+    try {
+      unsubscribe = subscribeToRealtimeInbox(refreshInbox);
+    } catch (error) {
+      // A rolling deployment may briefly have the frontend before the entity.
+      // The slower poll below remains the resilience path.
+      console.warn("Could not start realtime inbox updates", error);
+    }
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      active = false;
+      window.clearTimeout(refreshTimer);
+      document.removeEventListener("visibilitychange", onVisible);
+      unsubscribe();
+    };
+  }, [readConversations, readIntroductions]);
+
+  // Realtime is the primary path. This slower visible-tab poll covers a lost
+  // socket event or a client that stayed open during a rolling deployment.
   useEffect(() => {
     if (!messagePending && !messagesOpen) return;
     const poll = window.setInterval(() => {
       if (document.visibilityState !== "visible") return;
       void readIntroductions();
       if (messagesOpen) void readConversations();
-    }, MESSAGE_POLL_MS);
+    }, MESSAGE_FALLBACK_POLL_MS);
     return () => window.clearInterval(poll);
   }, [messagePending, messagesOpen, readConversations, readIntroductions]);
 

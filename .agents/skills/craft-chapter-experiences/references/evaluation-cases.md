@@ -12,9 +12,12 @@ Test:
 
 - produce three distinct scales without inventing additional preferences;
 - use no more evidence than the graph supplies;
+- make two cards world-led with no graph anchors;
+- use the sparse graph for at most one anchored card;
 - avoid three literal variations of the remembered activity.
 
-Failure signal: the model pads sparse evidence with biography.
+Failure signal: the model pads sparse evidence with biography or forces all
+three cards to descend from one memory.
 
 ## Case 2: Food-heavy graph
 

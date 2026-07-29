@@ -11,6 +11,8 @@ import coastalRideImage from "@/app/assets/coastal-ride-solo.jpg";
 import ChapterLoadingMark from "@/components/chapter-loading-mark";
 import AgentOrbVideo from "@/components/landing/agent-orb-video";
 import EmbossedCardBack from "@/components/weekly-pack/EmbossedCardBack";
+import type { NowChapterRecord } from "@/lib/nowChapterSchema";
+import { loadNow } from "@/lib/nowClient";
 import type { BubblegumTone } from "@/components/weekly-pack/emboss-engine";
 import type { WorldNodeCategory } from "@/app/app/graphData";
 import type { WeeklyPackScale } from "@/lib/weeklyPackDesign";
@@ -34,6 +36,7 @@ import { weeklyPackPhase } from "@/lib/weeklyPackPhase";
 import { weeklyPackWindow } from "@/lib/weeklyPackSchedule";
 
 import { categoryOrbGradient } from "./categoryAppearance";
+import FirstExperienceView from "./FirstExperienceView";
 import styles from "./WeeklyPackView.module.css";
 
 type PackState =
@@ -348,6 +351,8 @@ export default function WeeklyPackView({
   const [state, setState] = useState<PackState>(
     () => initialReview?.state ?? { status: "loading" },
   );
+  const [firstExperience, setFirstExperience] =
+    useState<NowChapterRecord | null>(null);
   const [pendingChoice, setPendingChoice] = useState<WeeklyPackScale | null>(
     initialReview?.pendingChoice ?? null,
   );
@@ -373,9 +378,17 @@ export default function WeeklyPackView({
     if (reviewState) return;
 
     let active = true;
-    void loadWeeklyPack()
-      .then(({ pack }) => {
-        if (active) setState({ status: "ready", pack });
+    void Promise.all([
+      loadWeeklyPack(),
+      loadNow().catch(() => null),
+    ])
+      .then(([{ pack }, now]) => {
+        if (!active) return;
+        setState({ status: "ready", pack });
+        const chapter = now?.chapter;
+        setFirstExperience(
+          chapter?.brief?.basis === "world" ? chapter : null,
+        );
       })
       .catch((error) => {
         if (active) {
@@ -392,6 +405,34 @@ export default function WeeklyPackView({
       active = false;
     };
   }, [reviewState]);
+
+  useEffect(() => {
+    if (reviewState || firstExperience?.status !== "researching") return;
+
+    let active = true;
+    let timer: number | undefined;
+    const poll = async () => {
+      try {
+        const now = await loadNow();
+        if (!active) return;
+        const chapter = now.chapter;
+        setFirstExperience(
+          chapter?.brief?.basis === "world" ? chapter : null,
+        );
+        if (chapter?.status === "researching") {
+          timer = window.setTimeout(() => void poll(), 5000);
+        }
+      } catch {
+        if (active) timer = window.setTimeout(() => void poll(), 8000);
+      }
+    };
+
+    timer = window.setTimeout(() => void poll(), 5000);
+    return () => {
+      active = false;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [firstExperience?.status, reviewState]);
 
   const pack = state.status === "ready" ? state.pack : null;
 
@@ -594,6 +635,19 @@ export default function WeeklyPackView({
     pendingChoice,
     showDatePicker,
   });
+
+  if (
+    !reviewState &&
+    firstExperience &&
+    !["scheduled", "declined", "lived"].includes(firstExperience.status)
+  ) {
+    return (
+      <FirstExperienceView
+        chapter={firstExperience}
+        onChapterChange={setFirstExperience}
+      />
+    );
+  }
 
   if (phase === "loading") {
     return (

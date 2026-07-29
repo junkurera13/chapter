@@ -48,11 +48,13 @@ function requirements(seed: string): WeeklyPackCardDesign["requirements"] {
 
 function card(args: {
   id: "small" | "mini" | "proper";
+  basis?: "world" | "graph" | "social";
   anchorId: string;
   anchorLabel: string;
   anchorCategory: string;
   mechanism: "observe" | "make" | "explore";
 }): WeeklyPackCardDesign {
+  const basis = args.basis ?? "graph";
   const formats = {
     small: {
       scale: "small" as const,
@@ -132,15 +134,19 @@ function card(args: {
   const stretchDimension = args.id === "proper" ? "place" : "activity";
   return {
     id: args.id,
+    basis,
     format: formats[args.id],
-    primaryAnchorId: args.anchorId,
-    anchors: [
-      {
-        nodeId: args.anchorId,
-        label: args.anchorLabel,
-        category: args.anchorCategory,
-      },
-    ],
+    primaryAnchorId: basis === "world" ? null : args.anchorId,
+    anchors:
+      basis === "world"
+        ? []
+        : [
+            {
+              nodeId: args.anchorId,
+              label: args.anchorLabel,
+              category: args.anchorCategory,
+            },
+          ],
     familiarThread: content.thread,
     familiarity: {
       place: stretchDimension === "place" ? "new" : "familiar",
@@ -179,6 +185,7 @@ function validPack(): WeeklyPackDesign {
       }),
       card({
         id: "mini",
+        basis: "world",
         anchorId: "sparse-river",
         anchorLabel: "riverside",
         anchorCategory: "place",
@@ -186,6 +193,7 @@ function validPack(): WeeklyPackDesign {
       }),
       card({
         id: "proper",
+        basis: "world",
         anchorId: "sparse-walk",
         anchorLabel: "walking",
         anchorCategory: "activity",
@@ -267,6 +275,36 @@ describe("weekly pack design lab", () => {
     });
   });
 
+  it("keeps two cards world-led and only one graph-led", () => {
+    const pack = validPack();
+    expect(pack.cards.map((candidate) => candidate.basis)).toEqual([
+      "graph",
+      "world",
+      "world",
+    ]);
+    expect(pack.cards[1].anchors).toEqual([]);
+    expect(pack.cards[1].primaryAnchorId).toBeNull();
+    expect(buildWeeklyPackDesignPrompt(fixture())).toContain(
+      "exactly two `world` cards and one `graph` card",
+    );
+  });
+
+  it("rejects graph anchors on a world-led card", () => {
+    const pack = structuredClone(validPack());
+    pack.cards[1].primaryAnchorId = "sparse-river";
+    pack.cards[1].anchors = [
+      {
+        nodeId: "sparse-river",
+        label: "riverside",
+        category: "place",
+      },
+    ];
+    const result = audit(pack);
+    expect(result.errors.map((issue) => issue.code)).toContain(
+      "WORLD_CARD_HAS_ANCHORS",
+    );
+  });
+
   it("catches pack monoculture and multiple new dimensions", () => {
     const pack = structuredClone(validPack());
     pack.cards[1].mechanism.kind = pack.cards[0].mechanism.kind;
@@ -300,6 +338,7 @@ describe("weekly pack design lab", () => {
     const current = fixture("eligible-stranger");
     const pack = structuredClone(validPack());
     const small = pack.cards[0];
+    small.basis = "social";
     small.primaryAnchorId = "stranger-sketch";
     small.anchors = [
       {
@@ -325,20 +364,6 @@ describe("weekly pack design lab", () => {
       worthwhileWithoutConnection: true,
       noAlcoholDependency: true,
     };
-    for (const [index, replacement] of [
-      ["stranger-gardens", "public gardens"],
-      ["stranger-plants", "seasonal plants"],
-    ].entries()) {
-      const target = pack.cards[index + 1];
-      target.primaryAnchorId = replacement[0];
-      target.anchors = [
-        {
-          nodeId: replacement[0],
-          label: replacement[1],
-          category: index === 0 ? "place" : "interest",
-        },
-      ];
-    }
     const result = auditWeeklyPackDesign({
       pack,
       graph: current.graph,

@@ -149,6 +149,18 @@ export function startNowChapter() {
 }
 
 /**
+ * The first memory's immediate payoff. The memory send is the person's
+ * request; this starts one world-led experience without treating a sparse
+ * graph as a profile.
+ */
+export function startFirstExperience() {
+  return nowFetch<{ chapter: NowChapterRecord }>({
+    method: "POST",
+    body: { action: "startFirst", today: isoDay() },
+  });
+}
+
+/**
  * Saying you are going, and when.
  *
  * Carries the day the person is standing in, because the day they picked is

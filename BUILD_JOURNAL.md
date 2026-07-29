@@ -198,9 +198,9 @@ placeholder places are rejected again at the Base44 persistence boundary.
 The production weekly generator gained a direct review surface and a stricter
 failure path:
 
-- an owner-restricted `/experience-generator` harness runs the current graph
+- a development-only `/experience-generator` harness runs the current graph
   through design, independent editorial review, three research results, and
-  final composition without exposing the route to other signed-in accounts;
+  final composition without exposing an internal tool in production;
 - structured design attempts retry twice per model before falling back, and the
   independent review, revision, and composition stages use the same model
   fallback;
@@ -211,10 +211,9 @@ failure path:
 - the chosen experience, companion treatment, card proportions, and supporting
   navigation were refined around the final weekly interaction.
 
-Current verification: 311 tests across 46 files, ESLint, and
+Current verification: 330 tests across 48 files, ESLint, TypeScript, and
 `npm run build:safe` pass. The current production Vercel deployment is ready,
 and the deployed `sidequest-data` function recognizes the new human-message
-action. A standalone
-`npx tsc --noEmit` still reports the mock-tuple inference error in
-`lib/weeklyPackImageGeneration.test.ts`; the Next.js production build's own
-type validation passes.
+action. The standalone mock-tuple inference failure in
+`lib/weeklyPackImageGeneration.test.ts` was corrected, and
+`npx tsc --noEmit` now passes.

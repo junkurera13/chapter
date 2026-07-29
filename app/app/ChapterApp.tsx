@@ -9,8 +9,6 @@ import { loadMyExperienceGraph } from "../../lib/base44Graph";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
 import AgentOrbVideo from "../../components/landing/agent-orb-video";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
-import { isDemoAccount } from "../../lib/togetherSamples";
-import { canReviewWeeklyPackUI } from "../../lib/weeklyPackReviewAccess";
 import { buildWorldGraph } from "./graphData";
 import NowLocationNode from "./NowLocationNode";
 import TogetherView from "./TogetherView";
@@ -48,7 +46,7 @@ export default function ChapterApp({
   justConnected?: boolean;
   initialWeeklyPackReview?: WeeklyPackReviewState;
 }) {
-  const canReviewNow = canReviewWeeklyPackUI(viewer.email);
+  const canReviewNow = process.env.NODE_ENV === "development";
   const [activeIndex, setActiveIndex] = useState<ChapterTabIndex>(initialTab);
   const [weeklyPackReview, setWeeklyPackReview] = useState<
     WeeklyPackReviewState | undefined
@@ -192,7 +190,19 @@ export default function ChapterApp({
       </div>
     );
   } else if (graphState.graph.memoryCount === 0) {
-    youPanel = <YouOnboarding onMemoryCreated={queueGraphLoad} />;
+    youPanel = (
+      <YouOnboarding
+        createFirstExperience
+        onMemoryCreated={() => {
+          setActiveIndex(1);
+          const url = new URL(window.location.href);
+          url.searchParams.set("view", "now");
+          url.searchParams.delete("joined");
+          window.history.replaceState(null, "", url);
+          queueGraphLoad();
+        }}
+      />
+    );
   } else if (!worldGraph) {
     youPanel = (
       <div className={styles.graphLoading} aria-busy="true">
@@ -280,7 +290,6 @@ export default function ChapterApp({
     ) : displayedIndex === 2 ? (
       <TogetherView
         nodes={worldGraph?.nodes ?? []}
-        showSamples={isDemoAccount(viewer.email)}
         onOpenYou={() => changeTab(0)}
         onGraphAdvanced={queueGraphLoad}
       />

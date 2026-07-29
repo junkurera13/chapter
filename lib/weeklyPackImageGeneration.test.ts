@@ -4,6 +4,7 @@ import type {
   WeeklyPackCardDesign,
   WeeklyPackResearchFinding,
 } from "./weeklyPackDesign";
+import type { WeeklyPackImageGenerationDependencies } from "./weeklyPackImageGeneration";
 import {
   buildWeeklyPackImagePrompt,
   generateWeeklyPackImage,
@@ -11,6 +12,7 @@ import {
 
 const design: WeeklyPackCardDesign = {
   id: "mini",
+  basis: "graph",
   format: {
     scale: "mini",
     company: "self",
@@ -123,10 +125,12 @@ describe("weekly pack image generation", () => {
   });
 
   it("generates once, persists the bytes, and records a generated image", async () => {
-    const generate = vi.fn(async () => ({
-      bytes: new Uint8Array([1, 2, 3, 4]),
-      mediaType: "image/png",
-    }));
+    const generate = vi.fn<WeeklyPackImageGenerationDependencies["generate"]>(
+      async () => ({
+        bytes: new Uint8Array([1, 2, 3, 4]),
+        mediaType: "image/png",
+      }),
+    );
     const persist = vi.fn(async () => "https://cdn.example/chapter.png");
 
     const image = await generateWeeklyPackImage(
@@ -155,4 +159,3 @@ describe("weekly pack image generation", () => {
     expect(image.alt).toContain("Seongsu-dong");
   });
 });
-

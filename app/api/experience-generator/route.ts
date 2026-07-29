@@ -16,7 +16,6 @@ import {
   sealWeeklyPackReviewJob,
   weeklyPackAccessTokenHash,
 } from "@/lib/weeklyPackGeneratorReview";
-import { canReviewWeeklyPackUI } from "@/lib/weeklyPackReviewAccess";
 import { weeklyPackWindow } from "@/lib/weeklyPackSchedule";
 import { weeklyExperiencePackSchema } from "@/lib/weeklyPackSchema";
 
@@ -88,6 +87,10 @@ function failure(error: unknown, requestId: string) {
 }
 
 export async function POST(request: Request) {
+  if (process.env.NODE_ENV !== "development") {
+    return new Response(null, { status: 404 });
+  }
+
   const requestId = crypto.randomUUID();
   const accessToken = accessTokenFrom(request);
   if (!accessToken) {
@@ -112,13 +115,7 @@ export async function POST(request: Request) {
 
   try {
     if (input.action === "authorize" || input.action === "start") {
-      const { viewer } = await fetchMySession(accessToken);
-      if (!canReviewWeeklyPackUI(viewer.email)) {
-        return Response.json(
-          { error: "Not found.", code: "NOT_FOUND" },
-          { status: 404 },
-        );
-      }
+      await fetchMySession(accessToken);
       if (input.action === "authorize") {
         return Response.json({ value: { status: "authorized" } });
       }
@@ -127,7 +124,7 @@ export async function POST(request: Request) {
         fetchMyGraph(accessToken),
         fetchMyNow(accessToken),
       ]);
-      if (graph.memoryCount === 0 || graph.nodes.length < 3) {
+      if (graph.memoryCount === 0 || graph.nodes.length === 0) {
         return Response.json(
           {
             error: "Add a little more to your world before generating a pack.",

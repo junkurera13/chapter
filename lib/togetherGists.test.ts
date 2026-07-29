@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { TogetherPlanningGraph } from "./togetherChapterSchema";
 
@@ -9,6 +9,10 @@ vi.mock("./nowGeneration", async () => {
     "./nowGeneration",
   );
   return { ...actual, generateStructured };
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 const {
@@ -254,9 +258,14 @@ describe("generateGistLines", () => {
 
 describe("demo gists", () => {
   it("recognises only the configured account", () => {
-    expect(isDemoAccount("parkjundk@gmail.com")).toBe(true);
-    expect(isDemoAccount("  ParkJunDK@Gmail.com ")).toBe(true);
-    expect(isDemoAccount("someone-else@gmail.com")).toBe(false);
+    vi.stubEnv(
+      "CHAPTER_DEMO_ACCOUNTS",
+      "reviewer@example.com, second@example.com",
+    );
+
+    expect(isDemoAccount("reviewer@example.com")).toBe(true);
+    expect(isDemoAccount("  REVIEWER@EXAMPLE.COM ")).toBe(true);
+    expect(isDemoAccount("someone@example.com")).toBe(false);
     expect(isDemoAccount(undefined)).toBe(false);
   });
 

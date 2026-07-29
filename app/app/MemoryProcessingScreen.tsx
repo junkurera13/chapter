@@ -11,29 +11,42 @@ import AgentOrbVideo from "../../components/landing/agent-orb-video";
 
 import styles from "./MemoryProcessingScreen.module.css";
 
-const PROCESSING_PHRASES = [
+const MEMORY_PROCESSING_PHRASES = [
   "Reading",
   "Noticing details",
   "Making connections",
   "Organizing",
 ] as const;
+const FIRST_EXPERIENCE_PHRASES = [
+  "Reading",
+  "Looking around your city",
+  "Finding something worth doing",
+  "Making your first experience",
+] as const;
 const PROCESSING_PHRASE_INTERVAL_MS = 2600;
 
-export default function MemoryProcessingScreen() {
+export default function MemoryProcessingScreen({
+  firstExperience = false,
+}: {
+  firstExperience?: boolean;
+}) {
   const [phraseIndex, setPhraseIndex] = useState(0);
   const reduceMotion = useReducedMotion();
+  const phrases = firstExperience
+    ? FIRST_EXPERIENCE_PHRASES
+    : MEMORY_PROCESSING_PHRASES;
 
   useEffect(() => {
     if (reduceMotion) return;
 
     const phraseTimer = window.setInterval(() => {
       setPhraseIndex(
-        (current) => (current + 1) % PROCESSING_PHRASES.length,
+        (current) => (current + 1) % phrases.length,
       );
     }, PROCESSING_PHRASE_INTERVAL_MS);
 
     return () => window.clearInterval(phraseTimer);
-  }, [reduceMotion]);
+  }, [phrases.length, reduceMotion]);
 
   return (
     <motion.div
@@ -103,7 +116,7 @@ export default function MemoryProcessingScreen() {
                 ease: [0.22, 1, 0.36, 1],
               }}
             >
-              {PROCESSING_PHRASES[phraseIndex]}
+              {phrases[phraseIndex]}
             </motion.p>
           </AnimatePresence>
         </div>

@@ -25,7 +25,7 @@ export const weeklyExperienceCardSchema = z.object({
   company: z.enum(WEEKLY_PACK_COMPANIES),
   title: z.string().trim().min(3).max(120),
   line: z.string().trim().min(20).max(240).optional(),
-  anchors: z.array(weeklyPackAnchorSchema).min(1).max(4).optional(),
+  anchors: z.array(weeklyPackAnchorSchema).max(4).optional(),
   promise: z.string().trim().min(20).max(500),
   opening: z.string().trim().min(20).max(1_000),
   durationMinutes: z.object({

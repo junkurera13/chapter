@@ -144,6 +144,7 @@ function reachClause(homeCity: string, reach: NowReach) {
 export function buildBriefPrompt(args: {
   graph: ExperienceGraphRecord;
   homeCity: string;
+  basis?: "world" | "graph";
   avoidVenues?: readonly string[];
   declineReason?: string;
   /** The day already set aside, when this chapter grew out of a schedule. */
@@ -151,16 +152,26 @@ export function buildBriefPrompt(args: {
   timeWindows?: readonly NowTimeWindow[];
   reach?: NowReach;
 }) {
-  const digest = buildGraphDigest(args.graph);
+  const basis = args.basis ?? "graph";
+  const digest = basis === "graph" ? buildGraphDigest(args.graph) : null;
   const when = whenClause(args.scheduledFor, args.timeWindows);
   return [
-    "You design one real-world experience proposal from a private memory graph.",
-    "The product rule is THE ONE STRETCH: pick one living thread of this person's world (their most salient people, activities, places, feelings), keep everything about it familiar, and stretch EXACTLY ONE dimension into the unknown (an unfamiliar place, an unfamiliar activity, an unfamiliar time-of-life ritual, or doing a familiar thing with a different familiar person). Never stretch two dimensions. Never propose the generic.",
+    basis === "world"
+      ? "You design one world-first real-world experience for a person Chapter has only just met."
+      : "You design one real-world experience proposal with one truthful influence from a private memory graph.",
+    basis === "world"
+      ? "Do not infer a preference, personality, feeling, or biography from the person's first memory. Begin with what is alive, timely, and genuinely worth doing around their city now. Chapter's taste and the present world are the source; personal data is not."
+      : "Use the graph as a light influence, not a biography to reenact. Transform one strong thread without making the whole proposal about the person's past.",
+    "The product rule is THE ONE STRETCH: stretch EXACTLY ONE dimension into the unknown—place, activity, person, or time. Keep everything else easy to understand, locally practical, socially ordinary, and low-friction. Never stretch two dimensions. Never propose the generic.",
+    basis === "world"
+      ? "This is a first experience: make it a small, solo, public experience lasting roughly 30-90 minutes, within the selected reach, with no complicated booking or preparation."
+      : "",
     "",
-    "Write a research brief for a deep-research agent that will find one real, currently operating, genuinely uncommon venue or recurring event.",
+    "Design the human action before the place. Then write a research brief for a deep-research agent that will find the real, current infrastructure needed to make that action livable.",
     "The researchObjective must:",
     reachClause(args.homeCity, args.reach ?? NOW_DEFAULT_REACH),
-    "- describe what to find in specific sensory terms drawn from the thread (cuisine, atmosphere, materials, sound, pace).",
+    "- preserve the designed action, rhythm, or constraint instead of reducing the answer to a venue.",
+    "- describe what to find in specific sensory and practical terms (atmosphere, materials, sound, pace, access).",
     "- demand uncommonness: prefer old, small, family-run, single-proprietor, odd-hours, hyperlocal places; explicitly exclude chains, franchises, tourist landmarks, and anything prominent in top-10 listicles or heavy English press.",
     "- require proof the place still operates (recent reviews, posts, or listings).",
     when || "- state the day/time window that suits the thread.",
@@ -171,10 +182,12 @@ export function buildBriefPrompt(args: {
       ? `The person declined the previous proposal because: "${args.declineReason}". Choose a different stretch that answers that objection.`
       : "",
     "",
-    "anchors must reference real node ids from the graph digest (the familiar side of the proposal). 1-4 anchors.",
-    "",
-    "GRAPH DIGEST (private)",
-    JSON.stringify(digest),
+    basis === "world"
+      ? "Set basis to `world`, primary memory influence does not exist, and anchors must be an empty array."
+      : "Set basis to `graph`. Anchors must reference 1-4 real node ids from the graph digest.",
+    digest ? "" : "",
+    digest ? "GRAPH DIGEST (private)" : "",
+    digest ? JSON.stringify(digest) : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -261,6 +274,7 @@ export async function generateStructured<T>(args: {
 export async function generateNowBrief(args: {
   graph: ExperienceGraphRecord;
   homeCity: string;
+  basis?: "world" | "graph";
   avoidVenues?: readonly string[];
   declineReason?: string;
   scheduledFor?: string;
@@ -279,13 +293,18 @@ export async function generateNowBrief(args: {
     signal: args.signal,
   });
 
+  const basis = args.basis ?? "graph";
+  if (basis === "world") {
+    return { ...brief, basis, anchors: [] };
+  }
+
   const anchors = anchorsExistingIn(args.graph, brief);
   if (anchors.length === 0) {
     throw new NowGenerationError(
       "The brief did not anchor to real graph nodes.",
     );
   }
-  return { ...brief, anchors };
+  return { ...brief, basis, anchors };
 }
 
 export function buildComposePrompt(args: {

@@ -66,8 +66,7 @@ export function findGistAnchors(args: {
     .map((entry) => entry.anchor);
 }
 
-// The samples and the account list they belong to live in a module the
-// browser can read too, so Together can paint them the moment it opens.
+// The API may add samples for server-configured demo accounts.
 export { demoAccounts, demoGists, isDemoAccount } from "./togetherSamples";
 
 function joinLabels(labels: readonly string[]) {

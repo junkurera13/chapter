@@ -114,8 +114,9 @@ export const nowAnchorSchema = z.object({
 export type NowAnchor = z.infer<typeof nowAnchorSchema>;
 
 export const nowBriefSchema = z.object({
+  basis: z.enum(["world", "graph"]).default("graph"),
   threadTitle: z.string().min(3).max(90),
-  anchors: z.array(nowAnchorSchema).min(1).max(4),
+  anchors: z.array(nowAnchorSchema).max(4),
   stretch: z.object({
     dimension: z.enum(NOW_STRETCH_DIMENSIONS),
     description: z.string().min(10).max(300),

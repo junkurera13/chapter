@@ -25,6 +25,7 @@ import {
   togetherChapterRecord,
   visibleTo,
 } from "../../shared/together-chapter.ts";
+import { publishRealtimeInboxEvent } from "../../shared/realtime-inbox.ts";
 import {
   weeklyCompanyForConnection,
   weeklyCompanionFamiliarity,
@@ -1602,6 +1603,14 @@ Deno.serve(async (req) => {
           connected_at: Date.now(),
         }),
       ]);
+      await publishRealtimeInboxEvent(
+        base44.asServiceRole.entities.RealtimeInboxEvent,
+        {
+          recipientAuthUserId: stringValue(other.auth_user_id),
+          kind: "human_message",
+          createdAt: Date.now(),
+        },
+      );
 
       return Response.json({
         value: {
@@ -1706,12 +1715,27 @@ Deno.serve(async (req) => {
         return Response.json({ error: "conversation not found" }, { status: 404 });
       }
 
+      const recipientUserId = connection.user_a_id === user.id
+        ? connection.user_b_id
+        : connection.user_a_id;
+      const recipientRequest = users.get(recipientUserId).catch(
+        () => undefined,
+      );
       const created = await base44.asServiceRole.entities.HumanMessage.create({
         connection_id: connection.id,
         sender_user_id: user.id,
         text: message,
         created_at: Date.now(),
       });
+      const recipient = await recipientRequest;
+      await publishRealtimeInboxEvent(
+        base44.asServiceRole.entities.RealtimeInboxEvent,
+        {
+          recipientAuthUserId: stringValue(recipient?.auth_user_id),
+          kind: "human_message",
+          createdAt: Date.now(),
+        },
+      );
       return Response.json({
         value: {
           message: {
@@ -2003,7 +2027,7 @@ Deno.serve(async (req) => {
           )
         ),
       ]);
-      if (memoryRows.length === 0 || projected.nodes.length < 3) {
+      if (memoryRows.length === 0 || projected.nodes.length === 0) {
         return Response.json(
           { error: "weekly pack graph not ready" },
           { status: 409 },

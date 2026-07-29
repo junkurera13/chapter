@@ -91,6 +91,17 @@ Use one card at each launch scale until evidence supports a wider deck:
 2. one mini adventure;
 3. one proper adventure.
 
+Choose an internal basis independently:
+
+- `world`: current local reality and Chapter's editorial taste, with no graph
+  anchors;
+- `graph`: one strong private thread, with real graph anchors; or
+- `social`: one real person and only the permitted shared anchors.
+
+Use exactly two world-led cards. The third card is graph-led when no real
+social candidate exists, and social-led when one does. Do not show this
+taxonomy as labels in the interface.
+
 Choose social composition independently. When no safe and eligible social
 context exists, substitute another composition instead of producing an
 unusable card.

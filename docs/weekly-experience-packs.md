@@ -11,6 +11,11 @@
 > attached server-side after generation, while models receive only the strict
 > shared anchors. Generic people and placeholder places are rejected at both
 > composition and Base44 persistence boundaries.
+>
+> **World-first revision: implemented locally, July 29 2026; deployment
+> pending.** Weekly packs now contain two world-led cards and one anchored card.
+> A person's first completed memory also starts one immediate world-led
+> experience instead of leaving them waiting for Saturday.
 
 ## Why Chapter exists
 
@@ -39,6 +44,15 @@ run.
 
 The shipped rebuild replaces that configuration with a shared weekly ritual. A
 person does not schedule generation. Saturday means a new pack is there.
+
+The ritual is retention, not first-use activation. A new person receives one
+fully researched first experience as soon as their first memory has finished
+processing. That experience is generated from their location, current timing,
+Chapter's editorial taste, and verified local reality. The new memory is the
+request to begin, not a profile the experience must imitate.
+
+The first experience is one immediate invitation, not an early three-card pack.
+It has no sealed-choice ceremony and does not replace the Saturday ritual.
 
 ## The weekly ritual
 
@@ -72,25 +86,40 @@ announce the pack after release, but it is not required to create it.
 Generate only for an eligible account:
 
 - a usable private memory graph exists;
-- enough grounded evidence exists to create three honest lanes;
+- enough grounded evidence exists for one honest anchored lane;
 - a home location exists at the precision required by research;
 - a timezone exists;
 - the week's pack does not already exist.
 
-Define a catch-up rule for someone who becomes eligible after the normal
-generation cutoff. Do not silently give them an empty Saturday.
+The immediate first experience is the catch-up rule for someone who becomes
+eligible after the normal generation cutoff. Their first full pack is still
+prepared through the weekly worker.
 
 ## Generation pipeline
 
 ### 1. Compose the pack before researching
 
-Read the graph snapshot and recent outcomes once. Design three distinct lanes
-together so diversity is intentional rather than discovered by accident.
+Read the current local context, graph snapshot, and recent outcomes once.
+Design three distinct lanes together so diversity is intentional rather than
+discovered by accident.
+
+Every card declares an internal basis:
+
+- `world`: starts from what is alive, timely, and worth doing around the
+  person's city; uses no graph anchors;
+- `graph`: transforms one strong private thread and uses only real graph
+  anchors; or
+- `social`: begins with one real person and only the permitted shared anchors.
+
+A normal pack contains exactly two `world` cards and one `graph` card. When a
+real social candidate is available, it contains two `world` cards and one
+`social` card instead. The social lane is then the pack's sole anchored lane.
+These basis labels are internal and never appear as a settings surface.
 
 Each lane records:
 
-- exact grounded anchors;
-- one familiar thread;
+- basis and any permitted grounded anchors;
+- one familiar frame;
 - one stretch;
 - a scale contract;
 - a social composition;
@@ -130,9 +159,10 @@ Reject:
 ### 5. Compose and lock
 
 Write plain invitations without claiming what the person loves, needs, misses,
-or will feel. Let graph anchors carry the familiar side. Store the finished
-cards, evidence, images, release time, expiry, and graph snapshot/version needed
-for auditability.
+or will feel. Graph and social cards may let real anchors carry their familiar
+side. World cards stand on the researched action and place without invented
+personalization. Store the finished cards, evidence, images, release time,
+expiry, and graph snapshot/version needed for auditability.
 
 Each finished card also receives one generated environmental image before the
 pack is marked ready. The image boundary receives only the research-safe action,
@@ -254,8 +284,12 @@ social experiences can work immediately.
 
 Every card must pass:
 
-- **Recognition:** grounded in a real living thread.
-- **Transformation:** grows from that thread without repeating it.
+- **Honest basis:** world cards use no graph anchors; graph and social cards use
+  only permitted evidence.
+- **Recognition and fit:** timely local fit for a world card, or truthful
+  recognition of a strong or strictly shared thread for an anchored card.
+- **Transformation:** turns a current opportunity or familiar thread into an
+  authored experience rather than merely naming a venue.
 - **One stretch:** spends one novelty dimension only.
 - **Experience mechanism:** contains a designed action, rhythm, journey,
   constraint, or shared task.
@@ -346,15 +380,19 @@ The shipped product includes:
 - `app/api/weekly-pack/route.ts` and `lib/weeklyPackClient.ts`;
 - `WeeklyPackView`, covering waiting, sealed choice, card reveal, confirmation,
   chosen experience, scheduling, dismissal, and lived states;
+- `FirstExperienceView` and the existing single-experience research pipeline,
+  covering the immediate world-led experience after a person's first memory;
 - a development-only `/weekly-pack-preview` route. `state=locked` and
   `state=chosen` open those states directly; the default opens the choice.
-- an owner-restricted `/experience-generator` harness that runs the current
-  generator against the signed-in owner's real graph and displays the design,
-  review, research, and composed cards for production-quality inspection.
+- a development-only `/experience-generator` harness that runs the current
+  generator against the signed-in developer's real graph and displays the
+  design, review, research, and composed cards for production-quality
+  inspection without exposing the internal tool in production.
 
-The signed-in Now tab always opens the weekly experience. In a signed-in local app,
-`/app?view=now&pack=preview`, `pack=locked`, and `pack=chosen` mount the new
-interaction in the real app shell.
+The signed-in Now tab opens an unfinished first experience before the weekly
+surface. Once that experience is lived or declined, Now returns to the Saturday
+pack. In a signed-in local app, `/app?view=now&pack=preview`, `pack=locked`, and
+`pack=chosen` mount the weekly interaction in the real app shell.
 
 The implemented state model is:
 
@@ -391,6 +429,9 @@ remains inactive until local density can support it.
 - Use three separate research runs initially.
 - Generate several days early and keep the pack locked until Saturday.
 - Design the pack as a whole before research.
+- Use two world-led cards and at most one anchored card.
+- Treat the first completed memory as a request for one immediate world-led
+  experience; never use that sparse graph as its idea source.
 - Keep experience scale separate from social composition.
 - Treat human connection as a core purpose, not an optional feature.
 - A social experience always shows the actual person from an accepted
@@ -406,7 +447,5 @@ remains inactive until local density can support it.
 
 1. Notification timing relative to the 9:00 a.m. local release.
 2. Whether the 21-day expiry should vary by scale.
-3. The catch-up experience for users who become eligible after the generation
-   cutoff.
-4. How past declines, expirations, and lived reflections alter later pack
+3. How past declines, expirations, and lived reflections alter later pack
    composition.

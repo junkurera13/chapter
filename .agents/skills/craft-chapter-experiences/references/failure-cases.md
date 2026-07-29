@@ -21,6 +21,18 @@ Cause: the generator matched nouns instead of interpreting the thread.
 Repair: identify the underlying quality and preserve that while stretching one
 dimension.
 
+## Graph overreach
+
+Symptom: every card explains itself through the person's past, or a sparse
+first memory is stretched into several supposed preferences.
+
+Cause: personalization was confused with biography and graph ancestry became a
+quality gate.
+
+Repair: make two cards world-led with no anchors. Let current local reality,
+Chapter's editorial taste, and verified actionability carry them. Keep at most
+one anchored lane.
+
 ## Invented intimacy
 
 Symptom: copy says "because your grandmother used to take you..." or claims

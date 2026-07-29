@@ -33,6 +33,7 @@ export const WEEKLY_PACK_STRETCH_DIMENSIONS = [
   "person",
   "time",
 ] as const;
+export const WEEKLY_PACK_BASES = ["world", "graph", "social"] as const;
 export const WEEKLY_PACK_MECHANISMS = [
   "make",
   "move",
@@ -64,6 +65,7 @@ export const WEEKLY_PACK_REQUIREMENT_KINDS = [
 export type WeeklyPackScale = (typeof WEEKLY_PACK_SCALES)[number];
 export type WeeklyPackCompany = (typeof WEEKLY_PACK_COMPANIES)[number];
 export type WeeklyPackMechanism = (typeof WEEKLY_PACK_MECHANISMS)[number];
+export type WeeklyPackBasis = (typeof WEEKLY_PACK_BASES)[number];
 export type WeeklyPackStretchDimension =
   (typeof WEEKLY_PACK_STRETCH_DIMENSIONS)[number];
 export type WeeklyPackSocialMatch = {
@@ -73,6 +75,7 @@ export type WeeklyPackSocialMatch = {
 
 const scaleSchema = z.enum(WEEKLY_PACK_SCALES);
 const companySchema = z.enum(WEEKLY_PACK_COMPANIES);
+const basisSchema = z.enum(WEEKLY_PACK_BASES);
 const stretchDimensionSchema = z.enum(WEEKLY_PACK_STRETCH_DIMENSIONS);
 const familiaritySchema = z.enum(["familiar", "new"]);
 
@@ -108,9 +111,15 @@ export const weeklyPackConnectionSafetySchema = z.object({
 
 export const weeklyPackCardDesignSchema = z.object({
   id: scaleSchema,
+  /**
+   * Old stored design artifacts predate this field and were all graph-led.
+   * Keeping that parse default lets an in-flight preparation finish safely
+   * after the world-first generator ships.
+   */
+  basis: basisSchema.default("graph"),
   format: weeklyPackFormatSchema,
-  primaryAnchorId: z.string().trim().min(1),
-  anchors: z.array(weeklyPackAnchorSchema).min(1).max(4),
+  primaryAnchorId: z.string().trim().min(1).nullable(),
+  anchors: z.array(weeklyPackAnchorSchema).max(4),
   familiarThread: z.string().trim().min(15).max(500),
   familiarity: z.object({
     place: familiaritySchema,
@@ -158,6 +167,7 @@ export const weeklyPackDesignModelSchema = z.object({
   cards: z.array(
     z.object({
       id: scaleSchema,
+      basis: basisSchema,
       format: z.object({
         scale: scaleSchema,
         company: companySchema,
@@ -171,7 +181,7 @@ export const weeklyPackDesignModelSchema = z.object({
         energy: z.string(),
         timeCharacter: z.string(),
       }),
-      primaryAnchorId: z.string(),
+      primaryAnchorId: z.string().nullable(),
       anchors: z.array(
         z.object({
           nodeId: z.string(),
@@ -329,21 +339,33 @@ export function buildWeeklyPackDesignPrompt(args: {
     "PACK CONTRACT",
     "- Return exactly three cards: one small, one mini, and one proper.",
     "- Treat scale and company as separate axes.",
-    "- Give every card a different primary graph anchor, experience mechanism, and living thread.",
+    "- Give every card a different experience mechanism and familiar frame.",
     "- Each card must be good enough to regret losing. Do not create one hero and two filler cards.",
     "- At most one card may be deliberately demanding.",
     "- Design the human action, rhythm, constraint, shared task, or journey. A place is supporting infrastructure, not the idea.",
     "",
+    "WORLD-FIRST COMPOSITION",
+    args.context.socialMatch
+      ? "- Return exactly two `world` cards and one `social` card. Do not add a separate `graph` card: the social card is the pack's sole anchored lane."
+      : "- Return exactly two `world` cards and one `graph` card.",
+    "- A `world` card begins with what is alive, timely, and genuinely worth doing around HOME CITY. It has no graph anchors and must stand on Chapter's experience design, current context, and verified logistics.",
+    "- A `graph` card may transform one strong supplied thread. It is one part of the pack, never the engine for all three.",
+    "- A `social` card exists only for the supplied real person and strict shared anchors.",
+    "- Do not force a weak graph noun into an experience. Personal does not mean every card must be biographical.",
+    "",
     "ONE-STRETCH CONTRACT",
     "- Every card has exactly one new dimension: place, activity, person, or time.",
     "- Set that dimension to `new` in familiarity and all other dimensions to `familiar`.",
-    "- Transform the familiar thread; do not literally repeat its noun.",
+    "- On world cards, `familiar` means locally accessible, socially ordinary, low-friction, and easy to understand; it does not claim prior personal familiarity.",
+    "- On graph or social cards, transform the familiar thread; do not literally repeat its noun.",
     "- A self-company card may stretch only place, activity, or time. Its person dimension must stay familiar.",
     "- A new-person card must spend its only stretch on `person`; place, activity, and time stay familiar.",
     "",
     "TRUTH AND PRIVACY",
-    "- Anchor every card to 1-4 node ids in the supplied graph.",
-    "- Prefer fact, high-confidence, high-salience, strongly connected evidence.",
+    "- World cards must set primaryAnchorId to null and anchors to an empty array.",
+    "- Graph cards must anchor to 1-4 real node ids from the supplied graph and set primaryAnchorId to one of them.",
+    "- Social cards must anchor only to the strict shared anchors and set primaryAnchorId to one of them.",
+    "- When anchors are used, prefer fact, high-confidence, high-salience, strongly connected evidence.",
     "- Never invent biography, relationships, emotional meaning, preferences, constraints, or compatibility.",
     "- Never quote or reconstruct a raw memory.",
     args.context.privacyMode === "personal"
@@ -358,6 +380,7 @@ export function buildWeeklyPackDesignPrompt(args: {
     args.context.socialMatch
       ? [
           `- A real ${args.context.socialMatch.company} match is available. Exactly one card must use that company value.`,
+          "- That card must use `social` basis. The other two cards must use `world` basis and `self` company.",
           "- The matched person's identity is deliberately withheld from this model and will be attached by the server.",
           "- The social card may anchor only to the strict shared anchors below, so its familiar ground is true for both people.",
           `- SHARED SOCIAL ANCHORS: ${JSON.stringify(args.context.socialMatch.sharedAnchors)}`,
@@ -583,6 +606,13 @@ function auditSocialMatch(
     match.sharedAnchors.map((anchor) => anchor.nodeId),
   );
   const socialCard = matchedCards[0];
+  if (socialCard.basis !== "social") {
+    addIssue(issues, {
+      code: "SOCIAL_BASIS_REQUIRED",
+      cardId: socialCard.id,
+      message: "The real-person card must use the social basis.",
+    });
+  }
   if (
     socialCard.anchors.length === 0 ||
     socialCard.anchors.some((anchor) => !allowedAnchorIds.has(anchor.nodeId))
@@ -602,6 +632,27 @@ function auditAnchors(
   context: WeeklyPackContext,
   issues: WeeklyPackAuditIssue[],
 ) {
+  if (card.basis === "world") {
+    if (card.primaryAnchorId !== null || card.anchors.length > 0) {
+      addIssue(issues, {
+        code: "WORLD_CARD_HAS_ANCHORS",
+        cardId: card.id,
+        message:
+          "A world-led card must not pretend to come from the memory graph.",
+      });
+    }
+    return;
+  }
+
+  if (!card.primaryAnchorId || card.anchors.length === 0) {
+    addIssue(issues, {
+      code: "ANCHORED_CARD_MISSING_ANCHORS",
+      cardId: card.id,
+      message: "A graph or social card needs at least one real graph anchor.",
+    });
+    return;
+  }
+
   const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
   const anchorIds = new Set(card.anchors.map((anchor) => anchor.nodeId));
   if (!anchorIds.has(card.primaryAnchorId)) {
@@ -727,11 +778,20 @@ export function auditWeeklyPackDesign(args: {
   }
   auditSocialMatch(pack, context, issues);
 
-  const primaryAnchors = pack.cards.map((card) => card.primaryAnchorId);
-  if (new Set(primaryAnchors).size !== primaryAnchors.length) {
+  const worldCards = pack.cards.filter((card) => card.basis === "world");
+  const graphCards = pack.cards.filter((card) => card.basis === "graph");
+  const socialBasisCards = pack.cards.filter((card) => card.basis === "social");
+  if (
+    worldCards.length !== 2 ||
+    (context.socialMatch
+      ? graphCards.length !== 0 || socialBasisCards.length !== 1
+      : graphCards.length !== 1 || socialBasisCards.length !== 0)
+  ) {
     addIssue(issues, {
-      code: "PRIMARY_ANCHOR_REUSED",
-      message: "Each card needs a different primary graph anchor.",
+      code: "PACK_BASIS_MIX",
+      message: context.socialMatch
+        ? "A social pack needs exactly two world cards and one social card."
+        : "A personal pack needs exactly two world cards and one graph card.",
     });
   }
 
@@ -976,7 +1036,8 @@ export function buildWeeklyPackReviewPrompt(args: {
     "- Never require a social card when CONTEXT has no server-confirmed social match.",
     "",
     "HARD GATES",
-    "- Each card anchors to real, permitted graph evidence.",
+    "- The pack contains exactly two world-led cards and one anchored card: graph-led normally, social-led when a real person is supplied.",
+    "- World cards use no graph anchors. Graph and social cards use only real, permitted evidence.",
     "- Each card spends exactly one stretch.",
     "- There is no invented personal or compatibility claim.",
     "- The experience has a mechanism beyond naming a venue.",
@@ -986,12 +1047,14 @@ export function buildWeeklyPackReviewPrompt(args: {
     "Every hard-gate failure must name a concrete supplied field or design contract that fails. Missing future research is not a design-stage hard-gate failure.",
     "",
     "CARD SCORING: 0-4 for recognition, transformation, experience mechanism, story potential, actionability, and restraint/truth.",
+    "- Recognition: for a world card, score timely local fit and an immediately legible familiar frame; for a graph card, score truthful recognition of its supplied thread; for a social card, score strict shared ground.",
+    "- Transformation: for a world card, score whether Chapter turns a current opportunity into an authored experience rather than a recommendation; for anchored cards, score how well the familiar thread becomes a new way of living it.",
     "A card passes only with at least 3 in every dimension and at least 20/24 overall.",
     "",
     "PACK SCORING: 0-4 for contrast, thread diversity, mechanism diversity, commitment ladder, and choice quality.",
     "Reject one obvious winner plus filler, a venue monoculture, repeated mechanisms, or cards interchangeable after replacing place names.",
     "",
-    "Do not infer facts missing from the graph. Be strict, phase-aware, and specific.",
+    "Never infer personal facts missing from the graph. Do not penalize a world card for correctly using no graph evidence. Be strict, phase-aware, and specific.",
     "Return a concise review. Use integer scores. Keep strongestQuality and revisionPriority to one short sentence each.",
     `CONTEXT: ${JSON.stringify(args.context)}`,
     `GRAPH DIGEST: ${JSON.stringify(digest)}`,
@@ -1016,12 +1079,15 @@ export function buildWeeklyPackRevisionPrompt(args: {
     "- This remains pre-research design. Repair actionability by making the experience, requirements, and research objective concrete; do not invent the external facts that research must verify.",
     "- Keep exactly one small, one mini, and one proper card.",
     "- Keep scale and company as separate axes.",
-    "- Every card must use a different primary graph anchor, mechanism, and living thread.",
+    args.context.socialMatch
+      ? "- Keep exactly two world cards and one social card. Do not add a separate graph card."
+      : "- Keep exactly two world cards and one graph card.",
+    "- Every card must use a different mechanism and familiar frame.",
     "- Every card gets exactly one unfamiliar dimension; all other familiarity dimensions stay familiar.",
     "- Do not name or choose a venue, provider, event, route, or business. Research happens later.",
     "- Do not solve actionability by adding hidden commitments, travel, equipment, skill, cost, or social demands.",
     "- Do not invent biography, preference, emotion, relationship, compatibility, or meaning.",
-    "- Anchor only to supplied node ids. Copy labels and categories exactly.",
+    "- World cards must use no anchors. Graph cards may anchor only to supplied node ids. Social cards may anchor only to strict shared ids. Copy labels and categories exactly.",
     "- Keep research objectives independent and specific to what each design needs proved.",
     "- A new-person experience must remain public, bounded, activity-centred, easy to leave, alcohol-independent, and worthwhile without a connection.",
     args.context.availableCompanies.length === 1
@@ -1029,8 +1095,9 @@ export function buildWeeklyPackRevisionPrompt(args: {
       : "",
     "",
     "QUALITY BAR",
-    "- Recognition must come from graph truth, not a flattering guess.",
-    "- Transformation must change how the familiar thread is lived, not merely move it to a novel place.",
+    "- World-card recognition comes from timely local fit and a low-friction familiar frame, never invented biography.",
+    "- Anchored-card recognition must come from graph truth, not a flattering guess.",
+    "- Transformation must turn either a current-world opportunity or a familiar thread into an authored experience, not merely point at a novel place.",
     "- The mechanism must be a real action, rhythm, rule, shared task, or journey.",
     "- Story potential must emerge from participation, not theatrical copy.",
     "- The three-way choice must feel painful because all three are excellent, not because their prose is polished.",
@@ -1097,6 +1164,7 @@ export function buildWeeklyPackResearchPrompt(args: {
 }) {
   const researchSafeDesign = {
     id: args.card.id,
+    basis: args.card.basis,
     format: args.card.format,
     stretchDimension: args.card.stretch.dimension,
     experiencePromise: args.card.experiencePromise,

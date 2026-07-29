@@ -19,6 +19,15 @@ to meet.
 
 ## Design laws
 
+### Be world-first and person-aware
+
+The present world is a legitimate source: current places, events, seasons,
+weather, local rhythms, and social possibilities. The graph may tilt or ground
+an experience, but it must not be forced to originate every idea.
+
+Personal does not mean biographical. A well-timed, beautifully designed local
+experience can belong to someone without pretending it came from their past.
+
 ### Design the experience before the place
 
 Start with what happens: an action, rhythm, constraint, shared task, journey, or
@@ -26,10 +35,12 @@ ritual. Research may find a place, event, route, class, material, timetable, or
 other fact that makes it possible. The researched object is supporting
 infrastructure, not automatically the experience.
 
-### Keep one familiar thread and spend one stretch
+### Keep one familiar frame and spend one stretch
 
-Choose a grounded thread with emotional or behavioural weight. Preserve enough
-of it to create recognition. Stretch exactly one meaningful dimension:
+Choose a frame that makes the experience easy to enter. On a graph-led card,
+that may be a grounded thread with emotional or behavioural weight. On a
+world-led card, it may be proximity, ordinary social expectations, flexible
+timing, or a familiar kind of effort. Stretch exactly one meaningful dimension:
 
 - place;
 - activity;
@@ -39,12 +50,13 @@ of it to create recognition. Stretch exactly one meaningful dimension:
 Do not make a person absorb an unfamiliar activity, distant place, new person,
 and difficult schedule at once.
 
-### Transform rather than repeat
+### Transform rather than repeat or merely recommend
 
 Do not mirror a graph noun directly. Someone who remembers photography does not
 need "visit a photography museum" by default. Find the underlying quality:
 attention, patience, collecting light, wandering alone, making something
-tangible. Build from that mechanism.
+tangible. On a world-led card, turn a current opportunity into an authored
+action, rhythm, constraint, or journey rather than returning a recommendation.
 
 ### Create story potential
 
@@ -52,9 +64,10 @@ Prefer experiences that may produce a moment with a beginning, a small point of
 tension or discovery, and something worth remembering. Avoid manufactured
 cinema. A story can be quiet.
 
-### Let evidence carry personalization
+### Let evidence carry personalization only when it is real
 
-Use graph anchors to show why the experience belongs in this world. Do not put
+Use graph anchors to show why an anchored experience belongs in this world.
+World-led experiences use no anchors and make no personal claim. Never put
 unverifiable claims about the person's past, family, feelings, or preferences
 into card copy.
 
@@ -75,7 +88,9 @@ experience depends on a route.
 The pack is the product. Its cards must create meaning through contrast:
 approachable versus ambitious, solitary versus social, local versus farther,
 quiet versus energetic. Three individually good cards may still form a bad
-pack.
+pack. The launch composition uses two world-led cards and one anchored card.
+When a real social candidate exists, that social card is the sole anchored
+card; otherwise one graph-led card fills that role.
 
 ## Voice
 

@@ -7,7 +7,9 @@ than average away a fatal problem.
 
 Every experience must:
 
-- anchor to real, permitted graph evidence;
+- declare an honest basis: `world`, `graph`, or `social`;
+- use no graph anchors when world-led, and only real permitted anchors when
+  graph- or social-led;
 - spend exactly one stretch;
 - contain no invented personal or compatibility claim;
 - be feasible within its stated validity window;
@@ -22,17 +24,20 @@ Any failed gate requires regeneration.
 
 Score each dimension from 0 to 4.
 
-### Recognition
+### Recognition and fit
 
-- 0: unrelated to the graph.
-- 2: direct topical match.
-- 4: captures a deeper quality of a living thread without overclaiming.
+- 0: generic, mistimed, or falsely personalized.
+- 2: plausible topical or local fit.
+- 4: world-led means timely local fit inside an immediately legible familiar
+  frame; anchored means truthful recognition of a strong or strictly shared
+  thread without overclaiming.
 
 ### Transformation
 
-- 0: repeats what the person already did.
-- 2: changes the setting or surface.
-- 4: preserves the thread while opening one genuinely new dimension.
+- 0: repeats the memory or merely names a venue.
+- 2: changes the setting or adds a basic activity.
+- 4: turns a current-world opportunity or familiar thread into an authored
+  experience while opening one genuinely new dimension.
 
 ### Experience mechanism
 
@@ -70,7 +75,8 @@ The scales, rhythms, energy, geography, and social shape create real choice.
 
 ### Thread diversity
 
-No two cards merely exploit the same memory noun or relationship.
+The pack does not mine the same memory noun or relationship repeatedly. Its
+world-led cards also begin from meaningfully different present-world frames.
 
 ### Mechanism diversity
 
