@@ -181,7 +181,7 @@ npx eve info --json
 npx eve channels list --json
 ```
 
-`npm test` currently runs 351 tests across 49 files.
+`npm test` currently runs 356 tests across 50 files.
 
 The production pass should additionally verify Google sign-in, phone linking,
 the iMessage webhook health route, one real memory turn, private graph

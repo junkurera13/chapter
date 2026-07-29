@@ -272,14 +272,17 @@ export default function YouOnboarding({
       });
 
       if (createFirstExperience) {
-        try {
-          await startFirstExperience();
-        } catch (error) {
-          // The memory is already safely part of the person's world. A missing
-          // location or an unavailable research provider must not turn that
-          // successful send into a destructive retry.
+        // The world exists the moment the graph lands, and that is what the
+        // person is waiting to see. Writing the first experience takes its own
+        // model call, so it starts here and finishes on its own; Now watches
+        // for it and shows it when it arrives. Nobody waits twice.
+        //
+        // The memory is already safely part of the person's world. A missing
+        // location or an unavailable research provider must not turn that
+        // successful send into a destructive retry.
+        void startFirstExperience().catch((error) => {
           console.error("Could not start the first experience", error);
-        }
+        });
       }
     };
 

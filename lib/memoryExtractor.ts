@@ -16,7 +16,43 @@ const PRIMARY_MEMORY_MODEL_ID =
   process.env.CHAPTER_MEMORY_MODEL || "google/gemini-3.1-flash-lite";
 const FALLBACK_MEMORY_MODEL_ID =
   process.env.CHAPTER_MEMORY_FALLBACK_MODEL || "moonshotai/kimi-k2.6";
-const ATTEMPT_TIMEOUTS_MS = [45_000, 35_000] as const;
+
+/**
+ * How the extraction budget is spent.
+ *
+ * Measured against four photos: the primary model answers in 6 to 13 seconds
+ * when it answers at all, and returns nothing about a third of the time. That
+ * failure is transient, so asking it again is worth far more than handing the
+ * memory straight to the slower fallback, which needs well over 35 seconds and
+ * sometimes never finishes. Three primary tries put the odds of losing a memory
+ * to that flakiness in the low single digits, and the fallback is still there
+ * for the case where the primary is genuinely down.
+ */
+const PRIMARY_ATTEMPT_TIMEOUT_MS = 25_000;
+const FALLBACK_ATTEMPT_TIMEOUT_MS = 40_000;
+/** Kept under the route's 120s ceiling with room for the Base44 round trips. */
+const TOTAL_EXTRACTION_BUDGET_MS = 90_000;
+/** Below this there is not enough time left for an answer worth waiting for. */
+const MIN_ATTEMPT_MS = 6_000;
+const RETRY_PAUSE_MS = 400;
+const MAX_OUTPUT_TOKENS = 16_000;
+
+export function extractionAttempts() {
+  return [
+    { modelId: PRIMARY_MEMORY_MODEL_ID, timeoutMs: PRIMARY_ATTEMPT_TIMEOUT_MS },
+    { modelId: PRIMARY_MEMORY_MODEL_ID, timeoutMs: PRIMARY_ATTEMPT_TIMEOUT_MS },
+    { modelId: PRIMARY_MEMORY_MODEL_ID, timeoutMs: PRIMARY_ATTEMPT_TIMEOUT_MS },
+    {
+      modelId: FALLBACK_MEMORY_MODEL_ID,
+      timeoutMs: FALLBACK_ATTEMPT_TIMEOUT_MS,
+    },
+  ];
+}
+
+export const extractionBudget = {
+  totalMs: TOTAL_EXTRACTION_BUDGET_MS,
+  minAttemptMs: MIN_ATTEMPT_MS,
+};
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -84,19 +120,39 @@ export async function extractMemory(args: {
       filename: attachment.fileName,
     })),
   ];
-  const modelIds = [PRIMARY_MEMORY_MODEL_ID, FALLBACK_MEMORY_MODEL_ID];
+  const attempts = extractionAttempts();
+  const deadline = Date.now() + TOTAL_EXTRACTION_BUDGET_MS;
   let timedOut = false;
 
-  for (const [attempt, modelId] of modelIds.entries()) {
+  for (const [attempt, { modelId, timeoutMs }] of attempts.entries()) {
     if (args.signal?.aborted) {
       throw new MemoryExtractionUnavailableError(true);
     }
 
+    // Never let the ladder outlive the request that is waiting on it.
+    const remainingMs = deadline - Date.now();
+    if (remainingMs < MIN_ATTEMPT_MS) {
+      timedOut = true;
+      console.warn("[memory:extract] budget spent", {
+        requestId: args.requestId,
+        skippedFromAttempt: attempt + 1,
+        remainingMs,
+      });
+      break;
+    }
+
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, RETRY_PAUSE_MS));
+    }
+
+    const attemptTimeoutMs = Math.min(timeoutMs, deadline - Date.now());
     const startedAt = Date.now();
     console.info("[memory:extract] attempt started", {
       requestId: args.requestId,
       attempt: attempt + 1,
+      of: attempts.length,
       model: modelId,
+      timeoutMs: attemptTimeoutMs,
       imageCount: args.attachments.length,
     });
 
@@ -112,9 +168,9 @@ export async function extractMemory(args: {
         }),
         reasoning: "none",
         temperature: 0.1,
-        maxOutputTokens: 5_500,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
         maxRetries: 0,
-        timeout: { totalMs: ATTEMPT_TIMEOUTS_MS[attempt] },
+        timeout: { totalMs: attemptTimeoutMs },
         abortSignal: args.signal,
       });
       const extraction = memoryExtractionSchema.parse(result.output);
@@ -129,12 +185,15 @@ export async function extractMemory(args: {
       return extraction;
     } catch (error) {
       timedOut ||= looksLikeTimeout(error);
+      // The primary's failure carries no cause, so record the message too:
+      // the name alone cannot tell an empty answer from a refusal.
       console.warn("[memory:extract] attempt failed", {
         requestId: args.requestId,
         attempt: attempt + 1,
         model: modelId,
         elapsedMs: Date.now() - startedAt,
         errorName: errorName(error),
+        errorMessage: errorMessage(error).slice(0, 300),
       });
     }
   }

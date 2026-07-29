@@ -59,6 +59,8 @@ export default function ChapterApp({
    */
   const [extracting, setExtracting] = useState(false);
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  /** A first memory was just sent and its experience is still being written. */
+  const [awaitingFirstExperience, setAwaitingFirstExperience] = useState(false);
   const [graphState, setGraphState] = useState<GraphState>({
     status: "ready",
     graph: initialGraph,
@@ -194,6 +196,9 @@ export default function ChapterApp({
       <YouOnboarding
         createFirstExperience
         onMemoryCreated={() => {
+          // The first experience is already being written. Now opens straight
+          // away and waits for it there rather than holding this screen.
+          setAwaitingFirstExperience(true);
           setActiveIndex(1);
           const url = new URL(window.location.href);
           url.searchParams.set("view", "now");
@@ -284,6 +289,7 @@ export default function ChapterApp({
           key={weeklyPackReview ?? "live"}
           reviewState={weeklyPackReview}
           onReviewStateChange={changeWeeklyPackReview}
+          expectFirstExperience={awaitingFirstExperience}
         />
         <NowLocationNode />
       </>

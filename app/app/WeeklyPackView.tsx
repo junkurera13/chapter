@@ -335,10 +335,17 @@ export default function WeeklyPackView({
   reviewState,
   onReviewStateChange,
   reviewPack,
+  expectFirstExperience = false,
 }: {
   reviewState?: WeeklyPackReviewState;
   onReviewStateChange?: (state: WeeklyPackReviewState) => void;
   reviewPack?: WeeklyExperiencePack;
+  /**
+   * A first memory was just sent, so its experience is being written even
+   * though no chapter exists to read yet. Without this, the first load finds
+   * nothing and there is nothing to wait on.
+   */
+  expectFirstExperience?: boolean;
 }) {
   const reduceMotion = useReducedMotion();
   const initialReview = reviewPack
@@ -406,24 +413,37 @@ export default function WeeklyPackView({
     };
   }, [reviewState]);
 
+  const firstExperienceStatus = firstExperience?.status;
+  const hasFirstExperience = Boolean(firstExperience);
+
   useEffect(() => {
-    if (reviewState || firstExperience?.status !== "researching") return;
+    if (reviewState) return;
+    // Either an experience is being researched, or one is on its way and has
+    // not been written down yet. Both are worth waiting on.
+    const awaitingArrival = expectFirstExperience && !hasFirstExperience;
+    if (firstExperienceStatus !== "researching" && !awaitingArrival) return;
 
     let active = true;
     let timer: number | undefined;
+    // A first experience that never appears must not leave the tab polling for
+    // the rest of the session.
+    const giveUpAt = Date.now() + 4 * 60 * 1000;
     const poll = async () => {
       try {
         const now = await loadNow();
         if (!active) return;
         const chapter = now.chapter;
-        setFirstExperience(
-          chapter?.brief?.basis === "world" ? chapter : null,
-        );
-        if (chapter?.status === "researching") {
+        const found = chapter?.brief?.basis === "world" ? chapter : null;
+        setFirstExperience(found);
+        const stillComing =
+          chapter?.status === "researching" || (!found && expectFirstExperience);
+        if (stillComing && Date.now() < giveUpAt) {
           timer = window.setTimeout(() => void poll(), 5000);
         }
       } catch {
-        if (active) timer = window.setTimeout(() => void poll(), 8000);
+        if (active && Date.now() < giveUpAt) {
+          timer = window.setTimeout(() => void poll(), 8000);
+        }
       }
     };
 
@@ -432,7 +452,14 @@ export default function WeeklyPackView({
       active = false;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [firstExperience?.status, reviewState]);
+    // Deliberately keyed on primitives: depending on the chapter object would
+    // restart this loop, and its give-up deadline, on every poll.
+  }, [
+    firstExperienceStatus,
+    hasFirstExperience,
+    expectFirstExperience,
+    reviewState,
+  ]);
 
   const pack = state.status === "ready" ? state.pack : null;
 
