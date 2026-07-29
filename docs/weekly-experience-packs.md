@@ -384,10 +384,6 @@ The shipped product includes:
   covering the immediate world-led experience after a person's first memory;
 - a development-only `/weekly-pack-preview` route. `state=locked` and
   `state=chosen` open those states directly; the default opens the choice.
-- a development-only `/experience-generator` harness that runs the current
-  generator against the signed-in developer's real graph and displays the
-  design, review, research, and composed cards for production-quality
-  inspection without exposing the internal tool in production.
 
 The signed-in Now tab opens an unfinished first experience before the weekly
 surface. Once that experience is lived or declined, Now returns to the Saturday

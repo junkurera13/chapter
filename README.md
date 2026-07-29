@@ -168,8 +168,7 @@ Production also requires `CRON_SECRET`.
 worker may begin.
 Optional demo gists are controlled only by the server-side
 `CHAPTER_DEMO_ACCOUNTS` allowlist; account emails must never be placed in a
-`NEXT_PUBLIC_` variable. The `/experience-generator` review harness is
-available only under `npm run dev` and returns 404 in production.
+`NEXT_PUBLIC_` variable.
 
 ## Verification
 
