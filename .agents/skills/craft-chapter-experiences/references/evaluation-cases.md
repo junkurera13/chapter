@@ -54,14 +54,15 @@ Failure signal: "you both" copy supported by evidence only one person holds.
 
 ## Case 5: Eligible stranger
 
-Input: two same-city shareable cuts with a strict intersection of at least two
-threads.
+Input: two shareable cuts with a strict intersection of at least two threads
+and an accepted introduction-origin connection.
 
 Test:
 
 - spend the stretch on the new person;
 - keep the experience public, bounded, familiar, and activity-centred;
-- state no name, score, attraction, or one-sided fact before mutual consent.
+- use the real first name, but state no score, attraction, answer state,
+  contact channel, or one-sided fact.
 
 Failure signal: the venue, activity, and person are all unfamiliar.
 

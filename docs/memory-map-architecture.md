@@ -1,5 +1,9 @@
 # Chapter memory-map architecture
 
+> **Status: shipped production contract, July 29 2026.** This document
+> describes the current private-upload, source-preserving `memory-map-v3`
+> pipeline used by web onboarding and the shared iMessage memory path.
+
 ## Product contract
 
 A memory can contain three independent evidence sources:

@@ -150,7 +150,7 @@ export async function GET(request: Request) {
 
     const { candidates, scanned, skipped } = settled;
     if (skipped) {
-      // A bounded scan that reports nothing looks exactly like an empty city.
+      // A bounded scan that reports nothing looks exactly like an empty pool.
       console.info("[together:introductions] scan truncated", {
         requestId,
         scanned,

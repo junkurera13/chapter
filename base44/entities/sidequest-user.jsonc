@@ -24,7 +24,7 @@
     "introductions_muted_at": { "type": "number" },
     "home_city_key": {
       "type": "string",
-      "description": "Normalised home_city, so two people who wrote their city differently are still in one place. The introduction pool is queried on this."
+      "description": "Normalised home_city retained for deterministic geographic filtering without reparsing display text"
     },
     "now_time_windows": {
       "type": "string",

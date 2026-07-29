@@ -38,32 +38,37 @@ web / iMessage <-> Next.js <-> Eve <-> OpenRouter
           +--------------+---------------+
           v                              v
         Now                          Together
-  home city + graph            People node -> hashed private invite
-          |                    -> verified friend -> reciprocal nodes
-  compose three lanes                      |
-          |                    home city -> same-city pool scan
-  3 independent research runs  -> strict intersection -> unnamed gist
-          |                    -> both say yes -> reciprocal nodes
+  home city + graph            named private invites
+          |                    + bounded account-pool scan
+  optional accepted companion              |
+          |                    strict shared anchors only
+  compose small / mini / proper            |
+          |                    server attaches first name
+  3 independent research runs              |
+          |                    opening message -> recipient accepts
   lock until local Saturday                |
-          |                    shared threads -> gist
+          |                    reciprocal nodes + private message thread
   reveal three -> keep one                 |
           |                                v
-  schedule -> lived             deep research -> propose -> lived
+  schedule -> lived             gist -> research -> propose -> lived
 ```
 
 ## Models
 
-Chapter calls 2026 models directly through OpenRouter, and Parallel AI for
-web research. Every model choice is overridable by environment variable.
+Chapter calls 2026 models through OpenRouter, and Parallel AI for web research.
+Application generation choices are environment-overridable. Eve's two
+conversation models are currently fixed in `agent/agent.ts`.
 
 | Path | Model | Override |
 | --- | --- | --- |
 | Onboarding memory extraction (multimodal) | `google/gemini-3.1-flash-lite`, falling back to `moonshotai/kimi-k2.6` | `CHAPTER_MEMORY_MODEL`, `CHAPTER_MEMORY_FALLBACK_MODEL` |
 | Eve conversation (web + iMessage) | `deepseek/deepseek-v4-flash` for text, `moonshotai/kimi-k2.6` for image-bearing turns | none |
-| Weekly-pack design, review, and copy | `anthropic/claude-sonnet-5`, falling back to `moonshotai/kimi-k2.6` | `CHAPTER_PACK_MODEL`, `CHAPTER_PACK_FALLBACK_MODEL`, `CHAPTER_PACK_REVIEW_MODEL`, `CHAPTER_PACK_REVISION_MODEL`, `CHAPTER_PACK_COMPOSITION_MODEL` |
+| Weekly-pack design, review, revision, and copy | `anthropic/claude-sonnet-5`, with bounded retries and `moonshotai/kimi-k2.6` fallback | `CHAPTER_PACK_MODEL`, `CHAPTER_PACK_FALLBACK_MODEL`, `CHAPTER_PACK_REVIEW_MODEL`, `CHAPTER_PACK_REVISION_MODEL`, `CHAPTER_PACK_COMPOSITION_MODEL` |
 | Weekly-pack environmental images | OpenRouter Image API with `krea/krea-2-large`; durable media on fal CDN | `CHAPTER_PACK_IMAGE_MODEL` |
-| Together briefs, chapters, gists and legacy Now fallback | `moonshotai/kimi-k2.6`, falling back to `deepseek/deepseek-v4-flash` | `CHAPTER_NOW_MODEL`, `CHAPTER_NOW_FALLBACK_MODEL` |
-| Now / Together web research | Parallel AI `core` processor | `CHAPTER_NOW_PROCESSOR` |
+| Together briefs, chapters and legacy Now fallback | `moonshotai/kimi-k2.6`, falling back to `deepseek/deepseek-v4-flash` | `CHAPTER_NOW_MODEL`, `CHAPTER_NOW_FALLBACK_MODEL` |
+| Together gists and introduction lines | `deepseek/deepseek-v4-flash` | `CHAPTER_QUICK_MODEL` |
+| Weekly-pack research | Parallel AI `core` processor | `CHAPTER_PACK_PROCESSOR`, falling back to `CHAPTER_NOW_PROCESSOR` |
+| Legacy Now / Together research | Parallel AI `core` processor | `CHAPTER_NOW_PROCESSOR` |
 
 OpenRouter calls are pinned to zero-data-retention providers with
 `data_collection: "deny"`.
@@ -86,12 +91,13 @@ OpenRouter calls are pinned to zero-data-retention providers with
 - The deployed Base44 resource IDs retain their pre-rebrand `sidequest-*`
   slugs as compatibility contracts. They are internal identifiers, not product
   branding.
-- Twelve Base44 entities hold accounts, messages, memories, source memories,
+- Thirteen Base44 entities hold accounts, Chapter conversations, human
+  messages, memories, source memories,
   graph nodes, graph edges, connection invites, accepted connections,
   introductions, weekly experience packs, Now chapters, and Together chapters.
 - A connection records how it began. An invite means the two people found each
-  other by name; an introduction means Chapter put them together, and neither
-  learned anything about the other until both said yes.
+  other by name; an introduction means Chapter noticed a strict overlap, one
+  person sent an opening message, and the recipient accepted it.
 - Raw invite tokens are never persisted. Base44 stores only a SHA-256 hash,
   and an accepted token links exact user IDs rather than guessing from names.
 
@@ -106,21 +112,19 @@ worlds, so every sentence is already true on both sides. Composition is the
 initiator's job alone; the partner polls the same endpoint but cannot see or
 advance a draft, and so cannot spend a research run they don't know exists.
 
-An **introduction** is a gist about someone you have not met, and it carries
-less again. No name, no face, no city more specific than your own, and no count
-of how well you supposedly match. It does not report whether the other person
-has answered, because that is a fact about them and because knowing it would
-change the answer you give. Only the second yes does anything at all, and it
-creates an ordinary connection with a name attached.
+An **introduction** is a named gist about someone you have not met. The model
+sees only the strict shared anchors and a person token; Base44 attaches the
+correct first name separately for each reader. The card carries no photograph,
+one-sided fact, answer state, or compatibility score. Either person may send
+one opening message. Only its recipient sees the message, and accepting it
+creates an ordinary connection, reciprocal people nodes, and a private human
+message thread. Declining closes the offer without reporting the response.
 
-There is no opt-in, and that is deliberate rather than careless. A strict
-intersection is made only of what the reader already holds, so being in the
-pool discloses nothing about you to anyone: what reaches a stranger's screen
-is a sentence that is already true in their own world. Consent belongs at the
-moment something actually crosses, which is the yes. A home city is the only
-thing taking part requires, because it is what makes two people able to meet.
-Anyone can stop being shown them from the card itself, which withdraws every
-offer already standing on both sides.
+There is currently no opt-in screen. Eligible accounts take part by default,
+and anyone may mute introductions, which withdraws every live offer involving
+them. The pool scan is bounded, opens only a limited number of candidate
+graphs, and returns only strict shared labels to the trusted application route;
+the other graph never leaves Base44.
 
 ## Local development
 
@@ -173,7 +177,7 @@ npx eve info --json
 npx eve channels list --json
 ```
 
-`npm test` currently runs 288 tests across 41 files.
+`npm test` currently runs 311 tests across 46 files.
 
 The production pass should additionally verify Google sign-in, phone linking,
 the iMessage webhook health route, one real memory turn, private graph

@@ -1,20 +1,24 @@
-# Together — build plan
+# Together — shipped state and remaining plan
 
-> **Status, July 28 2026.** Phase 1 and the stranger-introduction core from
-> Phase 3 have shipped. Phases 2 and 4 remain plans. Phase 0 was never needed
-> as written. The shipped introduction differs materially from the original
-> Phase 3 proposal; current behaviour is recorded under that phase. Everything
-> not marked shipped is a proposal, not a description of the code.
+> **Status, July 29 2026.** Phase 1, the named introduction/message flow from
+> Phase 3, and the introduction-to-weekly-pack bridge have shipped. Phases 2
+> and the remaining Phase 4 loop are plans. Phase 0 was never needed as written.
+> The shipped introduction differs materially from the original Phase 3
+> proposal; current behaviour is recorded under that phase. Everything not
+> marked shipped is historical context or a proposal, not a description of the
+> code.
 
-Together is the tab that owns the **person axis** of Chapter's bridge principle.
-Now keeps the person familiar and stretches place, activity, or time. Together
-stretches the person — in two directions:
+Together is the tab where Chapter turns shared ground into a relationship or a
+chapter for two people. The weekly Now pack and Together now share the
+**person axis** of Chapter's bridge principle:
 
 - **Wing 1 — familiar person:** plan and live a chapter *with* someone you're
   already connected to.
-- **Wing 2 — unknown person:** Chapter introduces you to someone you've never
-  met, through something your graph says you deeply know (or are curious
-  about). New friends, maybe more.
+- **Wing 2 — new person:** Chapter notices someone you have not met through the
+  strict overlap of two private worlds. Either person may send an opening
+  message; accepting it creates the connection and private message thread.
+- **Weekly bridge:** an accepted introduction-origin connection remains
+  `new-person` until a lived weekly experience records the first meeting.
 
 This person axis is not an optional social feature. Chapter uses experiences as
 the medium for human connection: to deepen existing relationships and to let
@@ -22,14 +26,13 @@ strangers meet without browsing profiles. Friendship may form and love may
 emerge, but Chapter does not predict either, score compatibility, or label a
 match as romantic.
 
-The planned Now rebuild treats experience scale and social composition as
+The shipped Now pack treats experience scale and social composition as
 separate axes, allowing a small activity, mini adventure, or proper adventure
 to be lived alone, with someone known, or with someone new. See
-[`weekly-experience-packs.md`](./weekly-experience-packs.md). That plan is not
-shipped.
+[`weekly-experience-packs.md`](./weekly-experience-packs.md).
 
-The one-stretch contract (`lib/nowChapterSchema.ts`) is the governing law in
-both wings. In Wing 2 it doubles as a safety principle: when the person is the
+The weekly one-stretch contract lives in `lib/weeklyPackDesign.ts`. In a
+first-meeting card it doubles as a safety principle: when the person is the
 stretch, *everything else* — activity, neighbourhood, time of day — must be
 maximally familiar, so all novelty budget is spent on the human.
 
@@ -37,22 +40,26 @@ The four-quadrant map, for the record:
 
 | | Familiar place/activity | Unfamiliar place/activity |
 |---|---|---|
-| **Familiar person** | (ordinary life) | **Now** today; Wing 1 does it together |
-| **Unfamiliar person** | **Wing 2 — the introduction** | never (two stretches) |
+| **Familiar person** | ordinary life | weekly Now or a Together chapter |
+| **Unfamiliar person** | a weekly `new-person` experience after message acceptance | never (two stretches) |
 
 ## Privacy invariants (both wings)
 
 1. Both participants' graphs may inform planning **server-side only**. Neither
    person ever sees the other's nodes, memories, or evidence.
-2. The composed proposal must read as a plan, not a disclosure. Prompts must
-   forbid "because you both…" phrasing in v1.
-3. Wing 2 reveals exactly two things before both sides accept: nothing.
-   After both accept: first name + the shared anchor ("you both ride").
-4. A Wing 2 decline is silent. The other person never learns they were
-   considered. No rejection ever lands.
-5. Raw tokens/IDs never cross accounts; all cross-account reads happen in
+2. The composed proposal must read as a plan, not a disclosure. Prompts forbid
+   attributing a private fact to either person.
+3. Before an opening message is accepted, Wing 2 may reveal a server-attached
+   first name and a gist made only from the strict shared anchors. It reveals
+   no face, one-sided fact, answer state, contact channel, or compatibility
+   score.
+4. Only the opening-message recipient sees that message. Accepting creates the
+   connection, reciprocal people nodes, and private message thread; declining
+   closes the offer without reporting the response to the sender.
+5. Raw graph IDs and evidence never cross accounts; all cross-account reads happen in
    `sidequest-data` with `asServiceRole`, gated on an accepted
-   `SidequestConnection` (Wing 1) or a mutual-accept introduction (Wing 2).
+   `SidequestConnection` for planning or the bounded introduction scan for the
+   strict intersection.
 
 ---
 
@@ -210,26 +217,37 @@ The soul of Wing 1: a shared lived chapter grows *both* private worlds.
   visibly bonded (edge or material treatment via `orbMaterial.ts` /
   `categoryAppearance.ts`). This is the screenshot moment; design it properly.
 
-## Phase 3 — Wing 2: the introduction (unknown person) — **core shipped**
+## Phase 3 — Wing 2: the introduction (new person) — **shipped**
 
-The original proposal below was superseded by a smaller, stricter flow that is
-now in the code. Current behaviour:
+The original proposal below was superseded by the named gist and
+message-request flow now in the code. Current behaviour:
 
 - The entity is `Introduction`.
-- The pool is same-home-city rather than friends-of-friends.
-- Taking part is the default when a home city exists because no one-sided fact
-  crosses; a person can mute introductions, which also withdraws live offers.
+- The pool is a bounded scan of eligible accounts rather than
+  friends-of-friends or an unbounded directory. One scan examines at most 200
+  accounts, opens at most 24 graphs in batches of six, and keeps at most three
+  live offers.
+- Taking part is currently the default; a person can mute introductions, which
+  also withdraws live offers.
 - Matching uses the strict intersection of shareable places, activities, and
   interests, with at least two and at most three anchors.
 - The candidate scan, graph reads, concurrency, live offers, and expiry are
   bounded in `base44/shared/introductions.ts`.
-- An introduction names nobody and exposes no face, other-side answer, or
-  compatibility score. Each reader sees a sentence already true in their own
-  world.
-- A single yes reveals nothing. The second yes creates an accepted connection
-  and reciprocal person nodes. A no silently closes the offer for both.
-- Mutual acceptance creates a connection, not an automatic researched
-  Together chapter.
+- The writing model receives only those anchors and a `[[PERSON]]` token.
+  Base44 stores both first names and attaches the correct one separately for
+  each reader.
+- An introduction exposes no face, one-sided fact, answer state, contact
+  channel, or compatibility score. Each reader sees a named sentence already
+  true in their own world.
+- Either person may send one opening message. Only the recipient sees its
+  contents. Accepting creates an introduction-origin connection, reciprocal
+  people nodes, and a `HumanMessage` thread seeded with that opener. Declining
+  closes the offer without reporting the response to the sender.
+- Accepted connections can continue through in-app human messages and ordinary
+  Together chapters. They do not automatically start paid research.
+- For weekly generation, an introduction-origin connection remains
+  `new-person` until a chosen social experience is marked lived. Base44 then
+  records `met_at` and later packs treat the connection as `known-person`.
 
 The remaining subsections in this phase are the historical proposal. Do not
 implement their entity, opt-in, friends-of-friends, or automatic-chapter details
@@ -325,10 +343,14 @@ The BUILD_JOURNAL entry should say exactly that — seeded pool, real flow.
 
 - Decline recovery in Wing 1 ("Daniel can't do Saturday — want Chapter to
   find another time?") reusing the decline-reason re-brief pattern from Now.
-- Wing 2 funnel completion: after an introduction chapter is lived and both
-  share memories, offer to convert the stranger into a real connection
-  (reuse the existing invite/acceptance machinery) — unknown person becomes
-  familiar person, and Wing 2 feeds Wing 1.
+- ~~Connect Wing 2 to a real experience and let a new person become known.~~
+  **Shipped through the weekly pack:** an accepted introduction-origin
+  connection is eligible for one concrete `new-person` card, and marking that
+  chosen experience lived records the first meeting so later packs treat the
+  person as known.
+- After that first lived meeting, invite each person to preserve their own
+  private memory of it so the shared event can deepen both worlds without
+  crossing memory contents.
 - ~~Intersection reveals ("you both love jazz bars") stay **out** until there's
   an explicit consent toggle.~~ **Superseded — shipped in Phase 1 as gists.**
   The consent problem dissolved once the reveal was restricted to the strict
@@ -344,13 +366,14 @@ The BUILD_JOURNAL entry should say exactly that — seeded pool, real flow.
 | 0 | Schema groundwork | S | dropped — folded into Phase 1 |
 | 1 | Wing 1 shared chapters + gists | L | **shipped July 27** |
 | 2 | Memory loop + nudges | M | next |
-| 3 | Wing 2 introduction core | L | **shipped July 28**, without opt-in or automatic chapter |
-| 4 | Polish + funnel | M | planned, minus the superseded item |
+| 3 | Named gist, opening-message consent, connection, human messaging | L | **shipped July 29**, without opt-in or automatic chapter |
+| 4 | First-meeting weekly bridge + remaining memory loop | M | bridge shipped; memory loop planned |
 
-Sequencing rationale: Phase 1 works with the accounts that exist today and
-reuses ~80% of the Now pipeline. Phase 3 needs Phase 1's chapter machinery,
-the opt-in, and a seeded pool — building it first would mean testing
-matchmaking with nobody to match.
+Sequencing result: Phase 1 established accepted connections, gists, and shared
+chapter machinery. Phase 3 then shipped as a bounded default-on pool rather
+than the proposed opt-in friends-of-friends system. The remaining practical
+constraint is density: without another eligible graph and at least two strict
+shared anchors, no introduction can appear.
 
 ## Open decisions (decide before the phase that needs them)
 
@@ -360,7 +383,7 @@ matchmaking with nobody to match.
 2. **Phase 2:** if Photon can't send proactively, is the in-app nudge
    acceptable for v1?
 3. ~~**Phase 3:** minimum graph depth before someone is matchable.~~
-   **Decided:** a home city plus at least two shared, shareable anchors.
+   **Decided:** at least two shared, shareable anchors.
 4. ~~**Phase 3:** should v1 frame introductions as dating?~~ **Decided:**
    introductions stay activity-framed and relationship-undefined. Romance is a
    possible outcome, never a promise or label. An explicit dating mode would

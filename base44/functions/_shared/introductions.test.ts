@@ -163,7 +163,7 @@ describe("sharedAnchorsBetween", () => {
 });
 
 describe("takesPartInIntroductions", () => {
-  it("takes part by default, because being in the pool discloses nothing", () => {
+  it("takes part by default unless the account has muted introductions", () => {
     expect(takesPartInIntroductions({ home_city: "Fukuoka" })).toBe(true);
     expect(
       takesPartInIntroductions({

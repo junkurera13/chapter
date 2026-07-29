@@ -75,9 +75,10 @@ export function buildIntroductionPrompt(
 }
 
 /**
- * One call for every candidate at once. The lines are read by one person about
- * people they cannot identify, so batching costs no privacy and saves the page
- * from opening at the speed of the slowest of N round trips.
+ * One call for every candidate at once. The model receives only shared labels
+ * and a person token; Base44 attaches each first name after writing. Batching
+ * therefore costs no graph privacy and avoids opening at the speed of the
+ * slowest of N round trips.
  */
 export async function writeIntroductionLines(args: {
   threads: readonly IntroductionThread[];

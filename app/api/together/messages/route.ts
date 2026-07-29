@@ -41,9 +41,9 @@ export async function GET(request: Request) {
       value: await fetchMyHumanConversations(accessToken),
     });
   } catch (error) {
-    // Local UI work commonly runs against the last deployed Base44 function.
-    // Until the messaging actions are explicitly deployed, an older function
-    // should look like an empty inbox rather than a Next.js error overlay.
+    // A local checkout can still be pointed at an older alternate Base44 app.
+    // Missing messaging actions should look like an empty inbox rather than a
+    // Next.js error overlay.
     if (isUndeployedBase44Action(error)) {
       return Response.json({ value: { conversations: [] } });
     }

@@ -1,18 +1,16 @@
-# Weekly experience packs — product direction
+# Weekly experience packs — production contract and remaining direction
 
 > **Status: deployed and activated, July 29 2026.** The weekly pack is the
 > production Now experience. Base44 owns preparation and release state, Vercel
 > runs the guarded daily worker, and the app shell no longer contains a route
 > back to the previous on-demand Now experience.
 >
-> **Social follow-up, July 29 2026:** implemented in the workspace and awaiting
-> the next Base44 resource deployment. A social card now begins with one
-> specific, mutually-consented person from Chapter's introduction system.
-> Introduction-origin pairs remain `new-person` until a lived meeting is
-> recorded. Their real first name is attached server-side after generation,
-> while models receive only the strict shared anchors. Generic people and
-> placeholder places are rejected at both composition and Base44 persistence
-> boundaries.
+> **Social follow-up: deployed, July 29 2026.** A social card begins with one
+> specific person from an accepted connection. Introduction-origin pairs remain
+> `new-person` until a lived meeting is recorded. Their real first name is
+> attached server-side after generation, while models receive only the strict
+> shared anchors. Generic people and placeholder places are rejected at both
+> composition and Base44 persistence boundaries.
 
 ## Why Chapter exists
 
@@ -31,16 +29,16 @@ The product should help someone:
 Chapter does not match profiles. It creates the right experience for two worlds
 to meet.
 
-## Why Now must change
+## Why Now changed
 
-The shipped Now asks for standing availability and travel preferences, keeps
-those choices in a traditional settings sheet, and generates a chapter on
-demand. Even though the UI is sparse, the underlying interaction feels like
+The previous Now asked for standing availability and travel preferences, kept
+those choices in a traditional settings sheet, and generated a chapter on
+demand. Even though the UI was sparse, the underlying interaction felt like
 configuring a recurring job: tell the machine when and how far, then ask it to
 run.
 
-The rebuild should replace configuration with a shared weekly ritual. A person
-does not schedule generation. Saturday means a new pack is there.
+The shipped rebuild replaces that configuration with a shared weekly ritual. A
+person does not schedule generation. Saturday means a new pack is there.
 
 ## The weekly ritual
 
@@ -53,8 +51,8 @@ does not schedule generation. Saturday means a new pack is there.
 6. Unchosen cards disappear with the weekly pack.
 7. The chosen experience remains available for a limited period, can be
    scheduled later, and may be dismissed, lived, or allowed to expire.
-8. A reflection after living it grows the private world and informs later
-   packs.
+8. A future reflection loop may grow the private world after the experience;
+   the current shipped transition records only that it was lived.
 
 The interaction may borrow the anticipation of opening a card pack or a game
 night market, but not casino mechanics. No currencies, rarity theatre, XP,
@@ -67,9 +65,9 @@ replace collisions, and finish card composition. Persist the completed pack as
 locked with an explicit local release boundary. Opening Now on Saturday should
 read stored results, not wait on models or research.
 
-Store an IANA timezone rather than guessing Saturday from server time. Decide
-the exact local release hour before implementation. A notification may announce
-the pack after release, but it must not be required to create it.
+Store an IANA timezone rather than guessing Saturday from server time. The
+production release boundary is 9:00 a.m. local time. A future notification may
+announce the pack after release, but it is not required to create it.
 
 Generate only for an eligible account:
 
@@ -216,13 +214,16 @@ planning, use only the shareable cut enforced by `planningGraphFrom` in
 
 ### Strangers
 
-The current introduction system supplies the privacy foundation:
+The current introduction system supplies the privacy and consent foundation:
 
-- match within the same city;
+- scan a bounded pool and open only a bounded number of candidate graphs;
 - compute the strict intersection inside Base44;
-- reveal only a sentence already true in both worlds;
-- reveal no name, face, one-sided fact, answer, or compatibility score;
-- create a connection only after both people say yes;
+- send only the shared anchors and a person token to the writing model;
+- attach each reader's correct first name server-side;
+- reveal no face, one-sided fact, answer state, contact channel, or
+  compatibility score;
+- create a connection, reciprocal people nodes, and private message thread only
+  when the recipient accepts an opening message; and
 - make declines silent.
 
 A first-meeting experience must make the new person the only stretch.
@@ -276,8 +277,10 @@ evaluation contract.
 
 ## Offline evaluation lab
 
-The first implementation slice is deliberately disconnected from production
-data, Base44, Now routes, and the Saturday UI.
+The evaluation lab remains deliberately disconnected from production data,
+Base44, Now routes, and the Saturday UI. It predates the production worker and
+continues to provide zero-cost prompt/audit modes plus explicitly gated paid
+research.
 
 - `lib/weeklyPackDesign.ts` defines the design, review, and research records;
   builds privacy-aware prompts; canonicalizes graph anchors; and applies
@@ -299,6 +302,9 @@ An editor rejection starts a bounded revision loop. The designer receives the
 full failed pack and the exact card- and pack-level critique, returns a complete
 revision, passes deterministic gates again, and is reviewed from scratch.
 Research remains unreachable until the final revision is accepted.
+Structured design attempts retry twice per model and then fall back to the pack
+fallback model. Independent review, revision, and final composition use the
+same bounded fallback discipline.
 
 Example:
 
@@ -316,7 +322,7 @@ structurally valid pack is not automatically a good pack.
 
 ## Production implementation
 
-The local product slice adds:
+The shipped product includes:
 
 - `WeeklyExperiencePack`, an admin-only Base44 entity with a private finished
   card payload, release boundary, expiry, reveal history, one chosen card,
@@ -342,6 +348,9 @@ The local product slice adds:
   chosen experience, scheduling, dismissal, and lived states;
 - a development-only `/weekly-pack-preview` route. `state=locked` and
   `state=chosen` open those states directly; the default opens the choice.
+- an owner-restricted `/experience-generator` harness that runs the current
+  generator against the signed-in owner's real graph and displays the design,
+  review, research, and composed cards for production-quality inspection.
 
 The signed-in Now tab always opens the weekly experience. In a signed-in local app,
 `/app?view=now&pack=preview`, `pack=locked`, and `pack=chosen` mount the new
@@ -363,13 +372,15 @@ with `CHAPTER_WEEKLY_PACKS_PER_RUN`. Parallel receives only the research-safe
 cut of each accepted design: no graph, raw memory, familiar thread, or anchor
 identifier leaves the server through the research boundary.
 
-The deployed production worker is still limited to `self` and `known-person`
-until the Base44 follow-up above is deployed. The workspace implementation now
-activates `new-person` when a real introduction-origin pair has both crossed
-the consent gate and holds enough strict shared ground. It prefers that
-still-unmet person over a known-person candidate, requires exactly one social
-card for them, and falls back to three solo cards when no honest match exists.
-`small-group` remains inactive until local density can support it.
+The deployed worker supports `self`, `known-person`, and `new-person`.
+`new-person` activates only for an accepted introduction-origin connection
+whose pair has not yet recorded a lived meeting and that still holds enough
+strict shared ground. The worker prefers that still-unmet person over a
+known-person candidate, requires exactly one social card for them, and falls
+back to three solo cards when no honest match exists. When an
+introduction-origin social card is marked lived, Base44 records the first
+meeting and later treats that connection as `known-person`. `small-group`
+remains inactive until local density can support it.
 
 ## Decisions already made
 
@@ -382,8 +393,9 @@ card for them, and falls back to three solo cards when no honest match exists.
 - Design the pack as a whole before research.
 - Keep experience scale separate from social composition.
 - Treat human connection as a core purpose, not an optional feature.
-- A social experience always shows the actual person after mutual consent;
-  never `someone new`, `bring someone`, or another anonymous placeholder.
+- A social experience always shows the actual person from an accepted
+  connection; never `someone new`, `bring someone`, or another anonymous
+  placeholder.
 - Every finished experience names a concrete researched place and arrival
   address.
 - Do not label stranger matches as friendship or romance.
@@ -394,9 +406,7 @@ card for them, and falls back to three solo cards when no honest match exists.
 
 1. Notification timing relative to the 9:00 a.m. local release.
 2. Whether the 21-day expiry should vary by scale.
-3. How a social card participates in weekly choice while mutual consent is
-   still pending.
-4. The catch-up experience for users who become eligible after the generation
+3. The catch-up experience for users who become eligible after the generation
    cutoff.
-5. How past declines, expirations, and lived reflections alter later pack
+4. How past declines, expirations, and lived reflections alter later pack
    composition.

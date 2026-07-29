@@ -12,6 +12,7 @@ import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import { isDemoAccount } from "../../lib/togetherSamples";
 import { canReviewWeeklyPackUI } from "../../lib/weeklyPackReviewAccess";
 import { buildWorldGraph } from "./graphData";
+import NowLocationNode from "./NowLocationNode";
 import TogetherView from "./TogetherView";
 import WeeklyPackReviewToolbar from "./WeeklyPackReviewToolbar";
 import WeeklyPackView from "./WeeklyPackView";
@@ -268,11 +269,14 @@ export default function ChapterApp({
 
   const activePanel =
     displayedIndex === 1 ? (
-      <WeeklyPackView
-        key={weeklyPackReview ?? "live"}
-        reviewState={weeklyPackReview}
-        onReviewStateChange={changeWeeklyPackReview}
-      />
+      <>
+        <WeeklyPackView
+          key={weeklyPackReview ?? "live"}
+          reviewState={weeklyPackReview}
+          onReviewStateChange={changeWeeklyPackReview}
+        />
+        <NowLocationNode />
+      </>
     ) : displayedIndex === 2 ? (
       <TogetherView
         nodes={worldGraph?.nodes ?? []}

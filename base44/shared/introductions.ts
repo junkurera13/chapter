@@ -119,12 +119,10 @@ export function introductionPairKey(firstUserId: string, secondUserId: string) {
 /**
  * Whether an account is in the pool.
  *
- * Taking part is the default, and that follows from the rule rather than being
- * a shortcut around it: a gist is the strict intersection, so what reaches a
- * stranger's screen is a sentence already true in their own world, and being
- * in the pool discloses nothing about you to anyone. There is nothing for an
- * opt-in to protect. Consent belongs where something actually crosses, which
- * is the second yes.
+ * Taking part is currently the default. The visible card is limited to a
+ * server-attached first name and a gist made from the strict intersection, so
+ * no one-sided graph fact crosses. The opening-message recipient decides
+ * whether a connection and private message channel may be created.
  *
  * Muting is the way out, and it is honoured here as well as in the scan, so a
  * stale row can never put a muted account back in.
@@ -192,6 +190,7 @@ export function responseOf(row: Row, side: IntroductionSide): IntroductionRespon
   return value === "yes" || value === "no" ? value : "pending";
 }
 
+/** Legacy response fields retained for rows created by the anonymous flow. */
 export function bothSaidYes(row: Row) {
   return responseOf(row, "a") === "yes" && responseOf(row, "b") === "yes";
 }
@@ -211,7 +210,7 @@ export function isLiveIntroduction(row: Row, now: number) {
   const status = text(row?.status);
   if (status !== "offered" && status !== "message_pending") return false;
   // Rows written by the earlier anonymous flow have no names. They are not
-  // compatible with a named gist and should quietly age out of consideration.
+  // compatible with the current named gist and quietly age out.
   if (!text(row?.user_a_name) || !text(row?.user_b_name)) return false;
   if (eitherSaidNo(row)) return false;
   return numberOr(row?.expires_at, 0) > now;

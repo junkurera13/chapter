@@ -26,6 +26,9 @@ export const dynamic = "force-dynamic";
 
 const requestSchema = z.discriminatedUnion("action", [
   z.object({
+    action: z.literal("authorize"),
+  }),
+  z.object({
     action: z.literal("start"),
     timezone: z.string().trim().min(1).max(80),
   }),
@@ -108,13 +111,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (input.action === "start") {
+    if (input.action === "authorize" || input.action === "start") {
       const { viewer } = await fetchMySession(accessToken);
       if (!canReviewWeeklyPackUI(viewer.email)) {
         return Response.json(
           { error: "Not found.", code: "NOT_FOUND" },
           { status: 404 },
         );
+      }
+      if (input.action === "authorize") {
+        return Response.json({ value: { status: "authorized" } });
       }
 
       const [graph, nowContext] = await Promise.all([
@@ -160,7 +166,10 @@ export async function POST(request: Request) {
           requestId: generationRequestId,
           createdAt: Date.now(),
           weekKey,
-          artifact: designed,
+          artifact: {
+            ...designed,
+            homeCity: context.homeCity,
+          },
           runs,
         },
         reviewSecret(),
@@ -196,6 +205,8 @@ export async function POST(request: Request) {
       const research = await pollWeeklyPackResearch({
         pack: job.artifact.pack,
         runs: job.runs,
+        homeCity: job.artifact.homeCity,
+        requestId: job.requestId,
       });
       if (research.status === "pending") {
         return Response.json({

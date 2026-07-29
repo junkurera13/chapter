@@ -35,11 +35,12 @@ Treat experience scale (`small`, `mini`, `proper`) and social composition
 the experience before choosing a venue; research exists to make the design
 true, current, and actionable.
 
-The weekly three-card Saturday pack is agreed product direction but is not
-shipped. Read `docs/weekly-experience-packs.md` and
+The weekly three-card Saturday pack is the shipped production **Now**
+experience. Read `docs/weekly-experience-packs.md` and
 `.agents/skills/craft-chapter-experiences/SKILL.md` before changing Now,
 Together experience generation, research briefs, pack formats, or experience
-quality evaluation. Do not describe that planned flow as implemented.
+quality evaluation. Keep the document's remaining open decisions distinct from
+the production contract.
 
 ## Privacy is enforced in code, not in prompts
 
@@ -53,17 +54,28 @@ Widening either boundary is a product decision, never a refactor.
 Composition of a Together chapter belongs to the initiator alone. A partner
 polling `/api/together` must not be able to see or advance a draft.
 
+The introduction scan may return only the strict shared anchors and an opaque
+candidate ID to the trusted Next.js route. The model writes against those
+anchors and a person token; Base44 attaches each reader's first name
+server-side. An opening message is the consent boundary: only the recipient
+sees it, and only their acceptance may create a connection, reciprocal people
+nodes, and a human-message thread. A decline closes the offer without reporting
+the reason or response to the sender.
+
 ## Model calls
 
-All model calls go through OpenRouter with `data_collection: "deny"`, and every
-model id is overridable by environment variable — don't hardcode a new one.
-Memory extraction deliberately does **not** run through Eve; it is a direct call
-in `lib/memoryExtractor.ts` so the first memory never depends on the agent
-sandbox. Now and Together research runs cost real money through Parallel AI:
-don't add a code path that can start one without a person asking for it.
+All model calls go through OpenRouter with `data_collection: "deny"`.
+Application generation model ids are overridable by environment variable; the
+two Eve conversation ids currently live in `agent/agent.ts`. Do not hardcode a
+new model id. Memory extraction deliberately does **not** run through Eve; it
+is a direct call in `lib/memoryExtractor.ts` so the first memory never depends
+on the agent sandbox. Now and Together research runs cost real money through
+Parallel AI: don't add a code path that can start one without a person asking
+for it.
 
 ## Docs
 
 `README.md`, `SUBMISSION.md`, and `BUILD_JOURNAL.md` describe the product as
-shipped. Files in `docs/` are plans and carry their own status headers — read
-the header before treating one as a description of the code.
+shipped. Files in `docs/` may be production contracts, parked designs, or
+remaining plans; their status headers are authoritative. Read the header before
+treating one as a description of the code.

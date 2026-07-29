@@ -209,9 +209,7 @@ export const weeklyPackDesignModelSchema = z.object({
   ),
 });
 
-export type WeeklyPackCardDesign = z.infer<
-  typeof weeklyPackCardDesignSchema
->;
+export type WeeklyPackCardDesign = z.infer<typeof weeklyPackCardDesignSchema>;
 export type WeeklyPackDesign = z.infer<typeof weeklyPackDesignSchema>;
 
 export type WeeklyPackContext = {
@@ -219,9 +217,7 @@ export type WeeklyPackContext = {
   privacyMode: "personal" | "shareable" | "intersection";
   availableCompanies: readonly WeeklyPackCompany[];
   socialMatch?: WeeklyPackSocialMatch;
-  maxMechanismOccurrences?: Partial<
-    Record<WeeklyPackMechanism, number>
-  >;
+  maxMechanismOccurrences?: Partial<Record<WeeklyPackMechanism, number>>;
   generationNotes?: readonly string[];
 };
 
@@ -277,8 +273,7 @@ export function buildWeeklyPackGraphDigest(
   const edges = graph.edges
     .filter(
       (edge) =>
-        includedIds.has(edge.fromNodeId) &&
-        includedIds.has(edge.toNodeId),
+        includedIds.has(edge.fromNodeId) && includedIds.has(edge.toNodeId),
     )
     .map((edge) => ({
       from: edge.fromNodeId,
@@ -313,7 +308,8 @@ function formatContract() {
       duration: "a substantial half-day or full day",
       structure: "a coherent journey or short sequence with a clear arc",
       geography: "may reach beyond the city when travel is part of the value",
-      effort: "deliberate planning is acceptable when dependencies are verified",
+      effort:
+        "deliberate planning is acceptable when dependencies are verified",
     },
   };
 }
@@ -422,9 +418,7 @@ function jaccard(first: string, second: string) {
   const secondWords = canonicalWords(second);
   const union = new Set([...firstWords, ...secondWords]);
   if (union.size === 0) return 0;
-  const intersection = [...firstWords].filter((word) =>
-    secondWords.has(word),
-  );
+  const intersection = [...firstWords].filter((word) => secondWords.has(word));
   return intersection.length / union.size;
 }
 
@@ -495,10 +489,7 @@ function auditStretch(
   const dimensions = WEEKLY_PACK_STRETCH_DIMENSIONS.filter(
     (dimension) => card.familiarity[dimension] === "new",
   );
-  if (
-    dimensions.length !== 1 ||
-    dimensions[0] !== card.stretch.dimension
-  ) {
+  if (dimensions.length !== 1 || dimensions[0] !== card.stretch.dimension) {
     addIssue(issues, {
       code: "ONE_STRETCH",
       cardId: card.id,
@@ -506,10 +497,7 @@ function auditStretch(
         "Exactly one familiarity dimension must be new, and it must match the declared stretch.",
     });
   }
-  if (
-    card.format.company === "self" &&
-    card.stretch.dimension === "person"
-  ) {
+  if (card.format.company === "self" && card.stretch.dimension === "person") {
     addIssue(issues, {
       code: "SELF_PERSON_STRETCH",
       cardId: card.id,
@@ -597,9 +585,7 @@ function auditSocialMatch(
   const socialCard = matchedCards[0];
   if (
     socialCard.anchors.length === 0 ||
-    socialCard.anchors.some(
-      (anchor) => !allowedAnchorIds.has(anchor.nodeId),
-    )
+    socialCard.anchors.some((anchor) => !allowedAnchorIds.has(anchor.nodeId))
   ) {
     addIssue(issues, {
       code: "SOCIAL_ANCHOR_NOT_SHARED",
@@ -703,7 +689,8 @@ export function auditWeeklyPackDesign(args: {
   ) {
     addIssue(issues, {
       code: "PACK_SCALE_SET",
-      message: "A pack must contain exactly one small, one mini, and one proper card.",
+      message:
+        "A pack must contain exactly one small, one mini, and one proper card.",
     });
   }
 
@@ -713,7 +700,9 @@ export function auditWeeklyPackDesign(args: {
     auditConnection(card, context, issues);
     auditAnchors(card, graph, context, issues);
 
-    const kinds = new Set(card.requirements.map((requirement) => requirement.kind));
+    const kinds = new Set(
+      card.requirements.map((requirement) => requirement.kind),
+    );
     for (const required of ["availability", "cost", "travel"] as const) {
       if (!kinds.has(required)) {
         addIssue(issues, {
@@ -757,7 +746,9 @@ export function auditWeeklyPackDesign(args: {
   for (const [mechanism, maximum] of Object.entries(
     context.maxMechanismOccurrences ?? {},
   )) {
-    const count = mechanisms.filter((candidate) => candidate === mechanism).length;
+    const count = mechanisms.filter(
+      (candidate) => candidate === mechanism,
+    ).length;
     if (typeof maximum === "number" && count > maximum) {
       addIssue(issues, {
         code: "MECHANISM_LIMIT",
@@ -879,6 +870,7 @@ export const weeklyPackDesignArtifactSchema = z.object({
   pack: weeklyPackDesignSchema,
   review: weeklyPackReviewSchema,
   revisionReviews: z.array(weeklyPackReviewSchema).max(2),
+  homeCity: z.string().trim().min(2).max(160).optional(),
   companion: weeklyPackCompanionSchema.optional(),
 });
 
@@ -909,6 +901,63 @@ export function enforceWeeklyPackReviewThresholds(
   };
 }
 
+export function summarizeWeeklyPackReview(review: WeeklyPackReview) {
+  const rejectedCards = review.cardReviews
+    .filter((card) => card.verdict === "reject")
+    .map((card) => {
+      const lowScores = Object.entries(card.scores)
+        .filter(([, score]) => score < 3)
+        .map(([dimension, score]) => `${dimension} ${score}/4`);
+      const total = Object.values(card.scores).reduce(
+        (sum, score) => sum + score,
+        0,
+      );
+      return {
+        cardId: card.cardId,
+        hardGateFailures: card.hardGateFailures,
+        lowScores,
+        total,
+        revisionPriority: card.revisionPriority,
+      };
+    });
+  const lowPackScores = Object.entries(review.packScores)
+    .filter(([, score]) => score < 3)
+    .map(([dimension, score]) => `${dimension} ${score}/4`);
+  return {
+    verdict: review.verdict,
+    rejectedCards,
+    packFailures: review.packFailures,
+    lowPackScores,
+    revisionPriority: review.revisionPriority,
+  };
+}
+
+export function describeWeeklyPackReviewFailure(review: WeeklyPackReview) {
+  const summary = summarizeWeeklyPackReview(review);
+  const failures = [
+    ...summary.rejectedCards.map((card) => {
+      const reasons = [
+        ...card.hardGateFailures,
+        ...card.lowScores,
+        ...(card.total < 20 ? [`total ${card.total}/24`] : []),
+      ];
+      return `${card.cardId}: ${reasons.join(", ") || card.revisionPriority}`;
+    }),
+    ...(summary.packFailures.length > 0
+      ? [`pack: ${summary.packFailures.join(", ")}`]
+      : []),
+    ...(summary.lowPackScores.length > 0
+      ? [`pack: ${summary.lowPackScores.join(", ")}`]
+      : []),
+  ];
+  return [
+    failures.length > 0
+      ? `The weekly pack did not pass independent editorial review — ${failures.join("; ")}.`
+      : "The weekly pack did not pass independent editorial review.",
+    `Editor priority: ${summary.revisionPriority}`,
+  ].join(" ");
+}
+
 export function buildWeeklyPackReviewPrompt(args: {
   pack: WeeklyPackDesign;
   graph: ExperienceGraphRecord;
@@ -918,6 +967,14 @@ export function buildWeeklyPackReviewPrompt(args: {
   return [
     "Act as a strict Chapter experience editor. Evaluate the designed pack; do not rewrite it and do not reward polished prose.",
     "",
+    "REVIEW STAGE",
+    "- This is a pre-research design review. No venue, provider, event, route, hours, booking, travel, cost, or current operating evidence should exist yet.",
+    "- Judge whether each design is concrete, coherent, safe in principle, and ready for its stated research—not whether research has already proved external facts.",
+    "- For actionability, score 4 when the experience action and format are clear, its requirements name the critical facts to prove, and its research objective can produce a usable result. Score 3 when it is researchable with only minor design ambiguity.",
+    "- Do not lower actionability or declare a hard-gate failure merely because future research has not yet supplied a place or verified logistics.",
+    "- If only one company value is allowed by CONTEXT, do not penalize contrast, choice quality, or any card for lacking unavailable social variety. Judge contrast across the feasible axes: action, mechanism, scale, rhythm, energy, geography, and time.",
+    "- Never require a social card when CONTEXT has no server-confirmed social match.",
+    "",
     "HARD GATES",
     "- Each card anchors to real, permitted graph evidence.",
     "- Each card spends exactly one stretch.",
@@ -926,6 +983,7 @@ export function buildWeeklyPackReviewPrompt(args: {
     "- The social composition is safe and useful.",
     "- The cards are meaningfully distinct.",
     "Any hard-gate failure means rejection.",
+    "Every hard-gate failure must name a concrete supplied field or design contract that fails. Missing future research is not a design-stage hard-gate failure.",
     "",
     "CARD SCORING: 0-4 for recognition, transformation, experience mechanism, story potential, actionability, and restraint/truth.",
     "A card passes only with at least 3 in every dimension and at least 20/24 overall.",
@@ -933,7 +991,8 @@ export function buildWeeklyPackReviewPrompt(args: {
     "PACK SCORING: 0-4 for contrast, thread diversity, mechanism diversity, commitment ladder, and choice quality.",
     "Reject one obvious winner plus filler, a venue monoculture, repeated mechanisms, or cards interchangeable after replacing place names.",
     "",
-    "Do not infer facts missing from the graph. Be severe but specific.",
+    "Do not infer facts missing from the graph. Be strict, phase-aware, and specific.",
+    "Return a concise review. Use integer scores. Keep strongestQuality and revisionPriority to one short sentence each.",
     `CONTEXT: ${JSON.stringify(args.context)}`,
     `GRAPH DIGEST: ${JSON.stringify(digest)}`,
     `DESIGNED PACK: ${JSON.stringify(args.pack)}`,
@@ -954,6 +1013,7 @@ export function buildWeeklyPackRevisionPrompt(args: {
     "REVISION DISCIPLINE",
     "- Repair every hard-gate failure, rejected score, pack failure, and stated revision priority.",
     "- Preserve a card that already passed unless the pack-level critique requires changing it.",
+    "- This remains pre-research design. Repair actionability by making the experience, requirements, and research objective concrete; do not invent the external facts that research must verify.",
     "- Keep exactly one small, one mini, and one proper card.",
     "- Keep scale and company as separate axes.",
     "- Every card must use a different primary graph anchor, mechanism, and living thread.",
@@ -964,6 +1024,9 @@ export function buildWeeklyPackRevisionPrompt(args: {
     "- Anchor only to supplied node ids. Copy labels and categories exactly.",
     "- Keep research objectives independent and specific to what each design needs proved.",
     "- A new-person experience must remain public, bounded, activity-centred, easy to leave, alcohol-independent, and worthwhile without a connection.",
+    args.context.availableCompanies.length === 1
+      ? `- Only ${args.context.availableCompanies[0]} company is available. Do not create or imply unavailable social variety; build contrast through the other format axes.`
+      : "",
     "",
     "QUALITY BAR",
     "- Recognition must come from graph truth, not a flattering guess.",
@@ -976,7 +1039,9 @@ export function buildWeeklyPackRevisionPrompt(args: {
     `GRAPH DIGEST: ${JSON.stringify(digest)}`,
     `REJECTED PACK: ${JSON.stringify(args.pack)}`,
     `EDITOR REVIEW: ${JSON.stringify(args.review)}`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export const weeklyPackResearchFindingSchema = z.object({
@@ -1000,6 +1065,15 @@ export const weeklyPackResearchFindingSchema = z.object({
     weather: z.string().trim().min(3).max(800),
     safety: z.string().trim().min(3).max(800),
   }),
+  travelFit: z
+    .object({
+      originCity: z.string().trim().min(2).max(160),
+      destinationCity: z.string().trim().min(2).max(160),
+      roundTripMinutes: z.number().int().min(0).max(1_440),
+      requiresFlight: z.boolean(),
+      withinDesignedGeography: z.boolean(),
+    })
+    .optional(),
   criticalFacts: z
     .array(
       z.object({
@@ -1031,6 +1105,12 @@ export function buildWeeklyPackResearchPrompt(args: {
     researchObjective: args.card.researchObjective,
     connectionSafety: args.card.connectionSafety,
   };
+  const travelLimitMinutes =
+    args.card.format.scale === "small"
+      ? 90
+      : args.card.format.scale === "mini"
+        ? 180
+        : 360;
   return [
     "Prove one already-designed Chapter experience with current web research.",
     "Do not replace it with a recommendation and do not add a second unfamiliar dimension.",
@@ -1040,6 +1120,13 @@ export function buildWeeklyPackResearchPrompt(args: {
     `- Verify current operation and logistics as of ${args.currentDate}.`,
     "- Prove every critical claim with direct source URLs. Prefer first-party sources and recent operating evidence.",
     "- Preserve the designed action, mechanism, company, scale, and single stretch.",
+    `- The journey begins and ends in HOME CITY. Return originCity exactly as "${args.context.homeCity}" in travelFit.`,
+    `- This is a day-scale experience, not destination travel. Flights are never allowed. The verified complete round trip must take at most ${travelLimitMinutes} minutes.`,
+    args.card.format.geography === "beyond-city"
+      ? "- A beyond-city destination is allowed only when surface transport and the experience both fit comfortably inside this card's stated duration."
+      : "- The primary place must be inside HOME CITY because this card is not designed as beyond-city travel.",
+    "- primaryPlace must be one actual, currently operating named location with a real area and street address. Never return a generic type such as swimming pool, arena, venue, park, or local facility.",
+    "- If no candidate satisfies the home-city, travel-time, geography, and no-flight constraints, report that in researchCaveats. Never escape to another country to satisfy the topic.",
     "- Reject chains, generic top-listicle choices, closed or weakly evidenced candidates, and logistics that violate the format.",
     "- Never state or infer anything about the person's biography, feelings, relationships, compatibility, or private memories.",
     "- If a requirement cannot be proved, say so in researchCaveats instead of guessing.",
@@ -1057,13 +1144,14 @@ function normalizeIdentity(value: string) {
   return value
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 }
 
 export function auditWeeklyPackResearch(args: {
   pack: WeeklyPackDesign;
   findings: readonly WeeklyPackResearchFinding[];
+  homeCity?: string;
 }): WeeklyPackResearchAudit {
   const issues: WeeklyPackAuditIssue[] = [];
   const collidingCardIds = new Set<string>();
@@ -1099,8 +1187,10 @@ export function auditWeeklyPackResearch(args: {
         });
       }
       if (
-        jaccard(firstFinding.experienceAction, secondFinding.experienceAction) >=
-        0.62
+        jaccard(
+          firstFinding.experienceAction,
+          secondFinding.experienceAction,
+        ) >= 0.62
       ) {
         collidingCardIds.add(firstFinding.cardId);
         collidingCardIds.add(secondFinding.cardId);
@@ -1113,6 +1203,82 @@ export function auditWeeklyPackResearch(args: {
   }
 
   for (const finding of args.findings) {
+    const design = args.pack.cards.find((card) => card.id === finding.cardId);
+    const normalizedPlace = normalizeIdentity(finding.primaryPlace.name);
+    if (
+      /^(a |an |the )?(local |nearby |public |municipal )?(swimming )?(pool|arena|venue|location|place|facility|park|stadium|event|route)$/.test(
+        normalizedPlace,
+      )
+    ) {
+      addIssue(issues, {
+        code: "RESEARCH_PLACE_GENERIC",
+        cardId: finding.cardId,
+        message: `${finding.cardId} research returned a generic place instead of one named location.`,
+      });
+    }
+
+    if (args.homeCity && design) {
+      const travelFit = finding.travelFit;
+      if (!travelFit) {
+        addIssue(issues, {
+          code: "RESEARCH_TRAVEL_FIT_MISSING",
+          cardId: finding.cardId,
+          message: `${finding.cardId} research did not prove its travel fit from ${args.homeCity}.`,
+        });
+      } else {
+        const origin = normalizeIdentity(travelFit.originCity);
+        const homeCity = normalizeIdentity(args.homeCity);
+        if (
+          origin !== homeCity &&
+          !origin.includes(homeCity) &&
+          !homeCity.includes(origin)
+        ) {
+          addIssue(issues, {
+            code: "RESEARCH_TRAVEL_ORIGIN",
+            cardId: finding.cardId,
+            message: `${finding.cardId} research used ${travelFit.originCity} instead of ${args.homeCity} as its origin.`,
+          });
+        }
+        if (travelFit.requiresFlight) {
+          addIssue(issues, {
+            code: "RESEARCH_FLIGHT_REQUIRED",
+            cardId: finding.cardId,
+            message: `${finding.cardId} requires a flight and is not a weekly day-scale experience.`,
+          });
+        }
+        if (!travelFit.withinDesignedGeography) {
+          addIssue(issues, {
+            code: "RESEARCH_GEOGRAPHY_MISMATCH",
+            cardId: finding.cardId,
+            message: `${finding.cardId} research does not fit its designed geography.`,
+          });
+        }
+        const travelLimitMinutes =
+          design.format.scale === "small"
+            ? 90
+            : design.format.scale === "mini"
+              ? 180
+              : 360;
+        if (travelFit.roundTripMinutes > travelLimitMinutes) {
+          addIssue(issues, {
+            code: "RESEARCH_TRAVEL_TOO_LONG",
+            cardId: finding.cardId,
+            message: `${finding.cardId} needs ${travelFit.roundTripMinutes} minutes of round-trip travel; its limit is ${travelLimitMinutes}.`,
+          });
+        }
+        if (
+          design.format.geography !== "beyond-city" &&
+          normalizeIdentity(travelFit.destinationCity) !== homeCity
+        ) {
+          addIssue(issues, {
+            code: "RESEARCH_DESTINATION_CITY",
+            cardId: finding.cardId,
+            message: `${finding.cardId} must stay inside ${args.homeCity}.`,
+          });
+        }
+      }
+    }
+
     if (finding.researchCaveats.length > 0) {
       addIssue(
         issues,

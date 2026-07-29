@@ -255,7 +255,8 @@ async function ensureSidequestUser(users: Row, viewer: Row) {
     if (!existing.onboarding_step) {
       identityPatch.onboarding_step = "needs_memory_invite";
     }
-    // Backfilled for accounts whose home city predates the introduction pool.
+    // Backfilled so geographic keys remain available without reparsing the
+    // display city if a product surface needs deterministic locality.
     if (existing.home_city && !existing.home_city_key) {
       identityPatch.home_city_key = normalizeCity(existing.home_city);
     }
@@ -1146,8 +1147,8 @@ Deno.serve(async (req) => {
      * There is no way in, because there is nothing to consent to: a gist about
      * someone unmet is built from the strict intersection, so every word of it
      * is already true in the reader's own world and none of it is the other
-     * person's to disclose. Nothing crosses until both people say yes, and that
-     * yes is the consent gate.
+     * person's to disclose. The recipient's acceptance of an opening message
+     * is the consent gate for creating a connection and message thread.
      *
      * Muting does not only stop new offers. It withdraws every live one,
      * because an offer standing in someone else's app after you left is a
@@ -2543,8 +2544,8 @@ Deno.serve(async (req) => {
         return Response.json({ error: "home city required" }, { status: 400 });
       }
 
-      // The normalised key is written beside the city so the introduction pool
-      // can be queried on an exact match rather than scanned and compared.
+      // Keep a normalised key beside the display city so a geographic filter
+      // never depends on punctuation or casing.
       await users.update(user.id, {
         home_city: homeCity,
         home_city_key: normalizeCity(homeCity),

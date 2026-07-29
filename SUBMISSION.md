@@ -5,12 +5,13 @@
 - Full name: **[confirm before submitting]**
 - Email: **[confirm before submitting]**
 - Project title: **Chapter**
-- One-line pitch: **Chapter turns your memories into an evolving graph of your life, then creates experiences combining the familiar and the unfamiliar.**
-- Surface type: **Web app**
+- One-line pitch: **Chapter turns private memories into an evolving graph, then opens three researched real-world experiences every Saturday—alone, with someone you know, or with someone new.**
+- Surface type: **Web app with an iMessage companion**
 - Live URL: https://usechapter.vercel.app
 - Public GitHub repo: https://github.com/junkurera13/chapter
-- Access instructions: **Open `/app`, sign in with Google, connect an iMessage-capable phone number, text Chapter, and share one unforgettable experience. Return to You to see the private graph. Set a home city, then open Now: Chapter prepares three independently researched experiences before Saturday, keeps them sealed until 9:00 a.m. local time, and lets you reveal all three but keep one. Together works two ways. To connect by name, open any named person and create a private invite; after they accept with their own Google account, both people receive reciprocal nodes and Chapter names what their two worlds share, then plans a chapter for both of them. Introductions need no setup: with a home city set, Chapter looks among other accounts in the same city and offers a sentence made only of what the two worlds already share, with no name attached, as another gist in the same list. Both people must say yes before either learns anything more; the second yes turns that card into an ordinary connection. Any card offers a way to stop being shown them. With one account in a city the pool is empty by design.**
+- Access instructions: **Open `/app`, sign in with Google, and share one unforgettable experience in the web composer; connecting an iMessage-capable phone is optional and continues the same Chapter conversation. Return to You to see the private graph. Set a home city, then open Now: Chapter prepares three independently researched experiences before Saturday, keeps them sealed until 9:00 a.m. local time, and lets you reveal all three but keep one. Together supports existing and new relationships. A named person in You can receive a private invite; acceptance creates reciprocal people nodes and enables gists and shared chapters. Separately, Chapter scans a bounded account pool and may show a first name beside one sentence made only from the strict overlap of two private worlds. Either person may send an opening message; only the recipient sees it, and accepting creates the connection and private message thread. A single-account test will not produce an introduction candidate.**
 - Demo video URL: **[optional, not recorded yet]**
+- Social post URL: **[required by the submission portal; add before submitting]**
 - Agentic IDE used: **Codex and Claude Code**
 - Base44 App ID: **6a606ec9966ada5a7874da07**
 
@@ -34,15 +35,16 @@ combination is the whole product, and it is a rule rather than a mood: **the one
 stretch**. Every proposal keeps your world familiar along every dimension except
 exactly one, and that one (place, activity, time, or person) reaches into the
 unknown. Two stretches is a stranger doing a strange thing somewhere strange, and nobody
-goes. Zero stretches is Tuesday. The rule lives in the schema
-(`lib/nowChapterSchema.ts`), not only in the prompt, so nothing downstream can
-quietly break it. Each **Now** card stretches place, activity, or time.
-**Together** spends
-the person dimension, with someone you have connected to or someone you have
-not met.
+goes. Zero stretches is Tuesday. The weekly rule lives in
+`lib/weeklyPackDesign.ts`, not only in a prompt, so deterministic audits can
+reject a hidden second stretch before research starts. A solo **Now** card may
+stretch place, activity, or time. A first-meeting card spends its one stretch
+on the person; an experience with someone already known may stretch another
+dimension.
 
 Chapter starts with lived experience instead of preference checkboxes. A
-person shares one experience they will never forget in iMessage. Chapter
+person shares one experience they will never forget on the web or in iMessage.
+Chapter
 extracts a careful graph against a fixed ontology
 (`lib/experienceOntology.ts`): eight node categories (moment, people, place,
 activity, interest, feeling, condition, pattern), eighteen typed relations,
@@ -67,23 +69,26 @@ construction.
 The gist is the whole mechanism, and it does two jobs. With someone you have
 connected to, it becomes a chapter for the two of you that either person can
 propose, accept, or mark lived. With someone you have not met, the same sentence
-is the introduction itself. Chapter does not show you a profile, a photograph,
-or a compatibility score. It shows you one true thing your world and a stranger's
-world both contain, and asks whether that is worth an afternoon. Nothing else
-about either person crosses until both people say yes.
+is the introduction itself. Chapter does not show a profile, photograph,
+one-sided graph fact, answer state, or compatibility score. The writing model
+sees only the strict shared anchors and a person token; Base44 attaches the
+correct first name afterward. Either person may send an opening message, and
+only its recipient sees it. Accepting creates the connection, reciprocal
+people nodes, and private message thread; declining closes the offer without
+reporting the response.
 
-There is no opt-in screen and no button to press, which is a consequence of the
-rule rather than a shortcut around it. If a sentence is made only of what the
-reader already holds, then being in the pool discloses nothing, and a consent
-step would be asking permission for something that never happens. Consent
-belongs where something actually crosses, which is the second yes. One card
-carries a person from stranger to chapter without ever becoming a second kind
-of object.
+There is currently no opt-in screen. Eligible accounts take part by default,
+and anyone may mute introductions, withdrawing every live offer involving
+them. The pool and graph reads are bounded. A message request is the consent
+boundary for creating a relationship inside Chapter, and a connection created
+that way remains a `new-person` possibility until the pair actually live a
+first meeting.
 
 Base44 owns authenticated accounts, private image storage, phone-account
-linking, source memories, conversation records, graph validation, connection
+linking, source memories, Chapter conversation records, private human messages,
+graph validation, connection
 invitations, accepted connections, introductions between strangers, home city,
-weekly experience packs, Now and Together chapters, and persistence. Twelve
+weekly experience packs, Now and Together chapters, and persistence. Thirteen
 Base44 entities model that world. Chapter's durable
 conversation runs as an Eve agent on Vercel, and every model call goes directly
 through OpenRouter to 2026 models pinned to zero-data-retention providers:
@@ -96,24 +101,23 @@ Together composition.
 structured graph before persistence; `sidequest-message` provides idempotent
 web and iMessage processing and stores the opaque Eve continuation cursor;
 `sidequest-data` provides authenticated ownership, graph retrieval, single-use
-invite handling, reciprocal nodes, the introduction pool scan, and chapter
-records. Direct entity access is restricted by access rules. The scan is the
-one action that weighs an account against accounts it has never met, so it
-computes the intersection inside Base44 and returns only the labels the two
-already share: a stranger's world never leaves the backend, not even to
-Chapter's own server.
+invite handling, reciprocal nodes, the introduction pool scan, human messages,
+weekly-pack state, and chapter records. Direct entity access is restricted by
+access rules. The scan is the one action that weighs an account against
+accounts it has never met, so it computes the intersection inside Base44 and
+returns only an opaque candidate id plus labels the two already share: a
+stranger's graph never leaves the backend.
 
 Privacy is enforced server-side rather than by convention. The eight categories
 split cleanly in two. Together reduces each graph to a shareable cut of three,
 places, activities, and interests. The other five, moments, people, feelings,
 conditions, and patterns, never leave the server. A gist is
 narrower still: it reveals only the intersection of the two worlds, so every
-sentence it produces is already true on both sides. That property is what lets
-Chapter introduce two people who have never met without asking either of them to
-negotiate consent first. A label you already hold in your own world is not the
-other person's to disclose, and the sentence is identically true read from
-either side, so an introduction reveals nothing that was not already yours.
-Composition belongs to the initiator alone, so a partner cannot see or spend a
+sentence it produces is already true on both sides. That property lets Chapter
+show a meaningful introduction without exposing one person's private evidence
+to the other. Base44 may attach a first name, but the sentence itself remains
+identically true read from either side. Composition of a researched Together
+chapter belongs to the initiator alone, so a partner cannot see or spend a
 research run they don't know exists.
 
 Photon is deliberately narrow: it connects Apple Messages to the signed
@@ -121,8 +125,8 @@ Next.js webhook, while Base44 remains the source of truth. The product
 demonstrates Google sign-in, phone linking, an iMessage memory conversation,
 graph growth, a private interactive world, identity-backed connections, a
 three-card researched Saturday pack in **Now**, a shared chapter in
-**Together**, and an introduction between two people whose worlds overlap but
-who have never met.
+**Together**, and a named introduction that can become a private human
+conversation and a concrete first-meeting experience.
 
 **Decisions I would defend.** Anchors come back from the model as labels, never
 as ids, and every label is resolved against the real graph before it survives.
@@ -142,7 +146,8 @@ graph from a photo and a paragraph, consistently and in production, took the
 most iterations, and the answer turned out to be structural rather than verbal:
 preserve sources before any model work, validate before persistence, repair at
 read time. The rest was cost-performance shopping across gateways and models,
-which is why every model choice here is an environment variable, not a constant.
+which is why every application generation path exposes model overrides. Eve's
+two conversation models remain explicit constants in `agent/agent.ts`.
 I don't use Figma; I design straight into the code, hopping between Codex and
 Claude Code, and I hold the commit history to the same bar as the interface.
 
@@ -151,7 +156,7 @@ Claude Code, and I hold the commit history to the same bar as the interface.
 - [x] Authentication & user management
 - [x] Database / entities
 - [x] Backend functions (Deno)
-- [x] AI / LLM structured extraction (OpenRouter)
+- [x] AI / LLM integration around Base44 state (OpenRouter)
 - [ ] Real-time subscriptions
 - [x] File & media storage
 

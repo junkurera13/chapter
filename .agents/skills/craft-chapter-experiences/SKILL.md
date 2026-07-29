@@ -124,5 +124,6 @@ before designing an explicitly dating-oriented flow.
 ## Separate present code from product direction
 
 `README.md`, `SUBMISSION.md`, and `BUILD_JOURNAL.md` describe what is shipped.
-The weekly pack is planned in `docs/weekly-experience-packs.md`. Do not describe
-that plan as implemented until the code and shipped-state docs say so.
+The production weekly-pack contract and its remaining open decisions live in
+`docs/weekly-experience-packs.md`. Do not describe an open decision as
+implemented, and do not describe the shipped Saturday pack as merely planned.

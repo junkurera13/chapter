@@ -6,8 +6,12 @@ import {
   buildWeeklyPackDesignPrompt,
   buildWeeklyPackGraphDigest,
   buildWeeklyPackResearchPrompt,
+  buildWeeklyPackReviewPrompt,
+  buildWeeklyPackRevisionPrompt,
   canonicalizeWeeklyPackAnchors,
+  describeWeeklyPackReviewFailure,
   enforceWeeklyPackReviewThresholds,
+  summarizeWeeklyPackReview,
   weeklyPackDesignSchema,
   weeklyPackResearchFindingSchema,
   weeklyPackReviewSchema,
@@ -204,9 +208,11 @@ describe("weekly pack design lab", () => {
   it("ships all seven pressure-test fixtures without real memory evidence", () => {
     expect(WEEKLY_PACK_FIXTURES).toHaveLength(7);
     for (const current of WEEKLY_PACK_FIXTURES) {
-      expect(current.graph.nodes.every((node) => node.evidence.includes("Synthetic"))).toBe(
-        true,
-      );
+      expect(
+        current.graph.nodes.every((node) =>
+          node.evidence.includes("Synthetic"),
+        ),
+      ).toBe(true);
     }
   });
 
@@ -226,9 +232,7 @@ describe("weekly pack design lab", () => {
     expect(prompt).toContain(
       "A self-company card may stretch only place, activity, or time.",
     );
-    expect(prompt).toContain(
-      "no card may declare `person` as its stretch",
-    );
+    expect(prompt).toContain("no card may declare `person` as its stretch");
   });
 
   it("sends Parallel only the research-safe design cut", () => {
@@ -351,7 +355,8 @@ describe("weekly pack design lab", () => {
           restraintAndTruth: 4,
         },
         strongestQuality: "The action creates a clear lived mechanism.",
-        revisionPriority: "Strengthen the grounded recognition without making claims.",
+        revisionPriority:
+          "Strengthen the grounded recognition without making claims.",
         verdict: "accept",
       })),
       packScores: {
@@ -368,6 +373,77 @@ describe("weekly pack design lab", () => {
     const enforced = enforceWeeklyPackReviewThresholds(review);
     expect(enforced.cardReviews[0].verdict).toBe("reject");
     expect(enforced.verdict).toBe("reject");
+    expect(summarizeWeeklyPackReview(enforced)).toMatchObject({
+      verdict: "reject",
+      rejectedCards: [
+        {
+          cardId: "small",
+          lowScores: ["recognition 2/4"],
+          total: 22,
+        },
+      ],
+      lowPackScores: [],
+    });
+    expect(describeWeeklyPackReviewFailure(enforced)).toContain(
+      "small: recognition 2/4",
+    );
+  });
+
+  it("reviews and revises pre-research designs against phase-appropriate evidence", () => {
+    const current = fixture();
+    const pack = validPack();
+    const reviewPrompt = buildWeeklyPackReviewPrompt({
+      pack,
+      graph: current.graph,
+      context: current.context,
+    });
+    expect(reviewPrompt).toContain("This is a pre-research design review.");
+    expect(reviewPrompt).toContain(
+      "Missing future research is not a design-stage hard-gate failure.",
+    );
+    expect(reviewPrompt).toContain(
+      "do not penalize contrast, choice quality, or any card for lacking unavailable social variety",
+    );
+
+    const acceptedReview = weeklyPackReviewSchema.parse({
+      cardReviews: ["small", "mini", "proper"].map((cardId) => ({
+        cardId,
+        hardGateFailures: [],
+        scores: {
+          recognition: 4,
+          transformation: 4,
+          experienceMechanism: 4,
+          storyPotential: 4,
+          actionability: 4,
+          restraintAndTruth: 4,
+        },
+        strongestQuality: "The action creates a clear lived mechanism.",
+        revisionPriority:
+          "Keep the research objective focused on critical facts.",
+        verdict: "accept",
+      })),
+      packScores: {
+        contrast: 4,
+        threadDiversity: 4,
+        mechanismDiversity: 4,
+        commitmentLadder: 4,
+        choiceQuality: 4,
+      },
+      packFailures: [],
+      revisionPriority:
+        "Preserve the pack's existing contrast during research.",
+      verdict: "accept",
+    });
+    const revisionPrompt = buildWeeklyPackRevisionPrompt({
+      pack,
+      review: acceptedReview,
+      graph: current.graph,
+      context: current.context,
+    });
+    expect(revisionPrompt).toContain(
+      "Repair actionability by making the experience, requirements, and research objective concrete",
+    );
+    expect(revisionPrompt).toContain("Only self company is available.");
   });
 
   it("detects a post-research collision without discarding unrelated findings", () => {

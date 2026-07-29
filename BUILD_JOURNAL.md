@@ -166,3 +166,55 @@ on a researched webpage:
 Verification passed with 288 tests across 41 files, ESLint, TypeScript, a
 production build, one real OpenRouter generation, and one real fal persistence
 upload.
+
+## July 29, 2026 — introductions become conversations
+
+The anonymous two-yes introduction was replaced by a smaller consent boundary
+that matches what the interface now shows:
+
+- the bounded Base44 scan still computes only the strict intersection of
+  shareable places, activities, and interests;
+- the writing model receives those anchors and a `[[PERSON]]` token, while
+  Base44 attaches the correct first name separately for each reader;
+- either person may send one opening message, only its recipient sees the
+  message, and their acceptance creates the connection and reciprocal people
+  nodes;
+- the accepted opener becomes the first row in a private in-app human message
+  thread, backed by the thirteenth entity, `HumanMessage`;
+- a decline closes the offer without telling the sender how the recipient
+  answered; and
+- the pool is bounded to 200 accounts, 24 opened graphs in batches of six,
+  three live offers, and a fourteen-day lifetime. It is not currently filtered
+  by home city.
+
+An accepted introduction-origin connection remains `new-person` until the pair
+actually live a weekly social experience. Base44 records that first meeting on
+the connection, after which later packs treat the person as known. Weekly
+generation always carries the real companion record; anonymous social copy and
+placeholder places are rejected again at the Base44 persistence boundary.
+
+## July 29, 2026 — generator review and bounded retries
+
+The production weekly generator gained a direct review surface and a stricter
+failure path:
+
+- an owner-restricted `/experience-generator` harness runs the current graph
+  through design, independent editorial review, three research results, and
+  final composition without exposing the route to other signed-in accounts;
+- structured design attempts retry twice per model before falling back, and the
+  independent review, revision, and composition stages use the same model
+  fallback;
+- a Friday worker pass may reclaim a failed pack only within Base44's
+  three-attempt ceiling;
+- solo cards are deterministically forbidden from spending their stretch on a
+  new person; and
+- the chosen experience, companion treatment, card proportions, and supporting
+  navigation were refined around the final weekly interaction.
+
+Current verification: 311 tests across 46 files, ESLint, and
+`npm run build:safe` pass. The current production Vercel deployment is ready,
+and the deployed `sidequest-data` function recognizes the new human-message
+action. A standalone
+`npx tsc --noEmit` still reports the mock-tuple inference error in
+`lib/weeklyPackImageGeneration.test.ts`; the Next.js production build's own
+type validation passes.

@@ -9,6 +9,7 @@ export class ParallelResearchError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly referenceId?: string,
   ) {
     super(message);
     this.name = "ParallelResearchError";
@@ -18,10 +19,7 @@ export class ParallelResearchError extends Error {
 function apiKey() {
   const key = process.env.PARALLEL_API_KEY;
   if (!key) {
-    throw new ParallelResearchError(
-      "PARALLEL_API_KEY is not configured.",
-      500,
-    );
+    throw new ParallelResearchError("PARALLEL_API_KEY is not configured.", 500);
   }
   return key;
 }
@@ -39,6 +37,18 @@ const runStatusSchema = z.enum([
 const createRunResponseSchema = z.object({
   run_id: z.string().min(1),
   status: runStatusSchema,
+});
+
+const providerErrorSchema = z.object({
+  error: z
+    .union([
+      z.string(),
+      z.object({
+        ref_id: z.string().optional(),
+        message: z.string().optional(),
+      }),
+    ])
+    .optional(),
 });
 
 const citationSchema = z.object({
@@ -80,6 +90,107 @@ export type ParallelResearchResult =
       citations: { url: string; title?: string }[];
     };
 
+const PARALLEL_UNSUPPORTED_SCHEMA_KEYS = new Set([
+  "$schema",
+  "contains",
+  "format",
+  "maxContains",
+  "maxItems",
+  "maxLength",
+  "maxProperties",
+  "maximum",
+  "minContains",
+  "minItems",
+  "minLength",
+  "minProperties",
+  "minimum",
+  "multipleOf",
+  "pattern",
+  "patternProperties",
+  "propertyNames",
+  "unevaluatedItems",
+  "unevaluatedProperties",
+  "uniqueItems",
+]);
+
+export function parallelCompatibleOutputSchema(
+  value: unknown,
+): Record<string, unknown> {
+  function visit(current: unknown): unknown {
+    if (Array.isArray(current)) return current.map(visit);
+    if (!current || typeof current !== "object") return current;
+    return Object.fromEntries(
+      Object.entries(current)
+        .filter(([key]) => !PARALLEL_UNSUPPORTED_SCHEMA_KEYS.has(key))
+        .map(([key, child]) => [key, visit(child)]),
+    );
+  }
+
+  const compatible = visit(value);
+  if (
+    !compatible ||
+    typeof compatible !== "object" ||
+    Array.isArray(compatible)
+  ) {
+    throw new ParallelResearchError(
+      "Parallel research requires an object output schema.",
+      500,
+    );
+  }
+  return compatible as Record<string, unknown>;
+}
+
+function providerErrorFrom(payload: unknown) {
+  const parsed = providerErrorSchema.safeParse(payload);
+  if (!parsed.success || !parsed.data.error) {
+    return { message: "", referenceId: undefined };
+  }
+  if (typeof parsed.data.error === "string") {
+    return {
+      message: parsed.data.error.trim().slice(0, 300),
+      referenceId: undefined,
+    };
+  }
+  return {
+    message: parsed.data.error.message?.trim().slice(0, 300) ?? "",
+    referenceId: parsed.data.error.ref_id?.trim().slice(0, 120),
+  };
+}
+
+function startFailureMessage(status: number, providerMessage: string) {
+  if (status === 401) {
+    return "Parallel rejected the configured API key.";
+  }
+  if (status === 402) {
+    return "Parallel has insufficient account credit to start research. Add credit in Parallel Platform, then try again.";
+  }
+  if (status === 403) {
+    return `Parallel rejected the configured research processor${providerMessage ? `: ${providerMessage}` : "."}`;
+  }
+  if (status === 422) {
+    return `Parallel rejected the research request${providerMessage ? `: ${providerMessage}` : "."}`;
+  }
+  if (status === 429) {
+    return "Parallel is temporarily rate-limited. Try again shortly.";
+  }
+  if (status >= 500) {
+    return "Parallel is temporarily unavailable while starting research.";
+  }
+  return `Parallel could not start the research run (HTTP ${status})${providerMessage ? `: ${providerMessage}` : "."}`;
+}
+
+function retryDelayMs(response: Response) {
+  const seconds = Number(response.headers.get("retry-after"));
+  if (!Number.isFinite(seconds) || seconds < 0) return 750;
+  return Math.min(seconds * 1_000, 5_000);
+}
+
+function wait(milliseconds: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
 /**
  * Starts a Parallel deep-research task run and returns its run id. The run
  * proceeds asynchronously on Parallel's side; poll with
@@ -91,43 +202,80 @@ export async function startParallelResearch(args: {
   processor?: string;
   metadata?: Record<string, string>;
 }): Promise<{ runId: string }> {
-  const response = await fetch(`${PARALLEL_ORIGIN}/v1/tasks/runs`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey(),
-    },
-    body: JSON.stringify({
-      processor: args.processor || DEFAULT_PROCESSOR,
-      input: args.input,
-      metadata: args.metadata,
-      task_spec: {
-        output_schema: {
-          type: "json",
-          json_schema: args.outputSchema,
-        },
+  const processor = args.processor || DEFAULT_PROCESSOR;
+  const body = JSON.stringify({
+    processor,
+    input: args.input,
+    metadata: args.metadata,
+    task_spec: {
+      output_schema: {
+        type: "json",
+        json_schema: parallelCompatibleOutputSchema(args.outputSchema),
       },
-    }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(20_000),
+    },
   });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetch(`${PARALLEL_ORIGIN}/v1/tasks/runs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey(),
+        },
+        body,
+        cache: "no-store",
+        signal: AbortSignal.timeout(20_000),
+      });
+    } catch (error) {
+      throw new ParallelResearchError(
+        error instanceof Error &&
+          /timeout|abort/i.test(`${error.name} ${error.message}`)
+          ? "Parallel did not respond while starting research."
+          : "Parallel could not be reached while starting research.",
+        504,
+      );
+    }
+
+    const payload: unknown = await response.json().catch(() => ({}));
+    if (response.ok) {
+      const parsed = createRunResponseSchema.safeParse(payload);
+      if (!parsed.success) {
+        throw new ParallelResearchError(
+          "Parallel returned an unexpected run response.",
+          502,
+        );
+      }
+      return { runId: parsed.data.run_id };
+    }
+
+    const providerError = providerErrorFrom(payload);
+    console.error(
+      [
+        "[parallel:research] start rejected",
+        `status=${response.status}`,
+        `processor=${processor}`,
+        `attempt=${attempt}`,
+        `providerMessage=${JSON.stringify(providerError.message || "unknown")}`,
+        `referenceId=${providerError.referenceId ?? "unknown"}`,
+      ].join(" "),
+    );
+    if (response.status === 429 && attempt === 1) {
+      await wait(retryDelayMs(response));
+      continue;
+    }
     throw new ParallelResearchError(
-      "Parallel could not start the research run.",
+      startFailureMessage(response.status, providerError.message),
       response.status,
+      providerError.referenceId,
     );
   }
 
-  const parsed = createRunResponseSchema.safeParse(payload);
-  if (!parsed.success) {
-    throw new ParallelResearchError(
-      "Parallel returned an unexpected run response.",
-      502,
-    );
-  }
-  return { runId: parsed.data.run_id };
+  throw new ParallelResearchError(
+    "Parallel is temporarily rate-limited. Try again shortly.",
+    429,
+  );
 }
 
 /**

@@ -5,7 +5,10 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 
 import type { ExperienceGraphRecord } from "./backendTypes";
-import { fetchParallelResearchResult, startParallelResearch } from "./parallelResearch";
+import {
+  fetchParallelResearchResult,
+  startParallelResearch,
+} from "./parallelResearch";
 import { findVenuePhoto } from "./venuePhoto";
 import {
   auditWeeklyPackDesign,
@@ -15,7 +18,9 @@ import {
   buildWeeklyPackRevisionPrompt,
   buildWeeklyPackReviewPrompt,
   canonicalizeWeeklyPackAnchors,
+  describeWeeklyPackReviewFailure,
   enforceWeeklyPackReviewThresholds,
+  summarizeWeeklyPackReview,
   weeklyPackDesignModelSchema,
   weeklyPackDesignSchema,
   weeklyPackResearchFindingSchema,
@@ -57,8 +62,7 @@ const PACK_PROCESSOR =
 const BASELINE_REQUIREMENTS = {
   availability:
     "Verify that the experience and every critical dependency are currently available within the intended validity window.",
-  cost:
-    "Verify the complete expected cost, including booking, materials, admission, and transport.",
+  cost: "Verify the complete expected cost, including booking, materials, admission, and transport.",
   travel:
     "Verify a practical outward and return journey, including the final arrival point and cutoff times.",
 } as const;
@@ -94,9 +98,7 @@ export const weeklyPackResearchRunsSchema = z
   .array(weeklyPackResearchRunSchema)
   .length(3);
 
-export type WeeklyPackResearchRun = z.infer<
-  typeof weeklyPackResearchRunSchema
->;
+export type WeeklyPackResearchRun = z.infer<typeof weeklyPackResearchRunSchema>;
 
 export const weeklyPackResearchResultSchema = z.object({
   cardId: z.enum(["small", "mini", "proper"]),
@@ -147,14 +149,22 @@ type PackGenerationSource = {
   context: WeeklyPackContext;
 };
 
+type PackReasoningEffort = "none" | "minimal" | "low";
+
+export function weeklyPackReasoningEffortFor(
+  modelId: string,
+  override?: PackReasoningEffort,
+) {
+  if (override) return override;
+  if (modelId.startsWith("anthropic/")) return "low" as const;
+  if (modelId.startsWith("openai/")) return "minimal" as const;
+  return "none" as const;
+}
+
 function modelTuning(modelId: string, temperature: number) {
-  if (modelId.startsWith("anthropic/")) {
-    return { reasoning: "low" as const };
-  }
-  if (modelId.startsWith("openai/")) {
-    return { reasoning: "minimal" as const };
-  }
-  return { reasoning: "none" as const, temperature };
+  return modelId.startsWith("anthropic/") || modelId.startsWith("openai/")
+    ? {}
+    : { temperature };
 }
 
 async function generateObject<T>(args: {
@@ -165,6 +175,7 @@ async function generateObject<T>(args: {
   temperature: number;
   maxOutputTokens: number;
   requestId: string;
+  reasoning?: PackReasoningEffort;
 }) {
   if (!process.env.OPENROUTER_API_KEY) {
     throw new WeeklyPackGenerationError(
@@ -174,7 +185,13 @@ async function generateObject<T>(args: {
   const startedAt = Date.now();
   try {
     const result = await generateText({
-      model: openrouter(args.modelId),
+      // The OpenRouter adapter reads reasoning from its per-model settings.
+      // Passing the generic AI SDK `reasoning` call option is ignored here.
+      model: openrouter(args.modelId, {
+        reasoning: {
+          effort: weeklyPackReasoningEffortFor(args.modelId, args.reasoning),
+        },
+      }),
       messages: [{ role: "user", content: args.prompt }],
       output: Output.object({
         name: args.schemaName,
@@ -194,6 +211,11 @@ async function generateObject<T>(args: {
         `schema=${args.schemaName}`,
         `model=${args.modelId}`,
         `elapsedMs=${Date.now() - startedAt}`,
+        `finishReason=${result.finishReason}`,
+        `inputTokens=${result.usage.inputTokens ?? "unknown"}`,
+        `outputTokens=${result.usage.outputTokens ?? "unknown"}`,
+        `reasoningTokens=${result.usage.outputTokenDetails.reasoningTokens ?? "unknown"}`,
+        `textTokens=${result.usage.outputTokenDetails.textTokens ?? "unknown"}`,
       ].join(" "),
     );
     return args.schema.parse(result.output);
@@ -244,8 +266,7 @@ function normalizeDesign(
 }
 
 type WeeklyPackModelAttempt<T> =
-  | { value: T }
-  | { failure: string; correction: string };
+  { value: T } | { failure: string; correction: string };
 
 export async function runWeeklyPackModelAttempts<T>(args: {
   modelIds: readonly string[];
@@ -258,10 +279,7 @@ export async function runWeeklyPackModelAttempts<T>(args: {
 }) {
   const failures: string[] = [];
   let correction = "";
-  const attemptsPerModel = Math.max(
-    1,
-    Math.floor(args.attemptsPerModel ?? 2),
-  );
+  const attemptsPerModel = Math.max(1, Math.floor(args.attemptsPerModel ?? 2));
 
   for (const modelId of args.modelIds) {
     for (let attempt = 1; attempt <= attemptsPerModel; attempt += 1) {
@@ -269,9 +287,7 @@ export async function runWeeklyPackModelAttempts<T>(args: {
       if ("value" in result) {
         return { value: result.value, failures };
       }
-      failures.push(
-        `${modelId} attempt ${attempt}: ${result.failure}`,
-      );
+      failures.push(`${modelId} attempt ${attempt}: ${result.failure}`);
       correction = result.correction;
     }
   }
@@ -323,8 +339,7 @@ async function structurallyValidDesign(args: {
           ].join("\n"),
         };
       } catch (error) {
-        const failure =
-          error instanceof Error ? error.message : String(error);
+        const failure = error instanceof Error ? error.message : String(error);
         return {
           failure,
           correction: [
@@ -362,31 +377,52 @@ async function reviewDesign(args: {
       ? []
       : [PACK_FALLBACK_MODEL_ID]),
   ];
-  const failures: string[] = [];
-
-  for (const modelId of modelIds) {
-    try {
-      const output = await generateObject({
-        prompt,
-        schema: weeklyPackReviewModelSchema,
-        schemaName: "weekly_pack_review",
-        modelId,
-        temperature: 0.15,
-        maxOutputTokens: 8_000,
-        requestId: args.requestId,
-      });
-      return enforceWeeklyPackReviewThresholds(
-        weeklyPackReviewSchema.parse(output),
-      );
-    } catch (error) {
-      failures.push(
-        `${modelId}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+  const result = await runWeeklyPackModelAttempts({
+    modelIds,
+    attemptsPerModel: 2,
+    attempt: async ({ modelId, correction }) => {
+      try {
+        const output = await generateObject({
+          prompt: [prompt, correction].filter(Boolean).join("\n\n"),
+          schema: weeklyPackReviewModelSchema,
+          schemaName: "weekly_pack_review",
+          modelId,
+          temperature: 0.15,
+          maxOutputTokens: 8_000,
+          requestId: args.requestId,
+          reasoning: "none",
+        });
+        const review = enforceWeeklyPackReviewThresholds(
+          weeklyPackReviewSchema.parse(output),
+        );
+        console.info(
+          [
+            "[weekly-pack:review] evaluated",
+            `requestId=${args.requestId}`,
+            `model=${modelId}`,
+            `summary=${JSON.stringify(summarizeWeeklyPackReview(review))}`,
+          ].join(" "),
+        );
+        return { value: review };
+      } catch (error) {
+        const failure = error instanceof Error ? error.message : String(error);
+        return {
+          failure,
+          correction: [
+            "The previous editor attempt did not return a valid structured review.",
+            "Evaluate the supplied pack again and return the complete review object.",
+            "Be concise. Use integer scores. Keep strongestQuality and revisionPriority to one short sentence each. Include no commentary outside the structured result.",
+          ].join("\n"),
+        };
+      }
+    },
+  });
+  if (result.value) {
+    return result.value;
   }
 
   throw new WeeklyPackGenerationError(
-    `No model produced a valid independent review. ${failures.join(" | ")}`,
+    `No model produced a valid independent review. ${result.failures.join(" | ")}`,
   );
 }
 
@@ -447,7 +483,7 @@ export async function designWeeklyPack(args: {
 
   if (review.verdict !== "accept") {
     throw new WeeklyPackGenerationError(
-      "The weekly pack did not pass independent editorial review.",
+      describeWeeklyPackReviewFailure(review),
     );
   }
   return { pack, review, revisionReviews };
@@ -467,9 +503,10 @@ export async function startWeeklyPackResearch(args: {
           context: args.context,
           currentDate: new Date().toISOString().slice(0, 10),
         }),
-        outputSchema: z.toJSONSchema(
-          weeklyPackResearchFindingSchema,
-        ) as Record<string, unknown>,
+        outputSchema: z.toJSONSchema(weeklyPackResearchFindingSchema) as Record<
+          string,
+          unknown
+        >,
         metadata: {
           app: "chapter",
           surface: "weekly-pack",
@@ -486,6 +523,8 @@ export async function startWeeklyPackResearch(args: {
 export async function pollWeeklyPackResearch(args: {
   pack: WeeklyPackDesign;
   runs: WeeklyPackResearchRun[];
+  homeCity?: string;
+  requestId?: string;
 }) {
   const results = await Promise.all(
     args.runs.map(async (run) => ({
@@ -526,6 +565,7 @@ export async function pollWeeklyPackResearch(args: {
   const audit = auditWeeklyPackResearch({
     pack: args.pack,
     findings: completed.map((result) => result.finding),
+    homeCity: args.homeCity,
   });
   if (!audit.valid) {
     throw new WeeklyPackGenerationError(
@@ -534,6 +574,21 @@ export async function pollWeeklyPackResearch(args: {
         .join(", ")}.`,
     );
   }
+  console.info(
+    [
+      "[weekly-pack:research] audited",
+      `requestId=${args.requestId ?? "unknown"}`,
+      `places=${JSON.stringify(
+        completed.map((result) => ({
+          cardId: result.cardId,
+          name: result.finding.primaryPlace.name,
+          area: result.finding.primaryPlace.area,
+          destinationCity: result.finding.travelFit?.destinationCity,
+          roundTripMinutes: result.finding.travelFit?.roundTripMinutes,
+        })),
+      )}`,
+    ].join(" "),
+  );
   return { status: "completed" as const, results: completed, audit };
 }
 
@@ -667,17 +722,18 @@ export function materializeWeeklyExperienceCards(args: {
       ]),
     );
     const social = design.format.company !== "self";
-    const visibleCopy = social && args.companion
-      ? {
-          title: resolveWeeklyPersonToken(copy.title, args.companion),
-          line: resolveWeeklyPersonToken(copy.line, args.companion),
-          promise: resolveWeeklyPersonToken(copy.promise, args.companion),
-          opening: resolveWeeklyPersonToken(copy.opening, args.companion),
-          steps: copy.steps.map((step) =>
-            resolveWeeklyPersonToken(step, args.companion!),
-          ),
-        }
-      : copy;
+    const visibleCopy =
+      social && args.companion
+        ? {
+            title: resolveWeeklyPersonToken(copy.title, args.companion),
+            line: resolveWeeklyPersonToken(copy.line, args.companion),
+            promise: resolveWeeklyPersonToken(copy.promise, args.companion),
+            opening: resolveWeeklyPersonToken(copy.opening, args.companion),
+            steps: copy.steps.map((step) =>
+              resolveWeeklyPersonToken(step, args.companion!),
+            ),
+          }
+        : copy;
     return weeklyExperienceCardSchema.parse({
       id: design.id,
       scale: design.format.scale,
@@ -725,10 +781,9 @@ export async function composeWeeklyExperienceCards(args: {
   for (const modelId of modelIds) {
     try {
       const output = await generateObject({
-        prompt: [
-          buildWeeklyPackCompositionPrompt(args),
-          correction,
-        ].filter(Boolean).join("\n\n"),
+        prompt: [buildWeeklyPackCompositionPrompt(args), correction]
+          .filter(Boolean)
+          .join("\n\n"),
         schema: weeklyPackCopyModelSchema,
         schemaName: "weekly_pack_card_copy",
         modelId,
@@ -745,8 +800,7 @@ export async function composeWeeklyExperienceCards(args: {
       copy = candidate;
       break;
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
       failures.push(`${modelId}: ${message}`);
       correction = [
         "The previous complete copy set failed a deterministic truth gate.",
@@ -789,8 +843,7 @@ export async function composeWeeklyExperienceCards(args: {
           console.warn("[weekly-pack:image] generation unavailable", {
             requestId: args.requestId,
             cardId: design.id,
-            errorName:
-              error instanceof Error ? error.name : "UnknownError",
+            errorName: error instanceof Error ? error.name : "UnknownError",
           });
           const fallbackUrl = await findVenuePhoto(result.citations);
           return [

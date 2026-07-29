@@ -1,8 +1,29 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { runWeeklyPackModelAttempts } from "./weeklyPackGeneration";
+import {
+  runWeeklyPackModelAttempts,
+  weeklyPackReasoningEffortFor,
+} from "./weeklyPackGeneration";
 
 describe("weekly pack model attempts", () => {
+  it("routes reasoning effort through OpenRouter model settings", () => {
+    expect(
+      weeklyPackReasoningEffortFor("anthropic/claude-sonnet-5"),
+    ).toBe("low");
+    expect(weeklyPackReasoningEffortFor("openai/gpt-5.4-mini")).toBe(
+      "minimal",
+    );
+    expect(weeklyPackReasoningEffortFor("moonshotai/kimi-k2.6")).toBe(
+      "none",
+    );
+    expect(
+      weeklyPackReasoningEffortFor(
+        "anthropic/claude-sonnet-5",
+        "none",
+      ),
+    ).toBe("none");
+  });
+
   it("lets the primary model repair its own deterministic failure before fallback", async () => {
     const attempt = vi.fn(
       async ({

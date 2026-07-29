@@ -24,11 +24,13 @@
     },
     "user_a_response": {
       "type": "string",
-      "enum": ["pending", "yes", "no"]
+      "enum": ["pending", "yes", "no"],
+      "description": "Legacy response marker retained for rows created by the superseded anonymous flow"
     },
     "user_b_response": {
       "type": "string",
-      "enum": ["pending", "yes", "no"]
+      "enum": ["pending", "yes", "no"],
+      "description": "Legacy response marker retained for rows created by the superseded anonymous flow"
     },
     "status": {
       "type": "string",
@@ -39,7 +41,7 @@
     "message_sent_at": { "type": "number" },
     "connection_id": {
       "type": "string",
-      "description": "Set once both people said yes and a real connection was created"
+      "description": "Set when the opening-message recipient accepts and a real connection is created"
     },
     "created_at": { "type": "number" },
     "expires_at": { "type": "number" },

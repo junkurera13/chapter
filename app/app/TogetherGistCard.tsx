@@ -58,9 +58,8 @@ function statusLine(chapter: TogetherChapterRecord) {
  * name becomes an orb chip in the same material people wear everywhere else —
  * one object, read once, instead of a header repeating what the line says.
  *
- * Someone you have not met has no name to light, so the sentence carries only
- * the threads. The hollow orb in the status line stands in for them until the
- * second yes gives them one.
+ * A current introduction already carries the server-attached first name, so
+ * the name can use the same person material before an opening message is sent.
  */
 function withPartner(
   partnerName: string | undefined,
@@ -77,11 +76,10 @@ function withPartner(
  * One person, and whatever Chapter currently has to say about the two of you.
  *
  * A gist is the resting state: something Chapter noticed without being asked.
- * Before you have met, that gist names nobody and asks a question instead of
- * offering a plan. After you have, it carries their name. Once a chapter grows
- * from it, the chapter grows out of this same card — so the reason and the
- * thing it became are never two separate objects on screen, and saying yes to
- * a stranger does not swap one card for another.
+ * Before you have met, an introduction carries a first name and strict shared
+ * gist, then offers a message request rather than a plan. Once it becomes a
+ * connection or a chapter grows from it, the result stays on this same card —
+ * the reason and the thing it became are never separate objects on screen.
  */
 export default function TogetherGistCard({
   partnerName,

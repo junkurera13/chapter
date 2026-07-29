@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import {
   fetchParallelResearchResult,
-  ParallelResearchError,
+  parallelCompatibleOutputSchema,
   startParallelResearch,
 } from "./parallelResearch";
+import { weeklyPackResearchFindingSchema } from "./weeklyPackDesign";
 
 const fetchMock = vi.fn();
 
@@ -27,6 +29,62 @@ function jsonResponse(status: number, body: unknown) {
 }
 
 describe("startParallelResearch", () => {
+  it("removes Parallel-unsupported JSON Schema annotations recursively", () => {
+    const original = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          minLength: 3,
+          maxLength: 120,
+        },
+        links: {
+          type: "array",
+          minItems: 1,
+          maxItems: 5,
+          items: {
+            type: "string",
+            format: "uri",
+          },
+        },
+      },
+      required: ["title", "links"],
+      additionalProperties: false,
+    };
+
+    expect(parallelCompatibleOutputSchema(original)).toEqual({
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        links: {
+          type: "array",
+          items: { type: "string" },
+        },
+      },
+      required: ["title", "links"],
+      additionalProperties: false,
+    });
+    expect(original.properties.title.minLength).toBe(3);
+  });
+
+  it("makes the weekly-pack research schema compatible without weakening local validation", () => {
+    const compatible = parallelCompatibleOutputSchema(
+      z.toJSONSchema(weeklyPackResearchFindingSchema),
+    );
+    const serialized = JSON.stringify(compatible);
+
+    expect(compatible.type).toBe("object");
+    expect(serialized).not.toMatch(
+      /"\$schema"|"format"|"minLength"|"maxLength"|"minItems"|"maxItems"/,
+    );
+    expect(() =>
+      weeklyPackResearchFindingSchema.parse({
+        cardId: "small",
+      }),
+    ).toThrow();
+  });
+
   it("creates a run and returns its id", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(202, { run_id: "trun_1", status: "queued" }),
@@ -53,7 +111,86 @@ describe("startParallelResearch", () => {
 
     await expect(
       startParallelResearch({ input: "x", outputSchema: {} }),
-    ).rejects.toBeInstanceOf(ParallelResearchError);
+    ).rejects.toMatchObject({
+      name: "ParallelResearchError",
+      message: "Parallel rejected the configured API key.",
+      status: 401,
+    });
+  });
+
+  it("surfaces insufficient Parallel credit without exposing request data", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(402, {
+        type: "error",
+        error: {
+          ref_id: "parallel-ref-402",
+          message: "Payment required: insufficient credit in account",
+          detail: { input: "private research input" },
+        },
+      }),
+    );
+
+    const promise = startParallelResearch({
+      input: "private research input",
+      outputSchema: {},
+    });
+    await expect(promise).rejects.toMatchObject({
+      message:
+        "Parallel has insufficient account credit to start research. Add credit in Parallel Platform, then try again.",
+      status: 402,
+      referenceId: "parallel-ref-402",
+    });
+    await expect(promise).rejects.not.toThrow(/private research input/);
+  });
+
+  it("includes a safe provider validation message and reference id", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(422, {
+        type: "error",
+        error: {
+          ref_id: "parallel-ref-422",
+          message: "Request validation error.",
+          detail: { input: "do not expose this value" },
+        },
+      }),
+    );
+
+    await expect(
+      startParallelResearch({ input: "x", outputSchema: {} }),
+    ).rejects.toMatchObject({
+      message:
+        "Parallel rejected the research request: Request validation error.",
+      status: 422,
+      referenceId: "parallel-ref-422",
+    });
+  });
+
+  it("retries one explicit rate-limit rejection without duplicating other failures", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              message: "Too many requests: quota temporarily exceeded",
+            },
+          }),
+          {
+            status: 429,
+            headers: {
+              "Content-Type": "application/json",
+              "Retry-After": "0",
+            },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(202, { run_id: "trun_after_retry", status: "queued" }),
+      );
+
+    await expect(
+      startParallelResearch({ input: "x", outputSchema: {} }),
+    ).resolves.toEqual({ runId: "trun_after_retry" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 
