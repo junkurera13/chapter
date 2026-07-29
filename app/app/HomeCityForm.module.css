@@ -1,0 +1,143 @@
+.form {
+  display: contents;
+}
+
+.form[data-variant="inline"] {
+  display: block;
+  width: min(324px, 100%);
+  margin: 22px auto 0;
+  text-align: left;
+}
+
+.field {
+  display: grid;
+  margin-top: 18px;
+  gap: 6px;
+}
+
+.form[data-variant="inline"] .field {
+  margin-top: 0;
+}
+
+.fieldLabel {
+  color: rgba(45, 39, 34, 0.45);
+  font-size: 10px;
+  font-weight: 680;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.field input {
+  width: 100%;
+  height: 43px;
+  padding: 0 12px;
+  border: 1px solid rgba(45, 39, 34, 0.14);
+  border-radius: 11px;
+  background: #fff;
+  color: #29251f;
+  font: 500 14px/1 var(--font-chapter-instrument), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.field input::placeholder {
+  color: rgba(45, 39, 34, 0.32);
+}
+
+.field input:focus {
+  outline: none;
+}
+
+.field input:focus-visible {
+  border-color: rgba(45, 39, 34, 0.4);
+}
+
+.suggestions {
+  display: grid;
+  max-height: 184px;
+  margin: 6px 0 0;
+  padding: 0;
+  gap: 2px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.suggestions:empty {
+  display: none;
+}
+
+.suggestions button {
+  display: grid;
+  width: 100%;
+  padding: 9px 10px;
+  gap: 2px;
+  appearance: none;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #29251f;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.suggestions button:hover,
+.suggestions button[data-active="true"] {
+  background: #f6f4f1;
+}
+
+.suggestions button:focus-visible {
+  outline: 2px solid #80786c;
+  outline-offset: 2px;
+}
+
+.suggestions span {
+  font-size: 13px;
+  font-weight: 590;
+}
+
+.suggestions small {
+  overflow: hidden;
+  color: rgba(45, 39, 34, 0.46);
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.error {
+  margin: 9px 0 0;
+  color: #9a3f36;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.save {
+  min-height: 41px;
+  margin-top: 14px;
+  padding: 0 16px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: #29251f;
+  color: #fff;
+  cursor: pointer;
+  font: 620 12px/1 var(--font-chapter-instrument), system-ui, sans-serif;
+}
+
+.form[data-variant="inline"] .save {
+  width: 100%;
+}
+
+.save:hover:not(:disabled) {
+  background: #14120f;
+}
+
+.save:focus-visible {
+  outline: 2px solid #80786c;
+  outline-offset: 2px;
+}
+
+.save:disabled {
+  cursor: default;
+  opacity: 0.42;
+}

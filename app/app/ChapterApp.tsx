@@ -300,6 +300,7 @@ export default function ChapterApp({
           reviewState={weeklyPackReview}
           onReviewStateChange={changeWeeklyPackReview}
           watchFirstExperience={firstExperienceWatch}
+          onFirstExperienceStarted={watchForFirstExperience}
         />
         <NowLocationNode onFirstExperienceStarted={watchForFirstExperience} />
       </>

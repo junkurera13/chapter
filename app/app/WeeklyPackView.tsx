@@ -37,6 +37,7 @@ import { weeklyPackWindow } from "@/lib/weeklyPackSchedule";
 
 import { categoryOrbGradient } from "./categoryAppearance";
 import FirstExperienceView from "./FirstExperienceView";
+import HomeCityForm from "./HomeCityForm";
 import styles from "./WeeklyPackView.module.css";
 
 type PackState =
@@ -293,14 +294,20 @@ function LockedPackState({
   releaseAt,
   reduceMotion,
   needsLocation = false,
+  onHomeCitySaved,
+  onFirstExperienceStarted,
 }: {
   releaseAt: number;
   reduceMotion: boolean;
   /**
    * Nothing can be researched without somewhere to research, so promising a
    * Saturday that cannot arrive is worse than asking for the missing piece.
+   * The ask carries its own field: someone here has never given a location and
+   * should not have to hunt for the corner node to give one.
    */
   needsLocation?: boolean;
+  onHomeCitySaved?: (homeCity: string) => void;
+  onFirstExperienceStarted?: () => void;
 }) {
   return (
     <section className={styles.statePage}>
@@ -328,9 +335,12 @@ function LockedPackState({
         {needsLocation ? (
           <>
             <h1>Chapter needs to know where you are.</h1>
-            <p>
-              Set your location and your first experience starts straight away.
-            </p>
+            <HomeCityForm
+              variant="inline"
+              hadHomeCity={false}
+              onSaved={onHomeCitySaved}
+              onFirstExperienceStarted={onFirstExperienceStarted}
+            />
           </>
         ) : (
           <>
@@ -353,10 +363,13 @@ export default function WeeklyPackView({
   onReviewStateChange,
   reviewPack,
   watchFirstExperience = 0,
+  onFirstExperienceStarted,
 }: {
   reviewState?: WeeklyPackReviewState;
   onReviewStateChange?: (state: WeeklyPackReviewState) => void;
   reviewPack?: WeeklyExperiencePack;
+  /** A location was just given here, so an experience may now be on its way. */
+  onFirstExperienceStarted?: () => void;
   /**
    * Counts the times a first experience has been asked for. Non-zero means one
    * is being written even though no chapter exists to read yet, and a fresh
@@ -737,6 +750,8 @@ export default function WeeklyPackView({
         // Only once Now has actually been read: an empty string means asked
         // and answered with nothing, null means not asked yet.
         needsLocation={homeCity === ""}
+        onHomeCitySaved={setHomeCity}
+        onFirstExperienceStarted={onFirstExperienceStarted}
       />
     );
   }
