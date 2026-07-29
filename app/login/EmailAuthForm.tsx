@@ -2,13 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Base44Error } from "@base44/sdk";
 
 import {
   forgetBase44AuthReturnPath,
   readBase44AuthReturnPath,
 } from "@/lib/base44AuthReturn";
 import { getBase44BrowserClient } from "@/lib/base44BrowserClient";
+import {
+  authErrorMessage as messageOf,
+  authErrorStatus as statusOf,
+  isBadCredentialsError,
+  isExistingAccountError,
+  isUnverifiedAccountError,
+} from "@/lib/emailAuthErrors";
 import styles from "./EmailAuthForm.module.css";
 
 type Phase =
@@ -17,27 +23,6 @@ type Phase =
   | { kind: "done" };
 
 type FieldError = string | null;
-
-function statusOf(error: unknown) {
-  if (error instanceof Base44Error) return error.status;
-  if (
-    error &&
-    typeof error === "object" &&
-    "response" in error &&
-    error.response &&
-    typeof error.response === "object" &&
-    "status" in error.response
-  ) {
-    return Number((error.response as { status?: unknown }).status);
-  }
-  return undefined;
-}
-
-function messageOf(error: unknown) {
-  if (error instanceof Base44Error) return error.message;
-  if (error instanceof Error) return error.message;
-  return "Something went wrong. Try again.";
-}
 
 export default function EmailAuthForm() {
   const router = useRouter();
@@ -92,7 +77,9 @@ export default function EmailAuthForm() {
         setPhase({ kind: "otp", email: trimmedEmail, password });
         return;
       } catch (cause) {
-        if (statusOf(cause) !== 409) throw cause;
+        // One field for both doors: an account that is already there is a
+        // sign-in, not a failure. Anything else really did go wrong.
+        if (!isExistingAccountError(cause)) throw cause;
       }
 
       try {
@@ -101,19 +88,21 @@ export default function EmailAuthForm() {
         goHome();
       } catch (cause) {
         const status = statusOf(cause);
-        if (status === 403) {
+        if (isUnverifiedAccountError(cause)) {
           setPhase({ kind: "otp", email: trimmedEmail, password });
-        } else if (status === 401) {
+        } else if (isBadCredentialsError(cause)) {
           setError("That email and password don’t match.");
-        } else if (status === 422 || status === 400) {
+        } else if (status !== undefined && status < 500) {
           setError(messageOf(cause));
         } else {
           setError("Couldn’t reach Chapter. Try again.");
         }
       }
     } catch (cause) {
+      // A registration Base44 turned down for its own reason, such as a
+      // password it won't accept. Its wording is the useful part.
       const status = statusOf(cause);
-      if (status === 422 || status === 400) {
+      if (status !== undefined && status < 500) {
         setError(messageOf(cause));
       } else {
         setError("Couldn’t reach Chapter. Try again.");
@@ -135,26 +124,41 @@ export default function EmailAuthForm() {
     }
 
     setBusy(true);
+    const client = getBase44BrowserClient();
     try {
-      await getBase44BrowserClient().auth.verifyOtp({
-        email: phase.email,
-        otpCode: trimmedOtp,
-      });
-      await getBase44BrowserClient().auth.loginViaEmailPassword(
-        phase.email,
-        phase.password,
-      );
+      try {
+        await client.auth.verifyOtp({
+          email: phase.email,
+          otpCode: trimmedOtp,
+        });
+      } catch (cause) {
+        const status = statusOf(cause);
+        if (status === 429) {
+          setOtpError("Too many attempts. Wait a moment, then try again.");
+        } else if (status === undefined || status >= 500) {
+          setOtpError("Couldn’t verify. Try again.");
+        } else {
+          setOtpError("That code isn’t right or has expired.");
+        }
+        return;
+      }
+
+      // The code was spent the moment it was accepted, so a failure from here
+      // on is the sign-in behind it. Saying "that code is wrong" would send
+      // someone back to a screen that can no longer help them.
+      try {
+        await client.auth.loginViaEmailPassword(phase.email, phase.password);
+      } catch (cause) {
+        setOtpError(
+          isBadCredentialsError(cause)
+            ? "Verified. That password didn’t work, though. Go back and try again."
+            : "Verified, but signing in failed. Try again.",
+        );
+        return;
+      }
+
       setPhase({ kind: "done" });
       goHome();
-    } catch (cause) {
-      const status = statusOf(cause);
-      if (status === 400) {
-        setOtpError("That code isn’t right or has expired.");
-      } else if (status === 429) {
-        setOtpError("Too many attempts. Wait a moment, then try again.");
-      } else {
-        setOtpError("Couldn’t verify. Try again.");
-      }
     } finally {
       setBusy(false);
     }
