@@ -5,7 +5,7 @@
 - Full name: **[confirm before submitting]**
 - Email: **[confirm before submitting]**
 - Project title: **Chapter**
-- One-line pitch: **Chapter turns private memories into an evolving graph, then opens three researched real-world experiences every Saturday—alone, with someone you know, or with someone new.**
+- One-line pitch: **Chapter turns private memories into an evolving graph, then opens three researched real-world experiences every Saturday: alone, with someone you know, or with someone new.**
 - Surface type: **Web app with an iMessage companion**
 - Live URL: https://usechapter.vercel.app
 - Public GitHub repo: https://github.com/junkurera13/chapter
@@ -88,7 +88,8 @@ Base44 owns authenticated accounts, private image storage, phone-account
 linking, source memories, Chapter conversation records, private human messages,
 graph validation, connection
 invitations, accepted connections, introductions between strangers, home city,
-weekly experience packs, Now and Together chapters, and persistence. Thirteen
+weekly experience packs, Now and Together chapters, content-free realtime inbox
+signals, and persistence. Fourteen
 Base44 entities model that world. Chapter's durable
 conversation runs as an Eve agent on Vercel, and every model call goes directly
 through OpenRouter to 2026 models pinned to zero-data-retention providers:
@@ -157,7 +158,7 @@ Claude Code, and I hold the commit history to the same bar as the interface.
 - [x] Database / entities
 - [x] Backend functions (Deno)
 - [x] AI / LLM integration around Base44 state (OpenRouter)
-- [ ] Real-time subscriptions
+- [x] Real-time subscriptions
 - [x] File & media storage
 
 ## BaaS feedback
@@ -181,9 +182,10 @@ call so the first memory never depends on the agent sandbox. The external
 browser SDK's anonymous analytics initialization also made a healthy public
 integration look broken by logging an authentication error. The distinction
 between deployed resources and production log visibility was unclear while
-testing an external Next.js frontend. Long-running work such as deep research
-that outlives a single request needed polling built by hand, since there is no
-first-party job or subscription primitive to lean on.
+testing an external Next.js frontend. Entity subscriptions cover record changes
+well, but long-running work such as deep research that outlives a single request
+still needed polling built by hand, since there is no first-party job primitive
+to lean on.
 
 ### What was missing, or what would you add?
 

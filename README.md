@@ -91,10 +91,11 @@ OpenRouter calls are pinned to zero-data-retention providers with
 - The deployed Base44 resource IDs retain their pre-rebrand `sidequest-*`
   slugs as compatibility contracts. They are internal identifiers, not product
   branding.
-- Thirteen Base44 entities hold accounts, Chapter conversations, human
+- Fourteen Base44 entities hold accounts, Chapter conversations, human
   messages, memories, source memories,
   graph nodes, graph edges, connection invites, accepted connections,
-  introductions, weekly experience packs, Now chapters, and Together chapters.
+  introductions, weekly experience packs, Now chapters, Together chapters, and
+  the content-free realtime inbox signals Together subscribes to.
 - A connection records how it began. An invite means the two people found each
   other by name; an introduction means Chapter noticed a strict overlap, one
   person sent an opening message, and the recipient accepted it.
