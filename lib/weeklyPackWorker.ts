@@ -182,6 +182,8 @@ export async function runWeeklyPackCycle(
       const research = await dependencies.pollResearch({
         pack: artifact.pack,
         runs,
+        homeCity: artifact.homeCity,
+        requestId: preparation.generationRequestId,
       });
       if (research.status === "pending") {
         summary.researchPending += 1;
@@ -287,6 +289,7 @@ export async function runWeeklyPackCycle(
       });
       const artifact = {
         ...designed,
+        homeCity: source.homeCity,
         companion: source.socialCandidate?.companion,
       };
       const runs = await dependencies.startResearch({

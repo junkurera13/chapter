@@ -6,7 +6,10 @@ import { useEffect, useRef, useState } from "react";
 
 import WeeklyPackView from "@/app/app/WeeklyPackView";
 import ChapterLoadingMark from "@/components/chapter-loading-mark";
-import type { WeeklyExperiencePack } from "@/lib/weeklyPackSchema";
+import {
+  weeklyExperiencePackSchema,
+  type WeeklyExperiencePack,
+} from "@/lib/weeklyPackSchema";
 
 import styles from "./page.module.css";
 
@@ -25,9 +28,13 @@ type GeneratorState = {
 };
 
 type GeneratorResponse =
+  | { status: "authorized" }
   | { status: "researching"; jobToken: string }
   | { status: "ready-to-compose"; jobToken: string }
   | { status: "ready"; pack: WeeklyExperiencePack };
+
+const STORED_PACK_KEY = "chapter:experience-generator:last-pack:v1";
+const STORED_PACK_TTL_MS = 24 * 60 * 60 * 1_000;
 
 const PHASE_COPY: Record<
   Exclude<GeneratorPhase, "idle" | "ready" | "error">,
@@ -91,6 +98,42 @@ function wait(milliseconds: number, signal: AbortSignal) {
   });
 }
 
+function readStoredPack() {
+  try {
+    const raw = window.localStorage.getItem(STORED_PACK_KEY);
+    if (!raw) return undefined;
+    const stored = JSON.parse(raw) as {
+      version?: unknown;
+      savedAt?: unknown;
+      pack?: unknown;
+    };
+    if (
+      stored.version !== 1 ||
+      typeof stored.savedAt !== "number" ||
+      Date.now() - stored.savedAt > STORED_PACK_TTL_MS
+    ) {
+      window.localStorage.removeItem(STORED_PACK_KEY);
+      return undefined;
+    }
+    const parsed = weeklyExperiencePackSchema.safeParse(stored.pack);
+    if (!parsed.success) {
+      window.localStorage.removeItem(STORED_PACK_KEY);
+      return undefined;
+    }
+    return parsed.data;
+  } catch {
+    window.localStorage.removeItem(STORED_PACK_KEY);
+    return undefined;
+  }
+}
+
+function storePack(pack: WeeklyExperiencePack) {
+  window.localStorage.setItem(
+    STORED_PACK_KEY,
+    JSON.stringify({ version: 1, savedAt: Date.now(), pack }),
+  );
+}
+
 export default function ExperienceGeneratorHarness() {
   const [state, setState] = useState<GeneratorState>({ phase: "idle" });
   const activeRun = useRef<AbortController | null>(null);
@@ -101,6 +144,27 @@ export default function ExperienceGeneratorHarness() {
     },
     [],
   );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const accessToken = await getAccessToken();
+        if (!accessToken) return;
+        const authorized = await generatorRequest(
+          accessToken,
+          { action: "authorize" },
+          controller.signal,
+        );
+        if (authorized.status !== "authorized") return;
+        const pack = readStoredPack();
+        if (pack) setState({ phase: "ready", pack });
+      } catch {
+        // Restoring is optional. Generation still performs its own access check.
+      }
+    })();
+    return () => controller.abort();
+  }, []);
 
   async function generate() {
     activeRun.current?.abort();
@@ -153,6 +217,7 @@ export default function ExperienceGeneratorHarness() {
       if (finished.status !== "ready") {
         throw new Error("The generator returned an unexpected state.");
       }
+      storePack(finished.pack);
       setState({ phase: "ready", pack: finished.pack });
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -215,7 +280,7 @@ export default function ExperienceGeneratorHarness() {
                 <p>
                   {state.phase === "error"
                     ? state.message
-                    : "Create a live, researched three-card pack from your current world. Nothing is saved."}
+                    : "Create a live, researched three-card pack from your current world. Your latest test pack stays on this browser for 24 hours."}
                 </p>
               </div>
               <button

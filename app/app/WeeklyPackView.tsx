@@ -183,6 +183,25 @@ function WeeklyCardLine({ card }: { card: WeeklyExperienceCard }) {
   );
 }
 
+function WeeklyCardLocation({ card }: { card: WeeklyExperienceCard }) {
+  return (
+    <div
+      className={styles.cardLocation}
+      aria-label={`Location: ${card.place.name}`}
+    >
+      <svg
+        className={styles.cardLocationIcon}
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path d="M12 2.75a7.25 7.25 0 0 0-7.25 7.25c0 5.15 6.18 10.46 6.44 10.68a1.25 1.25 0 0 0 1.62 0c.26-.22 6.44-5.53 6.44-10.68A7.25 7.25 0 0 0 12 2.75Z" />
+        <circle cx="12" cy="10" r="2.35" />
+      </svg>
+      <span title={card.place.name}>{card.place.name}</span>
+    </div>
+  );
+}
+
 function WeeklyCardPhoto({
   card,
   preview,
@@ -867,6 +886,7 @@ export default function WeeklyPackView({
 
                       <div className={styles.cardSay}>
                         <WeeklyCardLine card={card} />
+                        <WeeklyCardLocation card={card} />
                       </div>
 
                       <WeeklyCardPhoto

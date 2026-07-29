@@ -17,7 +17,7 @@ import {
 } from "react";
 
 import ceramicsImage from "../assets/ceramics-class.jpg";
-import mojikoImage from "../assets/mojiko-waterfront.jpg";
+import mojikoImage from "../assets/mojiko-memory/waterfront-sunset.webp";
 import sushiImage from "../assets/sushi-shibuya.webp";
 import AgentOrbVideo from "../../components/landing/agent-orb-video";
 import {

@@ -213,6 +213,7 @@ describe("weekly pack worker", () => {
       pack: { cards: [] },
       review: {},
       revisionReviews: [],
+      homeCity: "Seoul",
     } as unknown as WeeklyPackDesignArtifact;
     const runs = [
       { cardId: "small" as const, runId: "run-small" },
@@ -241,6 +242,8 @@ describe("weekly pack worker", () => {
     expect(current.pollResearch).toHaveBeenCalledWith({
       pack: artifact.pack,
       runs,
+      homeCity: "Seoul",
+      requestId: undefined,
     });
     expect(current.completePreparation).toHaveBeenCalledTimes(1);
     expect(current.listCandidates).not.toHaveBeenCalled();

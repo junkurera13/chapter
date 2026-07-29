@@ -249,6 +249,14 @@ describe("weekly pack design lab", () => {
     expect(prompt).not.toContain(designed.familiarThread);
     expect(prompt).not.toContain(designed.anchors[0].label);
     expect(prompt).not.toContain(designed.primaryAnchorId);
+    expect(prompt).toContain('Return originCity exactly as "Seoul"');
+    expect(prompt).toContain("Flights are never allowed");
+    expect(prompt).toContain(
+      "primaryPlace must be one actual, currently operating named location",
+    );
+    expect(prompt).toContain(
+      "complete round trip must take at most 90 minutes",
+    );
   });
 
   it("accepts one small, mini, and proper card with separate mechanisms and stretches", () => {
@@ -497,5 +505,93 @@ describe("weekly pack design lab", () => {
     expect(result.valid).toBe(false);
     expect(result.collidingCardIds).toEqual(["small", "mini"]);
     expect(result.collidingCardIds).not.toContain("proper");
+  });
+
+  it("rejects generic locations and destination travel from weekly research", () => {
+    const pack = validPack();
+    const finding = (
+      cardId: "small" | "mini" | "proper",
+      place: string,
+      travelFit: {
+        originCity: string;
+        destinationCity: string;
+        roundTripMinutes: number;
+        requiresFlight: boolean;
+        withinDesignedGeography: boolean;
+      },
+    ) =>
+      weeklyPackResearchFindingSchema.parse({
+        cardId,
+        workingTitle: `${cardId} working title`,
+        experienceAction: `Complete the ${cardId} experience through one concrete action and a distinct finish.`,
+        experienceType: `${cardId} type`,
+        primaryPlace: {
+          name: place,
+          area: "Jongno",
+          address: "1 Synthetic-ro, Seoul",
+        },
+        routeOrSequence:
+          "Arrive at the verified starting point, complete the action, and return by the stated route.",
+        logistics: {
+          availability: "Verified for the stated window.",
+          booking: "No advance booking is required.",
+          cost: "The complete expected cost is verified.",
+          travel: "A return public-transport route is verified.",
+          equipment: "Only ordinary personal items are required.",
+          accessibility: "The access limitations are stated plainly.",
+          weather: "A weather fallback is documented.",
+          safety: "The route and exit conditions are documented.",
+        },
+        travelFit,
+        criticalFacts: [
+          {
+            claim: "The place currently operates.",
+            sourceUrls: ["https://example.com/current"],
+          },
+          {
+            claim: "The stated access route currently operates.",
+            sourceUrls: ["https://example.com/travel"],
+          },
+        ],
+        researchCaveats: [],
+      });
+
+    const result = auditWeeklyPackResearch({
+      pack,
+      homeCity: "Seoul",
+      findings: [
+        finding("small", "Swimming pool", {
+          originCity: "Seoul",
+          destinationCity: "Seoul",
+          roundTripMinutes: 40,
+          requiresFlight: false,
+          withinDesignedGeography: true,
+        }),
+        finding("mini", "Seoul Forest", {
+          originCity: "Seoul",
+          destinationCity: "Seoul",
+          roundTripMinutes: 80,
+          requiresFlight: false,
+          withinDesignedGeography: true,
+        }),
+        finding("proper", "Accor Arena", {
+          originCity: "Seoul",
+          destinationCity: "Paris",
+          roundTripMinutes: 1_200,
+          requiresFlight: true,
+          withinDesignedGeography: false,
+        }),
+      ],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.map((issue) => issue.code)).toEqual(
+      expect.arrayContaining([
+        "RESEARCH_PLACE_GENERIC",
+        "RESEARCH_FLIGHT_REQUIRED",
+        "RESEARCH_GEOGRAPHY_MISMATCH",
+        "RESEARCH_TRAVEL_TOO_LONG",
+      ]),
+    );
   });
 });
