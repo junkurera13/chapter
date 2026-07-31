@@ -13,6 +13,7 @@ import {
   compactAdventureLabResearchText,
   drawAdventureLabContract,
   enforceAdventureLabReviewThresholds,
+  normalizeAdventureLabDraft,
   validateAdventureLabCopy,
   type AdventureLabFeedback,
   type AdventureLabContract,
@@ -159,6 +160,19 @@ describe("Adventure Lab feedback", () => {
     expect(notes).toContain("worth saving for another day");
   });
 
+  it("treats a false familiar explanation separately from disliking the activity", () => {
+    const notes = buildAdventureLabGenerationNotes([
+      feedback({
+        tags: ["not-from-my-world"],
+        note: "I have never done anything with ceramics.",
+      }),
+    ]).join("\n");
+
+    expect(notes).toContain("familiar explanation was false");
+    expect(notes).toContain("Do not treat that as dislike of the activity");
+    expect(notes).toContain("world-led idea must make no personal claim");
+  });
+
   it("only carries the twelve most recent observations forward", () => {
     const observations = Array.from({ length: 15 }, (_, index) =>
       feedback({
@@ -193,6 +207,45 @@ describe("Adventure Lab feedback", () => {
 });
 
 describe("Adventure Lab crafting", () => {
+  it("never lets a world-led activity masquerade as personal familiarity", () => {
+    const contract: AdventureLabContract = {
+      scale: "mini",
+      basis: "world",
+      anchorDimension: null,
+      twistDimension: "activity",
+      contextDimension: null,
+      budgetTier: "accessible",
+    };
+    const draft = validDraft(contract);
+    const normalized = normalizeAdventureLabDraft(
+      {
+        ...draft,
+        familiarThread:
+          "Participating in a ceramics session to make an object from clay.",
+      },
+      contract,
+    );
+
+    expect(normalized.familiarThread).toContain("bounded solo session");
+    expect(normalized.familiarThread).not.toMatch(/ceramic|clay/i);
+  });
+
+  it("preserves a graph-led familiar explanation for independent review", () => {
+    const contract: AdventureLabContract = {
+      scale: "small",
+      basis: "graph",
+      anchorDimension: "activity",
+      twistDimension: "interest",
+      contextDimension: null,
+      budgetTier: "accessible",
+    };
+    const draft = validDraft(contract);
+
+    expect(normalizeAdventureLabDraft(draft, contract).familiarThread).toBe(
+      draft.familiarThread,
+    );
+  });
+
   it("keeps a concise verified price when research repeats its full cost basis", () => {
     const concise =
       "₩15,000 expected total: ₩10,000 for the activity plus ₩5,000 for transport.";

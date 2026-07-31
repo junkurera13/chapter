@@ -28,6 +28,7 @@ export const ADVENTURE_LAB_FEEDBACK_TAGS = [
   "feels-real",
   "good-stretch",
   "save-for-later",
+  "not-from-my-world",
   "too-generic",
   "just-a-venue",
   "feels-made-up",
@@ -83,6 +84,16 @@ const adventureLabExperienceSchema = z.object({
     timeCharacter: z.string(),
   }),
   familiarThread: z.string(),
+  familiarAnchors: z
+    .array(
+      z.object({
+        nodeId: z.string().min(1),
+        label: z.string().trim().min(1).max(120),
+        category: z.enum(["activity", "place", "interest"]),
+      }),
+    )
+    .max(4)
+    .default([]),
   stretch: z.object({
     dimension: z.enum(WEEKLY_PACK_STRETCH_DIMENSIONS),
     description: z.string(),
@@ -224,6 +235,39 @@ export type AdventureLabDraftModel = z.infer<
 >;
 export type AdventureLabReview = z.infer<typeof adventureLabReviewSchema>;
 export type AdventureLabCopy = z.infer<typeof adventureLabCopySchema>;
+
+const WORLD_FAMILIAR_THREADS: Record<
+  AdventureLabContract["scale"],
+  string
+> = {
+  small:
+    "A short solo commitment that can fit inside an otherwise ordinary day.",
+  mini:
+    "One bounded solo session with a clear beginning and end.",
+  proper:
+    "One deliberately planned solo day with a clear shape and purpose.",
+};
+
+/**
+ * World-led chapters are familiar through access and legibility, never
+ * because Chapter pretends the new activity already belongs to the person.
+ */
+export function normalizeAdventureLabDraft(
+  draft: AdventureLabDraftModel,
+  contract: AdventureLabContract,
+) {
+  return {
+    ...draft,
+    familiarThread:
+      contract.basis === "world"
+        ? WORLD_FAMILIAR_THREADS[contract.scale]
+        : draft.familiarThread,
+    supportingContextDescription:
+      contract.contextDimension === null
+        ? null
+        : draft.supportingContextDescription,
+  } satisfies AdventureLabDraftModel;
+}
 
 /**
  * Parallel may repeat its full sourcing explanation in the visible price
@@ -398,10 +442,12 @@ export function buildAdventureLabPrompt(args: {
       ? [
           `- Anchor the familiar frame to 1-4 supplied node ids whose category is exactly ${args.contract.anchorDimension}.`,
           "- Transform that familiar thread; do not merely repeat its noun.",
+          "- familiarThread may explain only those selected graph anchors. Never describe the new twist as something the person already does, likes, or knows.",
         ].join("\n")
       : [
           "- This is world-led. Return an empty anchorNodeIds array.",
           "- Familiar means locally legible, low-friction, and easy to understand; do not pretend it came from personal memory.",
+          "- familiarThread must describe only that ordinary access frame. Never put the proposed activity there or imply the person has done, liked, or cared about it before.",
         ].join("\n"),
     "",
     "QUALITY",
@@ -648,6 +694,9 @@ export function buildAdventureLabReviewPrompt(args: {
     "HARD GATES",
     "- It follows the supplied Chapter contract: a familiar anchor, one unfamiliar twist, and at most one subordinate unfamiliar context.",
     "- It contains no invented biography, preference, feeling, relationship, venue, event, logistics, or availability.",
+    args.contract.basis === "world"
+      ? "- Its familiarThread is only an ordinary access frame. It does not repeat the proposed activity or imply that the activity comes from the person's history."
+      : "- Its familiarThread is supported only by the selected real graph anchors and does not relabel the new twist as familiar.",
     "- It is a real participatory experience, not a recommendation, generic outing, normal purchase, meal, or venue with decorative instructions.",
     "- Its mechanism creates real access, skill, making, service, movement, performance, or discovery. Arbitrary counts, ordering sequences, journaling, documenting, rating, photographing evidence, passive noticing, or role-playing as a critic or investigator all fail.",
     "- It does not depend on a worker granting an unadvertised interview, lesson, tasting, demonstration, conversation, or special access.",
@@ -732,6 +781,7 @@ const FEEDBACK_LABELS: Record<AdventureLabFeedbackTag, string> = {
   "feels-real": "This feels grounded in reality",
   "good-stretch": "The stretch feels right",
   "save-for-later": "This is worth saving for another day",
+  "not-from-my-world": "The claimed familiar starting point is not true for me",
   "too-generic": "This could be for anyone",
   "just-a-venue": "This is only a venue in disguise",
   "feels-made-up": "Something feels invented",
@@ -765,6 +815,11 @@ export function buildAdventureLabGenerationNotes(
       "Save-for-later means the underlying experience still had value. Do not treat it as a disliked activity; preserve that distinction while obeying the next candidate's pre-drawn commitment.",
     );
   }
+  if (recent.some((item) => item.tags.includes("not-from-my-world"))) {
+    notes.push(
+      "Recent feedback says the familiar explanation was false or merely repeated the new activity. Do not treat that as dislike of the activity itself. A graph-led familiar frame may use only its selected graph anchors; a world-led idea must make no personal claim.",
+    );
+  }
 
   const observations = recent.map((item) => ({
     priorExperience: item.experienceSummary,
@@ -791,6 +846,7 @@ export function adventureLabBatchFrom(
     place: AdventureLabExperience["place"];
     evidence: AdventureLabExperience["evidence"];
     budget: AdventureLabExperience["budget"];
+    familiarAnchors: AdventureLabExperience["familiarAnchors"];
   },
   createdAt = Date.now(),
 ): AdventureLabBatch {
@@ -812,6 +868,7 @@ export function adventureLabBatchFrom(
           timeCharacter: draft.format.timeCharacter,
         },
         familiarThread: draft.familiarThread,
+        familiarAnchors: research.familiarAnchors,
         stretch: {
           dimension: contract.twistDimension,
           description: draft.stretchDescription,

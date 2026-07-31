@@ -34,6 +34,11 @@ const FEEDBACK_OPTIONS: Array<{
   { tag: "feels-real", label: "Feels real", tone: "positive" },
   { tag: "good-stretch", label: "Good stretch", tone: "positive" },
   { tag: "save-for-later", label: "Save for later", tone: "positive" },
+  {
+    tag: "not-from-my-world",
+    label: "Doesn’t start from me",
+    tone: "negative",
+  },
   { tag: "too-generic", label: "Too generic", tone: "negative" },
   { tag: "just-a-venue", label: "Just a venue", tone: "negative" },
   { tag: "feels-made-up", label: "Feels made up", tone: "negative" },
@@ -401,10 +406,17 @@ export default function AdventureLab() {
               <h2>What you actually do</h2>
               <p>{experience.mechanism.description}</p>
             </section>
-            <section>
-              <h2>Why this starts from you</h2>
-              <p>{experience.familiarThread}</p>
-            </section>
+            {experience.basis === "graph" &&
+            experience.familiarAnchors?.length ? (
+              <section>
+                <h2>Starts from</h2>
+                <p>
+                  {experience.familiarAnchors
+                    .map((anchor) => anchor.label)
+                    .join(" · ")}
+                </p>
+              </section>
+            ) : null}
             <section>
               <h2>The new part</h2>
               <p>{experience.stretch.description}</p>
