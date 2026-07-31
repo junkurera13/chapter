@@ -14,6 +14,18 @@ type SidequestBot = Chat<
   Record<string, unknown>
 >;
 
+type SidequestDirectThread = {
+  id: string;
+  post(message: string): Promise<{ id: string }>;
+};
+
+type SidequestDirectMessage = {
+  id: string;
+  text: string;
+  author: { userId: string };
+  raw?: unknown;
+};
+
 let bot: SidequestBot | undefined;
 let imessageAdapter: ReturnType<typeof createiMessageAdapter> | undefined;
 
@@ -52,6 +64,66 @@ async function retry<T>(operation: () => Promise<T>, attempts = 3) {
   throw lastError;
 }
 
+function inboundMetadata(message: SidequestDirectMessage) {
+  const raw =
+    message.raw && typeof message.raw === "object"
+      ? (message.raw as Record<string, unknown>)
+      : undefined;
+  const content =
+    raw?.content && typeof raw.content === "object"
+      ? (raw.content as Record<string, unknown>)
+      : undefined;
+
+  return {
+    messageId: message.id,
+    direction: typeof raw?.direction === "string" ? raw.direction : "unknown",
+    contentType: typeof content?.type === "string" ? content.type : "unknown",
+  };
+}
+
+export async function handleSidequestDirectMessage(
+  thread: SidequestDirectThread,
+  message: SidequestDirectMessage,
+) {
+  const phone = message.author.userId.trim();
+  const text = message.text.trim();
+  if (!phone) throw new Error("iMessage webhook did not include a sender phone");
+
+  // Photon can add new non-text content arms without a breaking release. Do
+  // not answer those events: replying to an empty event can create a provider
+  // feedback loop and send the same fallback repeatedly.
+  if (!text) {
+    console.warn("Ignored unsupported iMessage content", inboundMetadata(message));
+    return;
+  }
+
+  const result = await retry(() =>
+    processSidequestMessage({
+      phone,
+      text,
+      messageId: message.id,
+      threadId: thread.id,
+      origin:
+        process.env.SIDEQUEST_AGENT_URL ||
+        process.env.VERCEL_URL ||
+        process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    }),
+  );
+  if (!result.reply || !result.replyId || result.duplicate) return;
+
+  const sent = await thread.post(result.reply);
+  try {
+    await retry(() =>
+      markSidequestMessageDelivered({
+        replyId: result.replyId!,
+        providerMessageId: sent.id,
+      }),
+    );
+  } catch (error) {
+    console.error("Could not mark the Chapter reply delivered", error);
+  }
+}
+
 export function getSidequestBot() {
   if (bot) return bot;
 
@@ -63,42 +135,7 @@ export function getSidequestBot() {
     state: createMemoryState(),
   });
 
-  bot.onDirectMessage(async (thread, message) => {
-    const phone = message.author.userId.trim();
-    const text = message.text.trim();
-    if (!phone) throw new Error("iMessage webhook did not include a sender phone");
-
-    if (!text) {
-      await thread.post("send that to me as text for now.");
-      return;
-    }
-
-    const result = await retry(() =>
-      processSidequestMessage({
-        phone,
-        text,
-        messageId: message.id,
-        threadId: thread.id,
-        origin:
-          process.env.SIDEQUEST_AGENT_URL ||
-          process.env.VERCEL_URL ||
-          process.env.VERCEL_PROJECT_PRODUCTION_URL,
-      }),
-    );
-    if (!result.reply || !result.replyId) return;
-
-    const sent = await thread.post(result.reply);
-    try {
-      await retry(() =>
-        markSidequestMessageDelivered({
-          replyId: result.replyId!,
-          providerMessageId: sent.id,
-        }),
-      );
-    } catch (error) {
-      console.error("Could not mark the Chapter reply delivered", error);
-    }
-  });
+  bot.onDirectMessage(handleSidequestDirectMessage);
 
   return bot;
 }
