@@ -160,6 +160,7 @@ function card(args: {
       dimension: stretchDimension,
       description: content.stretch,
     },
+    supportingContext: null,
     experiencePromise: content.promise,
     mechanism: {
       kind: args.mechanism,

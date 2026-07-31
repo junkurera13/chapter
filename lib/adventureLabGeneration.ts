@@ -59,7 +59,7 @@ const ADVENTURE_LAB_SECONDARY_FALLBACK_MODEL =
   "moonshotai/kimi-k2.6";
 const ADVENTURE_LAB_MODEL_TIMEOUT_MS = 180_000;
 const ADVENTURE_LAB_RESEARCH_TIMEOUT_MS = 12 * 60_000;
-const ADVENTURE_LAB_MAX_RESEARCH_ATTEMPTS = 2;
+const ADVENTURE_LAB_MAX_RESEARCH_ATTEMPTS = 3;
 
 const adventureLabResearchCostSchema = z.object({
   qualification_status: z.enum(["qualified", "no-qualified-result"]),
@@ -592,7 +592,6 @@ export async function craftAdventureLabExperience(args: {
   const failures: string[] = [];
   let correction = "";
   let researchRecoveryCorrection = "";
-  let researchRecoveryQueued = false;
   let receivedDraft = false;
   let researchAttempts = 0;
 
@@ -664,6 +663,7 @@ export async function craftAdventureLabExperience(args: {
                 "[adventure-lab:research] retrying-design",
                 `requestId=${args.requestId}`,
                 `completedResearchAttempts=${researchAttempts}`,
+                `failure=${JSON.stringify(error.message)}`,
               ].join(" "),
             );
             researchRecoveryCorrection = [
@@ -675,16 +675,13 @@ export async function craftAdventureLabExperience(args: {
               error.message,
             ].join("\n");
             correction = "";
-            if (!researchRecoveryQueued) {
-              models.splice(
-                modelIndex + 1,
-                models.length - modelIndex - 1,
-                ADVENTURE_LAB_MODEL,
-                ADVENTURE_LAB_MODEL,
-                ...fallbackModels(ADVENTURE_LAB_MODEL),
-              );
-              researchRecoveryQueued = true;
-            }
+            models.splice(
+              modelIndex + 1,
+              models.length - modelIndex - 1,
+              ADVENTURE_LAB_MODEL,
+              ADVENTURE_LAB_MODEL,
+              ...fallbackModels(ADVENTURE_LAB_MODEL),
+            );
             continue;
           }
           if (error instanceof AdventureLabGenerationError) {

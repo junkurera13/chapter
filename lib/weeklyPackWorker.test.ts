@@ -123,11 +123,13 @@ function dependencies() {
           revisionReviews: [],
         }) as never,
     ),
-    startResearch: vi.fn(async () => [
-      { cardId: "small" as const, runId: "run-small" },
-      { cardId: "mini" as const, runId: "run-mini" },
-      { cardId: "proper" as const, runId: "run-proper" },
-    ]),
+    startResearch: vi.fn<WeeklyPackWorkerDependencies["startResearch"]>(
+      async () => [
+        { cardId: "small" as const, runId: "run-small" },
+        { cardId: "mini" as const, runId: "run-mini" },
+        { cardId: "proper" as const, runId: "run-proper" },
+      ],
+    ),
     setResearch: vi.fn(async () => ({
       preparation: preparation(),
     })),

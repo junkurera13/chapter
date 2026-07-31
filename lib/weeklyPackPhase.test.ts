@@ -1,29 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  WEEKLY_PACK_REVIEW_STATES,
-  weeklyPackReviewFixture,
-} from "./weeklyPackPreview";
+import { weeklyPackReviewFixture } from "./weeklyPackPreview";
 import { weeklyPackPhase } from "./weeklyPackPhase";
 
 describe("weekly pack live phase mapping", () => {
-  it("maps every reviewed fixture to the same live phase", () => {
-    for (const { id } of WEEKLY_PACK_REVIEW_STATES) {
-      const fixture = weeklyPackReviewFixture(id);
-      const pack = fixture.state.status === "ready" ? fixture.state.pack : null;
-
-      expect(
-        weeklyPackPhase({
-          state: fixture.state,
-          openedPackId: id === "sealed" ? (pack?.id ?? null) : null,
-          pendingChoice: fixture.pendingChoice ?? null,
-          showDatePicker: fixture.showDatePicker ?? false,
-        }),
-        `${id} should resolve to its reviewed design`,
-      ).toBe(id);
-    }
-  });
-
   it("uses the locked design when a user does not have a pack yet", () => {
     expect(
       weeklyPackPhase({

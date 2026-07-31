@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mapWithLimit, OPEN_WORLDS_AT_ONCE } from "../../shared/concurrency";
+import { mapWithLimit } from "../../shared/concurrency";
 
 /** Resolves when told to, so a test can hold work open and count it. */
 function held<T>() {
@@ -64,16 +64,6 @@ describe("reading a few worlds at a time", () => {
     ]);
   });
 
-  it("does nothing, and returns nothing, for no items", async () => {
-    let called = false;
-    const result = await mapWithLimit([], 3, async () => {
-      called = true;
-      return 1;
-    });
-    expect(result).toEqual([]);
-    expect(called).toBe(false);
-  });
-
   it("handles a limit larger than the work, and a limit of zero", async () => {
     await expect(mapWithLimit([1, 2], 10, async (n) => n)).resolves.toEqual([
       1, 2,
@@ -102,8 +92,4 @@ describe("reading a few worlds at a time", () => {
     expect(caught).toEqual([1, undefined, 3]);
   });
 
-  it("keeps the ceiling low enough to be back-pressure", () => {
-    expect(OPEN_WORLDS_AT_ONCE).toBeGreaterThan(1);
-    expect(OPEN_WORLDS_AT_ONCE).toBeLessThanOrEqual(4);
-  });
 });

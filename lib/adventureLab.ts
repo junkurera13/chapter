@@ -458,6 +458,8 @@ export function buildAdventureLabPrompt(args: {
     "- Do not invent homework. Counting, logging, documenting, auditing, rating, photographing evidence, or collecting observations is invalid unless it is an inherent part of a real established activity the person is joining.",
     "- Do not ask the person to cosplay an investigator, critic, artist, anthropologist, or documentarian. Prefer activities with real-world stakes and structure: learn from someone, make a real object, help with real work, enter a real event, complete a meaningful route, practise a real skill, or gain access they would not ordinarily have.",
     "- Prefer an established public format that can realistically be found and booked: a scheduled workshop, volunteer shift, guided route, public session, performance, open studio, training, or advertised access programme.",
+    "- Design at the level that a provider publicly advertises. Name the core participant action, but do not require a made-up lesson plan: exact teaching stages, correction rounds, item counts, material variants, finishing or firing outcomes, take-home promises, or a combination of two separate formats.",
+    "- For a proper adventure, the required journey or sequence must be a coherent participant-led arc that reality can support; it cannot be manufactured by chaining unrelated bookings or padding one short class.",
     "- Do not make the adventure depend on a chef, vendor, owner, craftsperson, or staff member agreeing to an unadvertised interview, tasting, demonstration, lesson, special access, or extended conversation.",
     "- A restaurant, cafe, shop, market, museum, park, or class is infrastructure, never the experience by itself.",
     "- Passive attention is not participation. Telling someone to focus on, notice, compare, study, appreciate, or think about an ordinary purchase or meal does not transform it.",
@@ -633,10 +635,11 @@ export function enforceAdventureLabReviewThresholds(
 ): AdventureLabReview {
   const scores = Object.values(review.scores);
   const total = scores.reduce((sum, score) => sum + score, 0);
+  // This is a pre-research review. A 3 means the action is credibly
+  // researchable; live research, not the editor's guess, settles the facts.
   const rejected =
     review.hardGateFailures.length > 0 ||
     scores.some((score) => score < 3) ||
-    review.scores.researchability < 4 ||
     total < 20;
   return {
     ...review,
@@ -648,10 +651,7 @@ export function describeAdventureLabReviewFailure(
   review: AdventureLabReview,
 ) {
   const lowScores = Object.entries(review.scores)
-    .filter(
-      ([dimension, score]) =>
-        score < 3 || (dimension === "researchability" && score < 4),
-    )
+    .filter(([, score]) => score < 3)
     .map(([dimension, score]) => `${dimension} ${score}/4`);
   const total = Object.values(review.scores).reduce(
     (sum, score) => sum + score,
@@ -701,6 +701,7 @@ export function buildAdventureLabReviewPrompt(args: {
     "- Its mechanism creates real access, skill, making, service, movement, performance, or discovery. Arbitrary counts, ordering sequences, journaling, documenting, rating, photographing evidence, passive noticing, or role-playing as a critic or investigator all fail.",
     "- It does not depend on a worker granting an unadvertised interview, lesson, tasting, demonstration, conversation, or special access.",
     "- An established public format could plausibly support the exact action without redesigning it.",
+    "- The exact action is expressed at the level a provider publicly advertises. Reject invented lesson choreography, correction rounds, item counts, material variants, finishing or firing outcomes, take-home promises, or combinations of separate formats unless they are intrinsic to one established public format.",
     "Any hard-gate failure means rejection. Name the concrete field and reason.",
     "",
     "SCORING: use integers from 0-4.",

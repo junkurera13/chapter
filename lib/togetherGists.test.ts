@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { TogetherPlanningGraph } from "./togetherChapterSchema";
 
@@ -11,17 +11,11 @@ vi.mock("./nowGeneration", async () => {
   return { ...actual, generateStructured };
 });
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
 const {
   buildGistPrompt,
-  demoGists,
   fallbackGistLine,
   findGistAnchors,
   generateGistLines,
-  isDemoAccount,
 } = await import("./togetherGists");
 
 function graph(
@@ -253,39 +247,5 @@ describe("generateGistLines", () => {
 
     expect(gists).toEqual([]);
     expect(generateStructured).not.toHaveBeenCalled();
-  });
-});
-
-describe("demo gists", () => {
-  it("recognises only the configured account", () => {
-    vi.stubEnv(
-      "CHAPTER_DEMO_ACCOUNTS",
-      "reviewer@example.com, second@example.com",
-    );
-
-    expect(isDemoAccount("reviewer@example.com")).toBe(true);
-    expect(isDemoAccount("  REVIEWER@EXAMPLE.COM ")).toBe(true);
-    expect(isDemoAccount("someone@example.com")).toBe(false);
-    expect(isDemoAccount(undefined)).toBe(false);
-  });
-
-  it("marks every sample, so nothing downstream mistakes one for real", () => {
-    const samples = demoGists();
-
-    expect(samples).toHaveLength(4);
-    expect(samples.every((gist) => gist.demo)).toBe(true);
-    expect(
-      samples.every((gist) => gist.connectionId.startsWith("demo:")),
-    ).toBe(true);
-  });
-
-  it("names each anchor verbatim, so the orbs land on real words", () => {
-    for (const gist of demoGists()) {
-      expect(gist.anchors.length).toBeGreaterThan(0);
-      for (const anchor of gist.anchors) {
-        expect(gist.line).toContain(anchor.label);
-        expect(anchor.nodeId).toBeTruthy();
-      }
-    }
   });
 });

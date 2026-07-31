@@ -50,8 +50,8 @@ function failure(error: unknown, requestId: string) {
           error.kind === "provider"
             ? "Chapter’s model couldn’t finish that adventure. Try again."
             : error.kind === "research"
-              ? "Chapter couldn’t prove a real place for that adventure. Try another."
-              : "That adventure broke the Chapter equation, so it was rejected. Try again.",
+              ? "Chapter researched several designs but couldn’t fully verify one. No adventure was shown."
+              : "The lab exhausted its design attempts before research. No adventure was shown.",
         code:
           error.kind === "provider"
             ? "ADVENTURE_LAB_MODEL_FAILED"

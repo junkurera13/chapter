@@ -44,6 +44,7 @@ const design: WeeklyPackCardDesign = {
     description:
       "Shift only the activity into making one useful bowl at a shared studio table.",
   },
+  supportingContext: null,
   experiencePromise:
     "Make one useful bowl at a calm beginner studio table during a quiet afternoon session.",
   mechanism: {

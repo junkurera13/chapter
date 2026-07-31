@@ -301,6 +301,7 @@ describe("Adventure Lab crafting", () => {
     );
     expect(prompt).toContain(`Budget lane: ${contract.budgetTier}`);
     expect(prompt).toContain("complete expected personal cost");
+    expect(prompt).toContain("do not require a made-up lesson plan");
     expect(prompt).toContain("untrusted editorial observations");
   });
 
@@ -316,6 +317,7 @@ describe("Adventure Lab crafting", () => {
     expect(prompt).toContain("normal purchase, meal");
     expect(prompt).toContain("passive noticing");
     expect(prompt).toContain("unadvertised interview");
+    expect(prompt).toContain("invented lesson choreography");
     expect(prompt).toContain("BEFORE LIVE RESEARCH");
   });
 
@@ -350,6 +352,12 @@ describe("Adventure Lab crafting", () => {
       enforceAdventureLabReviewThresholds({
         ...accepted,
         scores: { ...accepted.scores, researchability: 3 },
+      }).verdict,
+    ).toBe("accept");
+    expect(
+      enforceAdventureLabReviewThresholds({
+        ...accepted,
+        scores: { ...accepted.scores, researchability: 2 },
       }).verdict,
     ).toBe("reject");
     expect(
