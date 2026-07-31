@@ -11,13 +11,6 @@ import coastalRideImage from "@/app/assets/coastal-ride-solo.jpg";
 import ChapterLoadingMark from "@/components/chapter-loading-mark";
 import AgentOrbVideo from "@/components/landing/agent-orb-video";
 import EmbossedCardBack from "@/components/weekly-pack/EmbossedCardBack";
-import {
-  NO_FIRST_EXPERIENCE_WATCH,
-  type FirstExperienceOutcome,
-  type FirstExperienceWatch,
-} from "@/lib/firstExperienceWatch";
-import type { NowChapterRecord } from "@/lib/nowChapterSchema";
-import { loadNow } from "@/lib/nowClient";
 import type { BubblegumTone } from "@/components/weekly-pack/emboss-engine";
 import type { WorldNodeCategory } from "@/app/app/graphData";
 import type { WeeklyPackScale } from "@/lib/weeklyPackDesign";
@@ -41,7 +34,6 @@ import { weeklyPackPhase } from "@/lib/weeklyPackPhase";
 import { weeklyPackWindow } from "@/lib/weeklyPackSchedule";
 
 import { categoryOrbGradient } from "./categoryAppearance";
-import FirstExperienceView from "./FirstExperienceView";
 import HomeCityForm from "./HomeCityForm";
 import styles from "./WeeklyPackView.module.css";
 
@@ -300,7 +292,6 @@ function LockedPackState({
   reduceMotion,
   needsLocation = false,
   onHomeCitySaved,
-  onFirstExperienceStarted,
 }: {
   releaseAt: number;
   reduceMotion: boolean;
@@ -309,10 +300,9 @@ function LockedPackState({
    * Saturday that cannot arrive is worse than asking for the missing piece.
    * The ask carries its own field: someone here has never given a location and
    * should not have to hunt for the corner node to give one.
-   */
+  */
   needsLocation?: boolean;
   onHomeCitySaved?: (homeCity: string) => void;
-  onFirstExperienceStarted?: () => void;
 }) {
   return (
     <section className={styles.statePage}>
@@ -342,9 +332,7 @@ function LockedPackState({
             <h1>Chapter needs to know where you are.</h1>
             <HomeCityForm
               variant="inline"
-              hadHomeCity={false}
               onSaved={onHomeCitySaved}
-              onFirstExperienceStarted={onFirstExperienceStarted}
             />
           </>
         ) : (
@@ -367,29 +355,11 @@ export default function WeeklyPackView({
   reviewState,
   onReviewStateChange,
   reviewPack,
-  firstExperienceWatch = NO_FIRST_EXPERIENCE_WATCH,
-  onFirstExperienceStarted,
-  onFirstExperienceSettled,
 }: {
   reviewState?: WeeklyPackReviewState;
   onReviewStateChange?: (state: WeeklyPackReviewState) => void;
   reviewPack?: WeeklyExperiencePack;
-  /**
-   * Ask for the first experience: a location was just given here, or the last
-   * ask failed and somebody pressed to try again.
-   */
-  onFirstExperienceStarted?: () => void;
-  /** This screen has stopped waiting, and why. */
-  onFirstExperienceSettled?: (outcome: FirstExperienceOutcome) => void;
-  /**
-   * Whether one is being written. "writing" means it was asked for and no
-   * chapter has been written down yet, and a fresh attempt number restarts the
-   * wait after an earlier one gave up.
-   */
-  firstExperienceWatch?: FirstExperienceWatch;
 }) {
-  const watchAttempt = firstExperienceWatch.attempt;
-  const watchStatus = firstExperienceWatch.status;
   const reduceMotion = useReducedMotion();
   const initialReview = reviewPack
     ? { state: { status: "ready" as const, pack: reviewPack } }
@@ -401,9 +371,7 @@ export default function WeeklyPackView({
   const [state, setState] = useState<PackState>(
     () => initialReview?.state ?? { status: "loading" },
   );
-  const [firstExperience, setFirstExperience] =
-    useState<NowChapterRecord | null>(null);
-  /** null until Now has been read once, so nothing is claimed before then. */
+  /** null until the weekly surface has read the account location. */
   const [homeCity, setHomeCity] = useState<string | null>(null);
   const [pendingChoice, setPendingChoice] = useState<WeeklyPackScale | null>(
     initialReview?.pendingChoice ?? null,
@@ -430,20 +398,11 @@ export default function WeeklyPackView({
     if (reviewState) return;
 
     let active = true;
-    void Promise.all([
-      loadWeeklyPack(),
-      loadNow().catch(() => null),
-    ])
-      .then(([{ pack }, now]) => {
+    void loadWeeklyPack()
+      .then(({ pack, homeCity: savedHomeCity }) => {
         if (!active) return;
         setState({ status: "ready", pack });
-        const chapter = now?.chapter;
-        const found = chapter?.brief?.basis === "world" ? chapter : null;
-        setFirstExperience(found);
-        // Walking over to a chapter that was written while this screen was
-        // somewhere else ends the wait just as arriving at one does.
-        if (found) onFirstExperienceSettled?.("found");
-        if (now) setHomeCity(now.homeCity || "");
+        setHomeCity(savedHomeCity || "");
       })
       .catch((error) => {
         if (active) {
@@ -459,67 +418,7 @@ export default function WeeklyPackView({
     return () => {
       active = false;
     };
-    // The settle callback is stable and is not a reason to read the pack again.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewState]);
-
-  const firstExperienceStatus = firstExperience?.status;
-  const hasFirstExperience = Boolean(firstExperience);
-
-  useEffect(() => {
-    if (reviewState) return;
-    // Either an experience is being researched, or one is on its way and has
-    // not been written down yet. Both are worth waiting on.
-    const awaitingArrival = watchStatus === "writing" && !hasFirstExperience;
-    if (firstExperienceStatus !== "researching" && !awaitingArrival) return;
-
-    let active = true;
-    let timer: number | undefined;
-    // A first experience that never appears must not leave the tab polling for
-    // the rest of the session.
-    const giveUpAt = Date.now() + 4 * 60 * 1000;
-    const waitAgain = (delay: number) => {
-      // Giving up is the answer that a screen still saying "taking shape" has
-      // been waiting for. It is told, rather than left to keep promising.
-      if (Date.now() < giveUpAt) {
-        timer = window.setTimeout(() => void poll(), delay);
-        return;
-      }
-      onFirstExperienceSettled?.("gaveUp");
-    };
-    const poll = async () => {
-      try {
-        const now = await loadNow();
-        if (!active) return;
-        const chapter = now.chapter;
-        const found = chapter?.brief?.basis === "world" ? chapter : null;
-        setFirstExperience(found);
-        setHomeCity(now.homeCity || "");
-        if (found) onFirstExperienceSettled?.("found");
-        const stillComing =
-          chapter?.status === "researching" ||
-          (!found && watchStatus === "writing");
-        if (stillComing) waitAgain(5000);
-      } catch {
-        if (active) waitAgain(8000);
-      }
-    };
-
-    timer = window.setTimeout(() => void poll(), 5000);
-    return () => {
-      active = false;
-      if (timer !== undefined) window.clearTimeout(timer);
-    };
-    // Deliberately keyed on primitives: depending on the chapter object would
-    // restart this loop, and its give-up deadline, on every poll.
-  }, [
-    firstExperienceStatus,
-    hasFirstExperience,
-    watchAttempt,
-    watchStatus,
-    onFirstExperienceSettled,
-    reviewState,
-  ]);
 
   const pack = state.status === "ready" ? state.pack : null;
 
@@ -723,28 +622,6 @@ export default function WeeklyPackView({
     showDatePicker,
   });
 
-  /*
-   * A first experience holds this screen from the moment it is asked for,
-   * not from the moment a chapter exists to read. That gap is most of the
-   * wait: the brief is its own model call, and standing on Saturday's locked
-   * pack until it comes back promises the wrong thing about the wrong day.
-   */
-  const writingFirstExperience = !firstExperience && watchStatus !== "idle";
-  const readingFirstExperience =
-    firstExperience &&
-    !["scheduled", "declined", "lived"].includes(firstExperience.status);
-
-  if (!reviewState && (writingFirstExperience || readingFirstExperience)) {
-    return (
-      <FirstExperienceView
-        chapter={firstExperience}
-        onChapterChange={setFirstExperience}
-        askFailed={watchStatus === "failed"}
-        onAskAgain={onFirstExperienceStarted}
-      />
-    );
-  }
-
   if (phase === "loading") {
     return (
       <section className={styles.statePage} aria-busy="true">
@@ -782,11 +659,10 @@ export default function WeeklyPackView({
       <LockedPackState
         releaseAt={releaseAt}
         reduceMotion={Boolean(reduceMotion)}
-        // Only once Now has actually been read: an empty string means asked
-        // and answered with nothing, null means not asked yet.
+        // Only once the account has been read: an empty string means asked and
+        // answered with nothing, null means not asked yet.
         needsLocation={homeCity === ""}
         onHomeCitySaved={setHomeCity}
-        onFirstExperienceStarted={onFirstExperienceStarted}
       />
     );
   }

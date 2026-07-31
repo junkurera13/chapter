@@ -1,5 +1,29 @@
 # Build journal
 
+## July 31, 2026 — one weekly crafting path
+
+The competition build now treats the Saturday pack as the only **Now**
+experience surface:
+
+- finishing the first memory no longer starts a separate paid experience;
+- the first-experience screen, polling state, preview route, client action, and
+  onboarding/location triggers were removed;
+- the weekly endpoint now returns the account location alongside the pack, so
+  the weekly surface no longer reads the legacy single-chapter flow;
+- production weekly design and grounded final copy now default to one model,
+  `openai/gpt-5.6-terra`, with deterministic repair attempts rather than an
+  independent reviewer, Kimi fallback, and Luna composition pass;
+- the production design and research contracts now carry the Adventure Lab's
+  anti-roleplay, anti-staged-consumption, provider-level design, exact-place,
+  and practical-arrival rules; and
+- the executable audit rejects the restaurant ordering exercise that exposed
+  the original quality failure.
+
+Verification passes with 395 tests across 52 files, ESLint, TypeScript,
+`npm run build:safe`, and local browser checks of the locked and sealed weekly
+states. The removed first-experience preview returns 404. These changes are
+local source only; no Base44 or Vercel deployment was performed.
+
 ## July 22, 2026 — memory-first foundation
 
 The current competition build contains only the foundation of Chapter:

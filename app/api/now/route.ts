@@ -88,7 +88,6 @@ async function beginWriting(args: {
   graph: Awaited<ReturnType<typeof fetchMyGraph>>;
   accessToken: string;
   requestId: string;
-  basis?: "world" | "graph";
   /** The day to research against when none has been set aside. */
   horizon?: string;
   signal?: AbortSignal;
@@ -113,7 +112,6 @@ async function beginWriting(args: {
   const brief = await generateNowBrief({
     graph: args.graph,
     homeCity: now.homeCity,
-    basis: args.basis,
     avoidVenues: now.avoidVenues,
     declineReason:
       now.chapter?.status === "declined" ? now.chapter.declineReason : undefined,
@@ -132,7 +130,7 @@ async function beginWriting(args: {
     >,
     metadata: {
       app: "chapter",
-      surface: args.basis === "world" ? "first-experience" : "now",
+      surface: "now",
     },
   });
 
@@ -179,8 +177,7 @@ function failure(error: unknown, requestId: string) {
  * proposal on the way past.
  *
  * Reading never starts a run. Writing a chapter costs real money; it begins
- * only from an explicit Now action or from the first-memory send that promises
- * a first experience.
+ * only from an explicit Now action.
  */
 export async function GET(request: Request) {
   const requestId = crypto.randomUUID();
@@ -295,51 +292,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (body.action === "startFirst") {
-      const now = await fetchMyNow(accessToken);
-      if (!now.homeCity) {
-        return Response.json(
-          {
-            error: "Chapter needs your location for the first experience.",
-            code: "NOW_NEEDS_CITY",
-          },
-          { status: 409 },
-        );
-      }
-      if (
-        now.chapter &&
-        ["researching", "proposed", "accepted"].includes(now.chapter.status)
-      ) {
-        if (now.chapter.brief?.basis === "world") {
-          return Response.json({ value: { chapter: now.chapter } });
-        }
-        return Response.json(
-          { error: "One chapter at a time.", code: "NOW_CHAPTER_ACTIVE" },
-          { status: 409 },
-        );
-      }
-
-      const graph = await fetchMyGraph(accessToken);
-      if (graph.memoryCount === 0) {
-        return Response.json(
-          { error: "Share a memory first.", code: "NOW_NEEDS_MEMORY" },
-          { status: 409 },
-        );
-      }
-
-      console.info("[now:route] first experience started", { requestId });
-      const chapter = await beginWriting({
-        now,
-        graph,
-        accessToken,
-        requestId,
-        basis: "world",
-        horizon: comingWeekend(viewerToday(body.today)),
-        signal: request.signal,
-      });
-      return Response.json({ value: { chapter } });
-    }
-
     if (body.action === "setHomeCity") {
       const homeCity =
         typeof body.homeCity === "string" ? body.homeCity.trim() : "";

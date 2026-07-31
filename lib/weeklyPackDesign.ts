@@ -470,6 +470,15 @@ export function buildWeeklyPackDesignPrompt(args: {
     "- Each card must be good enough to regret losing. Do not create one hero and two filler cards.",
     "- At most one card may be deliberately demanding.",
     "- Design the human action, rhythm, constraint, shared task, or journey. A place is supporting infrastructure, not the idea.",
+    "- Give every experience a mechanism with real-world stakes: learn from someone in an advertised format, make a real object, help with real work, enter a real event, complete a meaningful route, practise a real skill, or gain legitimate public access.",
+    "- An arbitrary count, ordering rule, self-conscious ritual, or attention exercise is not a mechanism.",
+    "- Reject ordinary consumption dressed up as participation. Ordering several dishes, visiting several shops, choosing by a rule, eating in sequence, or narrating a normal purchase is not an experience.",
+    "- Do not invent homework: counting, logging, documenting, rating, photographing evidence, or collecting observations is invalid unless it is inherent to an established activity being joined.",
+    "- Do not ask the person to cosplay an investigator, critic, artist, anthropologist, or documentarian.",
+    "- Prefer established public formats that research can genuinely prove: a scheduled workshop, volunteer shift, guided route, public session, performance, open studio, training, or advertised access programme.",
+    "- Design only at the level a provider would advertise. Do not invent lesson stages, correction rounds, item counts, material variants, finishing outcomes, take-home promises, special access, or staff cooperation.",
+    "- A restaurant, cafe, shop, market, museum, park, or class is infrastructure, never the experience by itself.",
+    "- Passive attention is not participation. Telling someone to notice, compare, study, appreciate, or focus on an ordinary visit or purchase does not transform it.",
     "",
     "WORLD-FIRST COMPOSITION",
     args.context.socialMatch
@@ -522,6 +531,8 @@ export function buildWeeklyPackDesignPrompt(args: {
     "RESEARCH BRIEFS",
     "- Write a separate objective for each card that proves what the designed experience needs.",
     "- Ask research to prove current availability, cost, travel, booking, safety, accessibility, weather, equipment, route, or capacity when relevant.",
+    "- Require the exact venue, event, route, or provider name; a practical arrival point; current operating evidence; relevant hours or event date; booking method only when needed; price when available; and sources.",
+    "- Research must preserve the designed participant action. If no real current place supports it, the card must fail rather than becoming a plausible substitute.",
     "- Do not reduce every objective to finding an unusual venue.",
     "- Do not let research redesign the experience or add another unfamiliar dimension.",
     "",
@@ -630,6 +641,74 @@ function auditCardFormat(
       code: "PROPER_FORMAT",
       cardId: card.id,
       message: "A proper card needs a coherent journey or sequence.",
+    });
+  }
+}
+
+function auditExperienceMechanism(
+  card: WeeklyPackCardDesign,
+  issues: WeeklyPackAuditIssue[],
+) {
+  const combined = [card.experiencePromise, card.mechanism.description].join(
+    " ",
+  );
+  if (/^\s*(go to|visit|check out)\b/i.test(card.experiencePromise)) {
+    addIssue(issues, {
+      code: "VENUE_FIRST_LANGUAGE",
+      cardId: card.id,
+      message:
+        "The experience begins with a destination rather than a participant action.",
+    });
+  }
+  if (
+    /\b(exactly|for each|audit|inquiry|document|log|record|rate|catalogue|at least (two|three|four)|identify (two|three|four)|collect (two|three|four)|(?:taste|visit|choose|compare|find|buy) (?:at least )?(?:two|three|four)|prove that)\b/i.test(
+      combined,
+    ) &&
+    !/\b(workshop|lesson|course|volunteer|training|guided|instructor|teacher|craftsperson|repair|build|cook|perform on stage)\b/i.test(
+      combined,
+    )
+  ) {
+    addIssue(issues, {
+      code: "INVENTED_HOMEWORK",
+      cardId: card.id,
+      message:
+        "The experience relies on a self-assigned documentation or counting exercise rather than a real activity.",
+    });
+  }
+  if (
+    /\b(restaurant|cafe|café|bar|kitchen|diner|eatery|izakaya|bakery|counter|chef|dishes?|menu|meal)\b/i.test(
+      combined,
+    ) &&
+    /\b(order|eat|choose|taste|drink|recommendation|texture)\b/i.test(
+      combined,
+    ) &&
+    !/\b(workshop|lesson|course|volunteer|training|guided|instructor|teacher|learn to|make|cook|prepare|harvest|source|serve|help)\b/i.test(
+      combined,
+    )
+  ) {
+    addIssue(issues, {
+      code: "STAGED_CONSUMPTION",
+      cardId: card.id,
+      message:
+        "Ordinary food or drink consumption cannot become an experience through an ordering rule or passive attention.",
+    });
+  }
+  if (
+    /\b(chef|vendor|stall owner|shop owner|owner|staff member|craftsperson)\b/i.test(
+      combined,
+    ) &&
+    /\b(ask|engage|interview|discuss|explain|demonstrate|teach|show|conversation|tasting)\b/i.test(
+      combined,
+    ) &&
+    !/\b(advertised|scheduled|booked|appointment|workshop|lesson|course|tour|guided|public session|open studio|volunteer|training|programme|program)\b/i.test(
+      combined,
+    )
+  ) {
+    addIssue(issues, {
+      code: "UNVERIFIED_COOPERATION",
+      cardId: card.id,
+      message:
+        "The experience depends on unadvertised time, instruction, access, or participation from a worker.",
     });
   }
 }
@@ -967,6 +1046,7 @@ export function auditWeeklyPackDesign(args: {
 
   for (const card of pack.cards) {
     auditCardFormat(card, issues);
+    auditExperienceMechanism(card, issues);
     auditStretch(card, context, issues);
     auditShapeContract(card, context, issues);
     auditConnection(card, context, issues);
@@ -983,18 +1063,6 @@ export function auditWeeklyPackDesign(args: {
           message: `Research must explicitly prove ${required}.`,
         });
       }
-    }
-    if (/^\s*(go to|visit|check out)\b/i.test(card.experiencePromise)) {
-      addIssue(
-        issues,
-        {
-          code: "VENUE_FIRST_LANGUAGE",
-          cardId: card.id,
-          message:
-            "The experience promise appears to start with a destination rather than a human action.",
-        },
-        "warning",
-      );
     }
   }
   auditSocialMatch(pack, context, issues);
@@ -1149,8 +1217,9 @@ export type WeeklyPackReview = z.infer<typeof weeklyPackReviewSchema>;
 
 export const weeklyPackDesignArtifactSchema = z.object({
   pack: weeklyPackDesignSchema,
-  review: weeklyPackReviewSchema,
-  revisionReviews: z.array(weeklyPackReviewSchema).max(2),
+  /** Older and offline-lab artifacts may include an editorial model review. */
+  review: weeklyPackReviewSchema.optional(),
+  revisionReviews: z.array(weeklyPackReviewSchema).max(2).default([]),
   homeCity: z.string().trim().min(2).max(160).optional(),
   companion: weeklyPackCompanionSchema.optional(),
 });
@@ -1409,15 +1478,21 @@ export function buildWeeklyPackResearchPrompt(args: {
     "RESEARCH RULES",
     `- Verify current operation and logistics as of ${args.currentDate}.`,
     "- Prove every critical claim with direct source URLs. Prefer first-party sources and recent operating evidence.",
-    "- Preserve the designed action, mechanism, company, scale, primary twist, and optional supporting context.",
+    "- Preserve the designed action, mechanism, company, scale, primary twist, and optional supporting context. Never redesign the card into an easier recommendation.",
+    "- Search across multiple candidates internally and return the strongest fully proved one, not merely the first or strangest result.",
     `- The journey begins and ends in HOME CITY. Return originCity exactly as "${args.context.homeCity}" in travelFit.`,
     `- This is a day-scale experience, not destination travel. Flights are never allowed. The verified complete round trip must take at most ${travelLimitMinutes} minutes.`,
     args.card.format.geography === "beyond-city"
       ? "- A beyond-city destination is allowed only when surface transport and the experience both fit comfortably inside this card's stated duration."
       : "- The primary place must be inside HOME CITY because this card is not designed as beyond-city travel.",
-    "- primaryPlace must be one actual, currently operating named location with a real area and street address. Never return a generic type such as swimming pool, arena, venue, park, or local facility.",
+    "- primaryPlace must be one actual, currently operating named location with a real area and practical arrival point. Use a street address for a venue; a documented route may use a sourced station exit, trailhead, named landmark, or coordinates.",
+    "- A chain or franchise branch is allowed when that exact branch genuinely supports the designed action. The experience mechanism, not venue obscurity, must carry the idea.",
+    "- A simple reservation or fixed public session is allowed. Solo means the person does not need to bring a companion; attending an advertised workshop or public session alone still qualifies.",
+    "- A restaurant meal, purchase, or passive observation task is not a substitute for participation.",
+    "- Do not pad the action, route, or duration to satisfy the scale. If the honest real format cannot fit this card, report that in researchCaveats.",
+    "- Judge only dependencies the designed action genuinely needs. Do not demand proof of irrelevant negatives when official information already proves ordinary public access.",
     "- If no candidate satisfies the home-city, travel-time, geography, and no-flight constraints, report that in researchCaveats. Never escape to another country to satisfy the topic.",
-    "- Reject chains, generic top-listicle choices, closed or weakly evidenced candidates, and logistics that violate the format.",
+    "- Reject generic top-listicle choices, closed or weakly evidenced candidates, and logistics that violate the format.",
     "- Never state or infer anything about the person's biography, feelings, relationships, compatibility, or private memories.",
     "- If a requirement cannot be proved, say so in researchCaveats instead of guessing.",
     "",

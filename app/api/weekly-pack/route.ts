@@ -1,5 +1,6 @@
 import {
   Base44FunctionError,
+  fetchMyNow,
   fetchMyWeeklyPack,
   updateMyWeeklyPack,
 } from "@/lib/base44Functions";
@@ -55,9 +56,17 @@ export async function GET(request: Request) {
     const timezone =
       new URL(request.url).searchParams.get("timezone")?.slice(0, 80) || "UTC";
     const value = await fetchMyWeeklyPack(timezone, accessToken);
+    // Keep local source usable while the corresponding Base44 function update
+    // is awaiting deployment. The fallback reads account data only; it never
+    // starts experience generation.
+    const homeCity =
+      typeof value.homeCity === "string"
+        ? value.homeCity
+        : (await fetchMyNow(accessToken)).homeCity;
     return Response.json({
       value: {
         ...value,
+        homeCity,
         pack: value.pack
           ? weeklyExperiencePackSchema.parse(value.pack)
           : null,
@@ -135,4 +144,3 @@ export async function POST(request: Request) {
     return failure(error);
   }
 }
-

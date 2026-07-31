@@ -12,10 +12,10 @@
 > shared anchors. Generic people and placeholder places are rejected at both
 > composition and Base44 persistence boundaries.
 >
-> **World-first revision: implemented locally, July 29 2026; deployment
-> pending.** Weekly packs now contain two world-led cards and one anchored card.
-> A person's first completed memory also starts one immediate world-led
-> experience instead of leaving them waiting for Saturday.
+> **Competition simplification: implemented locally, July 31 2026; deployment
+> pending.** Weekly packs contain two world-led cards and one anchored card.
+> The separate instant first-experience path has been removed: a new person
+> enters the same Saturday ritual as everyone else.
 
 ## Why Chapter exists
 
@@ -45,14 +45,10 @@ run.
 The shipped rebuild replaces that configuration with a shared weekly ritual. A
 person does not schedule generation. Saturday means a new pack is there.
 
-The ritual is retention, not first-use activation. A new person receives one
-fully researched first experience as soon as their first memory has finished
-processing. That experience is generated from their location, current timing,
-Chapter's editorial taste, and verified local reality. The new memory is the
-request to begin, not a profile the experience must imitate.
-
-The first experience is one immediate invitation, not an early three-card pack.
-It has no sealed-choice ceremony and does not replace the Saturday ritual.
+For the competition version, the ritual is also the first experience surface.
+Finishing the first memory opens the person's world; it does not start a second
+generation system in the background. Once the account has a location and a
+usable graph, the normal worker prepares its next eligible Saturday pack.
 
 ## The weekly ritual
 
@@ -91,9 +87,8 @@ Generate only for an eligible account:
 - a timezone exists;
 - the week's pack does not already exist.
 
-The immediate first experience is the catch-up rule for someone who becomes
-eligible after the normal generation cutoff. Their first full pack is still
-prepared through the weekly worker.
+A person who becomes eligible after the normal preparation window joins the
+next weekly cycle. There is no separate catch-up generator.
 
 ## Generation pipeline
 
@@ -395,6 +390,8 @@ The shipped product includes:
   claiming new work, designs the three choices as one composition, starts one
   independent Parallel run per card, and writes visible copy only after all
   three results pass the post-research collision audit;
+- one Terra-based writing path for production design and grounded final copy,
+  with deterministic repair attempts instead of a second editorial model;
 - one environment-led generated image per accepted card, produced before the
   pack becomes ready and stored at a durable fal CDN URL;
 - a daily 16:00 UTC Vercel schedule, compatible with the current Hobby plan.
@@ -404,15 +401,12 @@ The shipped product includes:
 - `app/api/weekly-pack/route.ts` and `lib/weeklyPackClient.ts`;
 - `WeeklyPackView`, covering waiting, sealed choice, card reveal, confirmation,
   chosen experience, scheduling, dismissal, and lived states;
-- `FirstExperienceView` and the existing single-experience research pipeline,
-  covering the immediate world-led experience after a person's first memory;
 - a development-only `/weekly-pack-preview` route. `state=locked` and
   `state=chosen` open those states directly; the default opens the choice.
 
-The signed-in Now tab opens an unfinished first experience before the weekly
-surface. Once that experience is lived or declined, Now returns to the Saturday
-pack. In a signed-in local app, `/app?view=now&pack=preview`, `pack=locked`, and
-`pack=chosen` mount the weekly interaction in the real app shell.
+The signed-in Now tab always opens the weekly surface. In a signed-in local app,
+`/app?view=now&pack=preview`, `pack=locked`, and `pack=chosen` mount the weekly
+interaction in the real app shell.
 
 The implemented state model is:
 
@@ -451,8 +445,8 @@ remains inactive until local density can support it.
 - Generate several days early and keep the pack locked until Saturday.
 - Design the pack as a whole before research.
 - Use two world-led cards and at most one anchored card.
-- Treat the first completed memory as a request for one immediate world-led
-  experience; never use that sparse graph as its idea source.
+- Use the Saturday pack as the only Now experience surface in the competition
+  version; the first memory does not start paid experience generation.
 - Keep experience scale separate from social composition.
 - Treat human connection as a core purpose, not an optional feature.
 - A social experience always shows the actual person from an accepted

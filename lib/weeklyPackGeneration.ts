@@ -15,20 +15,12 @@ import {
   auditWeeklyPackResearch,
   buildWeeklyPackDesignPrompt,
   buildWeeklyPackResearchPrompt,
-  buildWeeklyPackRevisionPrompt,
-  buildWeeklyPackReviewPrompt,
   canonicalizeWeeklyPackAnchors,
-  describeWeeklyPackReviewFailure,
-  enforceWeeklyPackReviewThresholds,
-  summarizeWeeklyPackReview,
   weeklyPackDesignModelSchema,
   weeklyPackDesignSchema,
   weeklyPackResearchFindingSchema,
-  weeklyPackReviewModelSchema,
-  weeklyPackReviewSchema,
   type WeeklyPackContext,
   type WeeklyPackDesign,
-  type WeeklyPackReview,
   type WeeklyPackResearchFinding,
   type WeeklyPackScale,
 } from "./weeklyPackDesign";
@@ -46,14 +38,8 @@ import {
 
 const PACK_MODEL_ID =
   process.env.CHAPTER_PACK_MODEL || "openai/gpt-5.6-terra";
-const PACK_FALLBACK_MODEL_ID =
-  process.env.CHAPTER_PACK_FALLBACK_MODEL || "moonshotai/kimi-k2.6";
-const PACK_REVIEW_MODEL_ID =
-  process.env.CHAPTER_PACK_REVIEW_MODEL || PACK_MODEL_ID;
-const PACK_REVISION_MODEL_ID =
-  process.env.CHAPTER_PACK_REVISION_MODEL || PACK_MODEL_ID;
 const PACK_COMPOSITION_MODEL_ID =
-  process.env.CHAPTER_PACK_COMPOSITION_MODEL || "openai/gpt-5.6-luna";
+  process.env.CHAPTER_PACK_COMPOSITION_MODEL || PACK_MODEL_ID;
 const PACK_PROCESSOR =
   process.env.CHAPTER_PACK_PROCESSOR ||
   process.env.CHAPTER_NOW_PROCESSOR ||
@@ -203,7 +189,7 @@ async function generateObject<T>(args: {
       ...modelTuning(args.modelId, args.temperature),
       maxOutputTokens: args.maxOutputTokens,
       maxRetries: 0,
-      timeout: { totalMs: 120_000 },
+      timeout: { totalMs: 180_000 },
     });
     console.info(
       [
@@ -306,7 +292,7 @@ async function structurallyValidDesign(args: {
 }) {
   const result = await runWeeklyPackModelAttempts({
     modelIds: args.modelIds,
-    attemptsPerModel: 2,
+    attemptsPerModel: 4,
     attempt: async ({ modelId, correction }) => {
       try {
         const output = await generateObject({
@@ -362,132 +348,22 @@ async function structurallyValidDesign(args: {
   );
 }
 
-async function reviewDesign(args: {
-  pack: WeeklyPackDesign;
-  source: PackGenerationSource;
-  requestId: string;
-}) {
-  const prompt = buildWeeklyPackReviewPrompt({
-    pack: args.pack,
-    graph: args.source.graph,
-    context: args.source.context,
-  });
-  const modelIds = [
-    PACK_REVIEW_MODEL_ID,
-    ...(PACK_FALLBACK_MODEL_ID === PACK_REVIEW_MODEL_ID
-      ? []
-      : [PACK_FALLBACK_MODEL_ID]),
-  ];
-  const result = await runWeeklyPackModelAttempts({
-    modelIds,
-    attemptsPerModel: 2,
-    attempt: async ({ modelId, correction }) => {
-      try {
-        const output = await generateObject({
-          prompt: [prompt, correction].filter(Boolean).join("\n\n"),
-          schema: weeklyPackReviewModelSchema,
-          schemaName: "weekly_pack_review",
-          modelId,
-          temperature: 0.15,
-          maxOutputTokens: 8_000,
-          requestId: args.requestId,
-          reasoning: "none",
-        });
-        const review = enforceWeeklyPackReviewThresholds(
-          weeklyPackReviewSchema.parse(output),
-        );
-        console.info(
-          [
-            "[weekly-pack:review] evaluated",
-            `requestId=${args.requestId}`,
-            `model=${modelId}`,
-            `summary=${JSON.stringify(summarizeWeeklyPackReview(review))}`,
-          ].join(" "),
-        );
-        return { value: review };
-      } catch (error) {
-        const failure = error instanceof Error ? error.message : String(error);
-        return {
-          failure,
-          correction: [
-            "The previous editor attempt did not return a valid structured review.",
-            "Evaluate the supplied pack again and return the complete review object.",
-            "Be concise. Use integer scores. Keep strongestQuality and revisionPriority to one short sentence each. Include no commentary outside the structured result.",
-          ].join("\n"),
-        };
-      }
-    },
-  });
-  if (result.value) {
-    return result.value;
-  }
-
-  throw new WeeklyPackGenerationError(
-    `No model produced a valid independent review. ${result.failures.join(" | ")}`,
-  );
-}
-
 export async function designWeeklyPack(args: {
   source: PackGenerationSource;
   requestId: string;
 }) {
-  const modelIds = [
-    PACK_MODEL_ID,
-    ...(PACK_FALLBACK_MODEL_ID === PACK_MODEL_ID
-      ? []
-      : [PACK_FALLBACK_MODEL_ID]),
-  ];
-  let pack = await structurallyValidDesign({
+  const pack = await structurallyValidDesign({
     prompt: buildWeeklyPackDesignPrompt({
       graph: args.source.graph,
       context: args.source.context,
     }),
     source: args.source,
-    modelIds,
+    modelIds: [PACK_MODEL_ID],
     schemaName: "weekly_pack_design",
     requestId: args.requestId,
     temperature: 0.72,
   });
-  let review = await reviewDesign({
-    pack,
-    source: args.source,
-    requestId: args.requestId,
-  });
-  const revisionReviews: WeeklyPackReview[] = [];
-
-  for (let round = 0; review.verdict !== "accept" && round < 2; round += 1) {
-    revisionReviews.push(review);
-    pack = await structurallyValidDesign({
-      prompt: buildWeeklyPackRevisionPrompt({
-        pack,
-        review,
-        graph: args.source.graph,
-        context: args.source.context,
-      }),
-      source: args.source,
-      modelIds: [
-        PACK_REVISION_MODEL_ID,
-        ...(PACK_FALLBACK_MODEL_ID === PACK_REVISION_MODEL_ID
-          ? []
-          : [PACK_FALLBACK_MODEL_ID]),
-      ],
-      schemaName: "weekly_pack_revision",
-      requestId: args.requestId,
-      temperature: 0.48,
-    });
-    review = await reviewDesign({
-      pack,
-      source: args.source,
-      requestId: args.requestId,
-    });
-  }
-
-  if (review.verdict !== "accept") {
-    throw new WeeklyPackGenerationError(
-      describeWeeklyPackReviewFailure(review),
-    );
-  }
-  return { pack, review, revisionReviews };
+  return { pack };
 }
 
 export async function startWeeklyPackResearch(args: {
@@ -605,7 +481,7 @@ export function buildWeeklyPackCompositionPrompt(args: {
     "COPY CONTRACT",
     "- Preserve the researched action, place, route, company, scale, and logistics. Do not redesign anything.",
     "- Use only claims present in the design and research. Do not invent biography, preference, emotion, safety, availability, cost, or travel facts.",
-    "- Title: plain, specific, 3-9 words.",
+    "- Title: a plain 3-7 word name for the core action. Do not put the provider's full name, class name, technique list, schedule, or explanatory clause in the title.",
     "- Line: one natural sentence, 12-32 words, that presents the experience as an invitation and includes that card's verified primaryPlace.name verbatim.",
     "- On graph or social cards, use 1-3 accepted anchor labels verbatim where they fit naturally so the interface can mark those real nodes.",
     "- On world cards, write the invitation plainly from the researched action and place. Do not invent a personal reason or imply that the memory graph caused it.",
@@ -695,6 +571,32 @@ export function validateWeeklyPackGroundedCopy(args: {
     if (!card.line.includes(finding.primaryPlace.name)) {
       throw new WeeklyPackGenerationError(
         `${card.id} copy did not name its verified real-world place verbatim.`,
+      );
+    }
+    const titleWords = card.title.split(/\s+/u).filter(Boolean);
+    if (
+      titleWords.length > 7 ||
+      /[,;:.!?—]/u.test(card.title) ||
+      card.title.includes(finding.primaryPlace.name)
+    ) {
+      throw new WeeklyPackGenerationError(
+        `${card.id} title must be a short action name, not a sentence or logistics list.`,
+      );
+    }
+    const visibleCopy = [
+      card.title,
+      card.line,
+      card.promise,
+      card.opening,
+      ...card.steps,
+    ].join(" ");
+    if (
+      /\b(exactly|at least (?:two|three|four)|audit|document|log|rate|catalogue|pretend|role-play|roleplay)\b/i.test(
+        visibleCopy,
+      )
+    ) {
+      throw new WeeklyPackGenerationError(
+        `${card.id} copy introduced an artificial task or role-playing instruction.`,
       );
     }
   }
@@ -793,55 +695,52 @@ export async function composeWeeklyExperienceCards(args: {
   requestId: string;
   companion?: WeeklyPackCompanion;
 }) {
-  const modelIds = [
-    PACK_COMPOSITION_MODEL_ID,
-    ...(PACK_FALLBACK_MODEL_ID === PACK_COMPOSITION_MODEL_ID
-      ? []
-      : [PACK_FALLBACK_MODEL_ID]),
-  ];
-  let copy: z.infer<typeof weeklyPackCopySchema> | undefined;
-  const failures: string[] = [];
-  let correction = "";
-  for (const modelId of modelIds) {
-    try {
-      const output = await generateObject({
-        prompt: [buildWeeklyPackCompositionPrompt(args), correction]
-          .filter(Boolean)
-          .join("\n\n"),
-        schema: weeklyPackCopyModelSchema,
-        schemaName: "weekly_pack_card_copy",
-        modelId,
-        temperature: 0.3,
-        maxOutputTokens: 5_000,
-        requestId: args.requestId,
-      });
-      const candidate = weeklyPackCopySchema.parse(output);
-      validateWeeklyPackSocialCopy({
-        pack: args.pack,
-        copy: candidate,
-        companion: args.companion,
-      });
-      validateWeeklyPackGroundedCopy({
-        research: args.research,
-        copy: candidate,
-      });
-      copy = candidate;
-      break;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      failures.push(`${modelId}: ${message}`);
-      correction = [
-        "The previous complete copy set failed a deterministic truth gate.",
-        "Return all three cards again and repair this failure:",
-        message,
-      ].join("\n");
-    }
-  }
-  if (!copy) {
+  const copyAttempts = await runWeeklyPackModelAttempts({
+    modelIds: [PACK_COMPOSITION_MODEL_ID],
+    attemptsPerModel: 2,
+    attempt: async ({ modelId, correction }) => {
+      try {
+        const output = await generateObject({
+          prompt: [buildWeeklyPackCompositionPrompt(args), correction]
+            .filter(Boolean)
+            .join("\n\n"),
+          schema: weeklyPackCopyModelSchema,
+          schemaName: "weekly_pack_card_copy",
+          modelId,
+          temperature: 0.3,
+          maxOutputTokens: 5_000,
+          requestId: args.requestId,
+        });
+        const candidate = weeklyPackCopySchema.parse(output);
+        validateWeeklyPackSocialCopy({
+          pack: args.pack,
+          copy: candidate,
+          companion: args.companion,
+        });
+        validateWeeklyPackGroundedCopy({
+          research: args.research,
+          copy: candidate,
+        });
+        return { value: candidate };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          failure: message,
+          correction: [
+            "The previous complete copy set failed a deterministic truth gate.",
+            "Return all three cards again and repair this exact failure without redesigning the accepted experiences:",
+            message,
+          ].join("\n"),
+        };
+      }
+    },
+  });
+  if (!copyAttempts.value) {
     throw new WeeklyPackGenerationError(
-      `No model produced truthful social copy. ${failures.join(" | ")}`,
+      `No model produced truthful grounded copy. ${copyAttempts.failures.join(" | ")}`,
     );
   }
+  const copy = copyAttempts.value;
   const images = Object.fromEntries(
     await Promise.all(
       args.pack.cards.map(async (design) => {

@@ -124,11 +124,11 @@ function card(args: {
       stretch:
         "Shift only the place into an unfamiliar landscape reached by a coherent outward journey.",
       promise:
-        "Follow one continuous ridge-to-village route, collect three signs of the changing terrain, and use them to choose the final turn.",
+        "Follow one continuous signed ridge-to-village route, crossing the high point before descending to the return station.",
       potential:
-        "The outward travel, changing terrain, and one consequential choice form a restrained full-day story.",
+        "The outward travel, ridge crossing, and descent form a restrained full-day story with a real finish.",
       research:
-        "Prove one coherent and currently open ridge-to-village route beyond the city whose journey supports the three-sign navigation constraint; verify trail status, daylight, return transport, total cost, weather, equipment, safety, access points, and bailout options rather than substituting a famous destination.",
+        "Prove one coherent and currently open signed ridge-to-village route beyond the city; verify trail status, daylight, return transport, total cost, weather, equipment, safety, access points, and bailout options rather than substituting a famous destination.",
       distinct:
         "This is the only full-day journey and the only place stretch; its mechanism is movement through changing terrain.",
     },
@@ -370,6 +370,19 @@ describe("weekly pack design lab", () => {
         "MECHANISM_REUSED",
         "CHAPTER_SHAPE_FAMILIARITY",
       ]),
+    );
+  });
+
+  it("rejects ordinary consumption dressed up as an adventure", () => {
+    const pack = validPack();
+    pack.cards[0].experiencePromise =
+      "Walk into a restaurant and order exactly three dishes one at a time.";
+    pack.cards[0].mechanism.description =
+      "Eat each dish completely before choosing the next one.";
+
+    const result = audit(pack);
+    expect(result.errors.map((issue) => issue.code)).toEqual(
+      expect.arrayContaining(["INVENTED_HOMEWORK", "STAGED_CONSUMPTION"]),
     );
   });
 

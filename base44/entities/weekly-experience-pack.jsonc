@@ -36,7 +36,7 @@
     },
     "design_json": {
       "type": "string",
-      "description": "Accepted three-card design and editor audit, retained server-side for quality review"
+      "description": "Deterministically accepted three-card design, retained server-side for quality review"
     },
     "research_json": {
       "type": "string",

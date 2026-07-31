@@ -2,21 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { loadNow } from "@/lib/nowClient";
+import { loadWeeklyPack } from "@/lib/weeklyPackClient";
 
 import { categoryOrbGradient } from "./categoryAppearance";
 import HomeCityForm from "./HomeCityForm";
 import styles from "./NowLocationNode.module.css";
 
-export default function NowLocationNode({
-  onFirstExperienceStarted,
-}: {
-  /**
-   * A location has been saved for the first time, so an experience that could
-   * not be written before may be on its way now.
-   */
-  onFirstExperienceStarted?: () => void;
-} = {}) {
+export default function NowLocationNode() {
   const rootRef = useRef<HTMLDivElement>(null);
   const [homeCity, setHomeCity] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -25,10 +17,10 @@ export default function NowLocationNode({
   useEffect(() => {
     let active = true;
 
-    void loadNow()
-      .then((now) => {
+    void loadWeeklyPack()
+      .then((weekly) => {
         if (!active) return;
-        setHomeCity(now.homeCity);
+        setHomeCity(weekly.homeCity);
       })
       .catch(() => {
         if (active) setHomeCity("");
@@ -101,9 +93,7 @@ export default function NowLocationNode({
 
           <HomeCityForm
             initialValue={homeCity ?? ""}
-            hadHomeCity={Boolean(homeCity)}
             autoFocus
-            onFirstExperienceStarted={onFirstExperienceStarted}
             onSaved={(saved) => {
               setHomeCity(saved);
               setAnnouncement(`Location saved as ${saved}.`);

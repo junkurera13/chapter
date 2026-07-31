@@ -69,28 +69,20 @@ describe("the primary twist", () => {
   });
 });
 
-describe("cold start", () => {
+describe("world-led chapters", () => {
   it("rejects a missing anchor by default", () => {
     const issues = auditChapterShape({ company: "self", twist: "place" });
     expect(issues.map((issue) => issue.code)).toContain("ANCHOR_MISSING");
   });
 
-  it("allows a first chapter built from the world to have no anchor", () => {
+  it("allows a chapter built from the world to have no graph anchor", () => {
     const issues = auditChapterShape(
       { company: "self", twist: "place" },
-      { coldStart: true },
+      { worldLed: true },
     );
     expect(issues).toHaveLength(0);
   });
 
-  it("uses the clearer world-led name too", () => {
-    expect(
-      auditChapterShape(
-        { company: "self", twist: "activity" },
-        { worldLed: true },
-      ),
-    ).toHaveLength(0);
-  });
 });
 
 describe("company decides what people may do", () => {

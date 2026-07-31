@@ -2328,6 +2328,8 @@ Deno.serve(async (req) => {
         value: {
           pack: rows[0] ? weeklyPackRecord(rows[0]) : null,
           timezone: timezone || validTimezone(user.timezone) || "UTC",
+          homeCity:
+            stringValue(user.home_city) || stringValue(user.current_city),
         },
       });
     }
@@ -2462,7 +2464,7 @@ Deno.serve(async (req) => {
     }
 
     /**
-     * Precomputation writes a finished, independently-reviewed pack here.
+     * Precomputation writes a finished, deterministically-audited pack here.
      * The internal secret is mandatory because this accepts private output for
      * another account and runs without that person's browser token.
      */

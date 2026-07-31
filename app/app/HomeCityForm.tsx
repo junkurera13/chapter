@@ -20,21 +20,12 @@ import styles from "./HomeCityForm.module.css";
  */
 export default function HomeCityForm({
   initialValue = "",
-  hadHomeCity,
   onSaved,
-  onFirstExperienceStarted,
   autoFocus = false,
   variant = "popover",
 }: {
   initialValue?: string;
-  /** Whether a location already existed before this form was opened. */
-  hadHomeCity: boolean;
   onSaved?: (homeCity: string) => void;
-  /**
-   * A location has been saved for the first time, so the experience that could
-   * not be written before can be asked for now.
-   */
-  onFirstExperienceStarted?: () => void;
   autoFocus?: boolean;
   variant?: "popover" | "inline";
 }) {
@@ -96,12 +87,6 @@ export default function HomeCityForm({
       setSuggestions([]);
       setActiveIndex(-1);
       onSaved?.(saved.homeCity);
-
-      // A first experience cannot be written without somewhere to write it
-      // about, so the one that was refused at onboarding is asked for now.
-      // Whoever is listening owns the ask and what it comes back with; the
-      // location is saved either way, and that was what this control promised.
-      if (!hadHomeCity) onFirstExperienceStarted?.();
     } catch (caught) {
       setError(
         caught instanceof Error

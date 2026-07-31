@@ -57,7 +57,6 @@ export default function YouOnboarding({
   onMemoryCreated,
   composerOnly = false,
   onSubmitStarted,
-  createFirstExperience = false,
 }: {
   onMemoryCreated: () => void;
   /**
@@ -72,12 +71,6 @@ export default function YouOnboarding({
    * next; this component is finished the instant it is called.
    */
   onSubmitStarted?: (work: Promise<unknown>) => void;
-  /**
-   * This is the send a first experience is owed for, which is what the screen
-   * says while it goes. Asking for it belongs to whoever handles
-   * `onMemoryCreated`; later memories only advance the world.
-   */
-  createFirstExperience?: boolean;
 }) {
   const [started, setStarted] = useState(composerOnly);
   const [memoryText, setMemoryText] = useState("");
@@ -801,9 +794,7 @@ export default function YouOnboarding({
 
                   <AnimatePresence initial={false}>
                     {submitting ? (
-                      <MemoryProcessingScreen
-                        firstExperience={createFirstExperience}
-                      />
+                      <MemoryProcessingScreen />
                     ) : null}
                   </AnimatePresence>
 

@@ -150,7 +150,6 @@ function reachClause(homeCity: string, reach: NowReach) {
 export function buildBriefPrompt(args: {
   graph: ExperienceGraphRecord;
   homeCity: string;
-  basis?: "world" | "graph";
   avoidVenues?: readonly string[];
   declineReason?: string;
   /** The day already set aside, when this chapter grew out of a schedule. */
@@ -160,22 +159,14 @@ export function buildBriefPrompt(args: {
   /** Pre-drawn by code in production; optional only for prompt unit tests. */
   twistDimension?: "place" | "activity" | "person" | "interest";
 }) {
-  const basis = args.basis ?? "graph";
-  const digest = basis === "graph" ? buildGraphDigest(args.graph) : null;
+  const digest = buildGraphDigest(args.graph);
   const when = whenClause(args.scheduledFor, args.timeWindows);
   return [
-    basis === "world"
-      ? "You design one world-first real-world experience for a person Chapter has only just met."
-      : "You design one real-world experience proposal with one truthful influence from a private memory graph.",
-    basis === "world"
-      ? "Do not infer a preference, personality, feeling, or biography from the person's first memory. Begin with what is alive, timely, and genuinely worth doing around their city now. Chapter's taste and the present world are the source; personal data is not."
-      : "Use the graph as a light influence, not a biography to reenact. Transform one strong thread without making the whole proposal about the person's past.",
+    "You design one real-world experience proposal with one truthful influence from a private memory graph.",
+    "Use the graph as a light influence, not a biography to reenact. Transform one strong thread without making the whole proposal about the person's past.",
     args.twistDimension
       ? `The Chapter Equation has already drawn the primary twist: ${args.twistDimension}. Keep that exact dimension as the one meaningful leap. Do not swap it for another kind of novelty.`
       : "The Chapter Equation uses one primary unfamiliar twist from place, activity, person, or interest.",
-    basis === "world"
-      ? "This is a first experience: make it a small, solo, public experience lasting roughly 30-90 minutes, within the selected reach, with no complicated booking or preparation."
-      : "",
     "",
     "Design the human action before the place. Then write a research brief for a deep-research agent that will find the real, current infrastructure needed to make that action livable.",
     "At this design stage, do not invent or name a venue, event, provider, route, address, or timetable. Describe what research must prove; research supplies the real noun.",
@@ -193,12 +184,9 @@ export function buildBriefPrompt(args: {
       ? `The person declined the previous proposal because: "${args.declineReason}". Design a different action within the pre-drawn twist that answers that objection.`
       : "",
     "",
-    basis === "world"
-      ? "Set basis to `world`, primary memory influence does not exist, and anchors must be an empty array."
-      : "Set basis to `graph`. Anchors must reference 1-4 real node ids from the graph digest.",
-    digest ? "" : "",
-    digest ? "GRAPH DIGEST (private)" : "",
-    digest ? JSON.stringify(digest) : "",
+    "Set basis to `graph`. Anchors must reference 1-4 real node ids from the graph digest.",
+    "GRAPH DIGEST (private)",
+    JSON.stringify(digest),
   ]
     .filter(Boolean)
     .join("\n");
@@ -285,7 +273,6 @@ export async function generateStructured<T>(args: {
 export async function generateNowBrief(args: {
   graph: ExperienceGraphRecord;
   homeCity: string;
-  basis?: "world" | "graph";
   avoidVenues?: readonly string[];
   declineReason?: string;
   scheduledFor?: string;
@@ -294,7 +281,6 @@ export async function generateNowBrief(args: {
   requestId: string;
   signal?: AbortSignal;
 }): Promise<NowBrief> {
-  const basis = args.basis ?? "graph";
   const random = seededChapterRandom(args.requestId);
   const anchorCandidates = [
     ...new Set(
@@ -310,10 +296,10 @@ export async function generateNowBrief(args: {
   const shape = chooseChapterShape({
     company: "self",
     random,
-    anchorCandidates: basis === "graph" ? anchorCandidates : [],
+    anchorCandidates,
     allowContext: false,
   });
-  const shapeIssues = auditChapterShape(shape, { worldLed: basis === "world" });
+  const shapeIssues = auditChapterShape(shape);
   if (shapeIssues.length > 0) {
     throw new NowGenerationError(
       `Chapter could not draw a legal Now shape (${shapeIssues
@@ -339,10 +325,6 @@ export async function generateNowBrief(args: {
     signal: args.signal,
   });
 
-  if (basis === "world") {
-    return { ...brief, basis, anchors: [] };
-  }
-
   const anchors = anchorsExistingIn(args.graph, brief);
   if (anchors.length === 0) {
     throw new NowGenerationError(
@@ -357,7 +339,7 @@ export async function generateNowBrief(args: {
       `The brief did not use its pre-drawn ${shape.anchor} anchor.`,
     );
   }
-  return { ...brief, basis, anchors };
+  return { ...brief, basis: "graph", anchors };
 }
 
 export function buildComposePrompt(args: {

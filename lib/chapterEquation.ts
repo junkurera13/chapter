@@ -132,17 +132,13 @@ export type ChapterShapeIssue = {
 /**
  * Whether a chapter with no familiar anchor is legal.
  *
- * A first chapter has nowhere to anchor: on `basis: "world"` the anchors array
- * is empty by design, and `familiar` takes its other meaning of locally
- * accessible, socially ordinary, and low-friction. A person Chapter has just
- * met gets a chapter built out of the world rather than a biography it does
- * not have yet.
+ * A world-led chapter has no graph anchor: its anchors array is empty by
+ * design, and `familiar` takes its other meaning of locally accessible,
+ * socially ordinary, and low-friction.
  */
 export type ChapterShapeContext = {
-  /** Preferred name: world cards still have a familiar frame without graph evidence. */
+  /** World cards still have a familiar frame without graph evidence. */
   worldLed?: boolean;
-  /** Backwards-compatible name for the immediate first world-led chapter. */
-  coldStart?: boolean;
 };
 
 export function auditChapterShape(
@@ -157,10 +153,10 @@ export function auditChapterShape(
     (dimension): dimension is ChapterDimension => dimension !== undefined,
   );
 
-  if (!shape.anchor && !context.worldLed && !context.coldStart) {
+  if (!shape.anchor && !context.worldLed) {
     add(
       "ANCHOR_MISSING",
-      "A chapter needs one familiar anchor unless it is a cold-start chapter built from the world.",
+      "A chapter needs one familiar anchor unless it is a world-led chapter.",
     );
   }
 

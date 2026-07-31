@@ -17,24 +17,12 @@ const MEMORY_PROCESSING_PHRASES = [
   "Making connections",
   "Organizing",
 ] as const;
-const FIRST_EXPERIENCE_PHRASES = [
-  "Reading",
-  "Looking around your city",
-  "Finding something worth doing",
-  "Making your first experience",
-] as const;
 const PROCESSING_PHRASE_INTERVAL_MS = 2600;
 
-export default function MemoryProcessingScreen({
-  firstExperience = false,
-}: {
-  firstExperience?: boolean;
-}) {
+export default function MemoryProcessingScreen() {
   const [phraseIndex, setPhraseIndex] = useState(0);
   const reduceMotion = useReducedMotion();
-  const phrases = firstExperience
-    ? FIRST_EXPERIENCE_PHRASES
-    : MEMORY_PROCESSING_PHRASES;
+  const phrases = MEMORY_PROCESSING_PHRASES;
 
   useEffect(() => {
     if (reduceMotion) return;

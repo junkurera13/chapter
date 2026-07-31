@@ -64,8 +64,7 @@ conversation models are currently fixed in `agent/agent.ts`.
 | Onboarding memory extraction (multimodal) | `google/gemini-3.1-flash-lite`, falling back to `moonshotai/kimi-k2.6` | `CHAPTER_MEMORY_MODEL`, `CHAPTER_MEMORY_FALLBACK_MODEL` |
 | Eve conversation (web + iMessage) | `deepseek/deepseek-v4-flash` for text, `moonshotai/kimi-k2.6` for image-bearing turns | none |
 | Local Adventure Lab | `openai/gpt-5.6-terra` designs and writes the final card; up to three Parallel runs prove or reject the real-world action | `CHAPTER_ADVENTURE_LAB_MODEL` |
-| Weekly-pack design, review, and revision | `openai/gpt-5.6-terra`, with bounded retries and `moonshotai/kimi-k2.6` fallback | `CHAPTER_PACK_MODEL`, `CHAPTER_PACK_FALLBACK_MODEL`, `CHAPTER_PACK_REVIEW_MODEL`, `CHAPTER_PACK_REVISION_MODEL` |
-| Weekly-pack final card copy | `openai/gpt-5.6-luna`, with `moonshotai/kimi-k2.6` fallback | `CHAPTER_PACK_COMPOSITION_MODEL`, `CHAPTER_PACK_FALLBACK_MODEL` |
+| Weekly-pack design and final card copy | `openai/gpt-5.6-terra`, with bounded deterministic retries | `CHAPTER_PACK_MODEL`, `CHAPTER_PACK_COMPOSITION_MODEL` |
 | Weekly-pack environmental images | OpenRouter Image API with `krea/krea-2-large`; durable media on fal CDN | `CHAPTER_PACK_IMAGE_MODEL` |
 | Together briefs, chapters and legacy Now fallback | `moonshotai/kimi-k2.6`, falling back to `deepseek/deepseek-v4-flash` | `CHAPTER_NOW_MODEL`, `CHAPTER_NOW_FALLBACK_MODEL` |
 | Together gists and introduction lines | `deepseek/deepseek-v4-flash` | `CHAPTER_QUICK_MODEL` |

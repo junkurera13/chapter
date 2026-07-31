@@ -58,6 +58,7 @@ export function loadWeeklyPack() {
   return weeklyPackFetch<{
     pack: WeeklyExperiencePack | null;
     timezone: string;
+    homeCity: string;
   }>({ query: { timezone } });
 }
 
@@ -95,4 +96,3 @@ export function markWeeklyCardLived(packId: string) {
     body: { action: "lived", packId },
   });
 }
-

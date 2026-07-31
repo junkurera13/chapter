@@ -153,22 +153,6 @@ describe("buildBriefPrompt", () => {
     expect(prompt).not.toContain("must NOT be in Seoul itself");
   });
 
-  it("designs the first experience from the present world, not the sparse graph", () => {
-    const prompt = buildBriefPrompt({
-      graph: sampleGraph(),
-      homeCity: "Seoul",
-      basis: "world",
-      scheduledFor: "2026-08-01",
-      reach: "near",
-    });
-
-    expect(prompt).toContain("world-first real-world experience");
-    expect(prompt).toContain("small, solo, public experience");
-    expect(prompt).toContain("anchors must be an empty array");
-    expect(prompt).not.toContain("Halmoni");
-    expect(prompt).not.toContain("Eating Meat Skewers");
-    expect(prompt).not.toContain("GRAPH DIGEST");
-  });
 });
 
 describe("buildComposePrompt", () => {
@@ -260,23 +244,6 @@ describe("now schemas", () => {
       researchObjective: "short",
     });
     expect(invalid.success).toBe(false);
-  });
-
-  it("accepts a world-led first brief without graph anchors", () => {
-    const parsed = nowBriefSchema.parse({
-      basis: "world",
-      threadTitle: "A small current-world discovery",
-      anchors: [],
-      stretch: {
-        dimension: "activity",
-        description:
-          "Try one unfamiliar compact action in a nearby public setting.",
-      },
-      researchObjective:
-        "Find and verify one current, public, low-cost activity in Seoul that takes 30 to 90 minutes, requires no complicated booking, and has a precise arrival point and current operating evidence.",
-    });
-    expect(parsed.basis).toBe("world");
-    expect(parsed.anchors).toEqual([]);
   });
 
   it("research schema demands the anti-obvious fields", () => {

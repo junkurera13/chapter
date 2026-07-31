@@ -172,6 +172,7 @@ export function fetchMyWeeklyPack(timezone: string, accessToken: string) {
   return invokeSidequestData<{
     pack: import("./weeklyPackSchema").WeeklyExperiencePack | null;
     timezone: string;
+    homeCity: string;
   }>({ action: "getMyWeeklyPack", timezone }, accessToken);
 }
 
