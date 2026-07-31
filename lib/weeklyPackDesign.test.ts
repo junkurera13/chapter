@@ -9,6 +9,7 @@ import {
   buildWeeklyPackReviewPrompt,
   buildWeeklyPackRevisionPrompt,
   canonicalizeWeeklyPackAnchors,
+  chooseWeeklyPackShapeContracts,
   describeWeeklyPackReviewFailure,
   enforceWeeklyPackReviewThresholds,
   summarizeWeeklyPackReview,
@@ -18,6 +19,7 @@ import {
   type WeeklyPackCardDesign,
   type WeeklyPackDesign,
 } from "./weeklyPackDesign";
+import { seededChapterRandom } from "./chapterEquation";
 import {
   WEEKLY_PACK_FIXTURES,
   weeklyPackFixtureById,
@@ -152,7 +154,7 @@ function card(args: {
       place: stretchDimension === "place" ? "new" : "familiar",
       activity: stretchDimension === "activity" ? "new" : "familiar",
       person: "familiar",
-      time: "familiar",
+      interest: "familiar",
     },
     stretch: {
       dimension: stretchDimension,
@@ -238,9 +240,60 @@ describe("weekly pack design lab", () => {
   it("forbids a person stretch when the pack has no social candidate", () => {
     const prompt = buildWeeklyPackDesignPrompt(fixture());
     expect(prompt).toContain(
-      "A self-company card may stretch only place, activity, or time.",
+      "A self-company card never uses person.",
     );
     expect(prompt).toContain("no card may declare `person` as its stretch");
+  });
+
+  it("draws only empty categories and keeps solo as the no-match reality", () => {
+    const current = fixture();
+    const contracts = chooseWeeklyPackShapeContracts({
+      graph: current.graph,
+      random: seededChapterRandom("shape-contract"),
+    });
+    expect(contracts).toHaveLength(3);
+    expect(contracts.filter((contract) => contract.basis === "world")).toHaveLength(
+      2,
+    );
+    expect(contracts.every((contract) => contract.company === "self")).toBe(
+      true,
+    );
+    expect(JSON.stringify(contracts)).not.toContain("riverside");
+    expect(JSON.stringify(contracts)).not.toContain("Seoul");
+  });
+
+  it("keeps a first meeting off the proper card and out of a third layer", () => {
+    const current = fixture("eligible-stranger");
+    const contracts = chooseWeeklyPackShapeContracts({
+      graph: current.graph,
+      socialMatch: current.context.socialMatch,
+      random: () => 0.999999,
+    });
+    const social = contracts.find((contract) => contract.basis === "social");
+    expect(social).toMatchObject({
+      company: "new-person",
+      twistDimension: "people",
+      contextDimension: null,
+    });
+    expect(social?.cardId).not.toBe("proper");
+  });
+
+  it("keeps old stored time fields readable without drawing time again", () => {
+    const stored = structuredClone(validPack()) as unknown as {
+      cards: Array<{
+        familiarity: Record<string, string>;
+        supportingContext?: unknown;
+      }>;
+    };
+    for (const candidate of stored.cards) {
+      delete candidate.familiarity.interest;
+      candidate.familiarity.time = "familiar";
+      delete candidate.supportingContext;
+    }
+    const parsed = weeklyPackDesignSchema.parse(stored);
+    expect(parsed.cards.every((candidate) => candidate.familiarity.interest === "familiar")).toBe(
+      true,
+    );
   });
 
   it("sends Parallel only the research-safe design cut", () => {
@@ -308,11 +361,14 @@ describe("weekly pack design lab", () => {
   it("catches pack monoculture and multiple new dimensions", () => {
     const pack = structuredClone(validPack());
     pack.cards[1].mechanism.kind = pack.cards[0].mechanism.kind;
-    pack.cards[1].familiarity.time = "new";
+    pack.cards[1].familiarity.interest = "new";
     const result = audit(pack);
     expect(result.valid).toBe(false);
     expect(result.errors.map((issue) => issue.code)).toEqual(
-      expect.arrayContaining(["MECHANISM_REUSED", "ONE_STRETCH"]),
+      expect.arrayContaining([
+        "MECHANISM_REUSED",
+        "CHAPTER_SHAPE_FAMILIARITY",
+      ]),
     );
   });
 
@@ -353,7 +409,7 @@ describe("weekly pack design lab", () => {
       place: "familiar",
       activity: "familiar",
       person: "new",
-      time: "familiar",
+      interest: "familiar",
     };
     small.connectionSafety = {
       publicPopulatedSetting: true,

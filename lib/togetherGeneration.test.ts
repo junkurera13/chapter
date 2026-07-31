@@ -159,7 +159,9 @@ describe("buildTogetherComposePrompt", () => {
       finding: {
         venue_name: "Itoshima Coast Road",
         venue_area: "Itoshima, Fukuoka",
+        address: "1-1 Shima Sakurai, Itoshima, Fukuoka",
         why_uncommon: "No English coverage at all.",
+        still_operating_evidence: "Official listing updated in July 2026.",
         best_time: "Saturday, early.",
       },
       homeCity: "Fukuoka",

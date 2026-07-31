@@ -29,21 +29,22 @@ chapter, on every surface. `lib/chapterEquation.ts` is its executable half.
 Read both before changing how any experience is designed, and check shapes
 against `auditChapterShape` rather than restating the rules in a prompt.
 
-A chapter is a familiar anchor, one unfamiliar twist, and at most one
-unfamiliar context, drawn from four dimensions: activity, place, people,
-interest. Exactly one dimension is new. Time is not a dimension and must not
-be reintroduced as one; a chapter that appears to stretch on time is
-stretching on the activity the hour makes possible.
+A chapter is a familiar frame, one primary unfamiliar twist, and at most one
+supporting unfamiliar context, drawn from four dimensions: activity, place,
+people, interest. The supporting context may also be new only when it makes
+the same action concrete without adding an independent burden. Time is not a
+dimension and must not be reintroduced as one; a chapter that appears to
+stretch on time is stretching on the activity the hour makes possible.
 
 Company (`self`, `known-person`, `new-person`, `small-group`) sits above the
 equation and decides what the people dimension does. "Familiar people cannot
 be the anchor" is a rule of solo chapters only. Together anchors on a known
 person by design.
 
-Three shipping files still declare `time` as a stretch dimension and omit
-`interest`: `lib/nowChapterSchema.ts`, `lib/togetherChapterSchema.ts`, and
-`lib/weeklyPackDesign.ts`. That migration is known and unfinished. Do not
-"fix" the equation to match them.
+The equation chooses empty categories only. Graph truth and verified research
+supply real people, places, activities, interests, events, dates, and
+logistics. An unavailable company mode has zero odds, and an unproved external
+fact must fail the chapter rather than be replaced with plausible prose.
 
 ## Experiences are the medium for human connection
 

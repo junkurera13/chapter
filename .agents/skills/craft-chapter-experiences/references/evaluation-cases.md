@@ -26,8 +26,9 @@ Input: several restaurant, cooking, and family-meal nodes.
 Test:
 
 - keep at most one meal-led experience;
-- transform other threads through making, sourcing, ritual, time, or company;
-- preserve one stretch per card.
+- transform other threads through making, sourcing, ritual, interest, or
+  company;
+- preserve one clear primary twist per card.
 
 Failure signal: three researched restaurants in different neighbourhoods.
 

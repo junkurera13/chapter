@@ -30,11 +30,14 @@ export function isShareableCategory(
 }
 
 /**
- * Wing 1 has already spent the person dimension: the partner is the familiar
- * person the chapter is built around. So the one stretch must be place,
- * activity, or time — never person.
+ * Together has already spent people as its familiar anchor. Its primary twist
+ * therefore comes from one of the remaining experience dimensions.
  */
-export const TOGETHER_STRETCH_DIMENSIONS = ["place", "activity", "time"] as const;
+export const TOGETHER_STRETCH_DIMENSIONS = [
+  "place",
+  "activity",
+  "interest",
+] as const;
 
 export type TogetherStretchDimension =
   (typeof TOGETHER_STRETCH_DIMENSIONS)[number];

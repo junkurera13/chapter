@@ -10,11 +10,12 @@ It defines which shapes are *legal*. It does not decide which legal shape is
 ## The equation
 
 ```
-Chapter = Familiar Anchor + Unfamiliar Twist + optional Unfamiliar Context
+Chapter = Familiar Frame + one Primary Unfamiliar Twist
+          + optional Supporting Unfamiliar Context
 ```
 
-Something you know, something new, and at most one detail that brings it to
-life.
+Something that makes the experience easy to enter, one meaningful leap, and
+at most one detail that makes that same leap concrete.
 
 The familiar element provides confidence. The unfamiliar element creates
 discovery. The optional third adds texture, not difficulty.
@@ -23,8 +24,7 @@ discovery. The optional third adds texture, not difficulty.
 
 ## The four dimensions
 
-A chapter is built out of exactly four dimensions, and they are the four
-things the memory graph actually stores as nodes:
+A chapter varies four dimensions:
 
 | Dimension | The question it answers |
 | --- | --- |
@@ -33,9 +33,10 @@ things the memory graph actually stores as nodes:
 | `people` | who it happens with |
 | `interest` | the theme behind it |
 
-These match `EXPERIENCE_NODE_CATEGORIES` in `lib/experienceOntology.ts`. That
-is not a coincidence and it is the test for admitting anything new: a
-dimension must be a noun the graph can hold a memory of.
+The graph contains more categories than these. Feelings are outcomes,
+conditions constrain fit, patterns supply evidence, and an `experience` is the
+whole chapter rather than one coordinate within it. These four are the parts
+Chapter may deliberately keep familiar or move into the unknown.
 
 ### Why time is not a dimension
 
@@ -52,13 +53,9 @@ The novelty there is watching bread come out of an oven, which is an
 Time still matters. It is carried by `timeCharacter`, `NOW_TIME_WINDOWS`, and
 `bestTime`. It is simply never the answer to "what is new here".
 
-> **Migration note.** Three shipping files still list `time` as a stretch
-> dimension and none of them list `interest`:
-> `lib/nowChapterSchema.ts`, `lib/togetherChapterSchema.ts`,
-> `lib/weeklyPackDesign.ts`. This document is canonical; those files have not
-> been migrated yet, because the swap changes runtime behaviour on three live
-> surfaces and needs its own testing. Until then, `lib/chapterEquation.ts` is
-> the definition, and the disagreement is known rather than silent.
+The runtime schemas for Now, Together, and weekly packs use these dimensions.
+Old weekly design artifacts may still be read during migration, but new
+generation cannot draw `time` as a twist.
 
 ---
 
@@ -82,17 +79,24 @@ therefore goes somewhere else. The rule was never universal. It belongs to
 `self`.
 
 Company is chosen weekly. The person may pick it directly. When they do not,
-it is drawn against a default weighting held in `CHAPTER_COMPANY_WEIGHTS`, so
-the mix can be tuned without editing prose or prompts.
+the runtime first removes impossible modes, then draws from the remaining
+ones using `CHAPTER_COMPANY_WEIGHTS`.
+
+That order matters. If there is no server-confirmed person or group, those
+modes have **zero odds**. A low probability is not safe enough: a random draw
+must never cause the model to invent somebody.
 
 ---
 
 ## The rules
 
-1. Exactly one dimension is **familiar**, and it is the anchor.
-2. Exactly one dimension is **new**, and it is the twist. Never two.
-3. A third dimension may be added as **context**. It must also be new, and it
-   exists to make the twist specific, not to add a second challenge.
+1. One dimension carries the **familiar frame** when a graph anchor exists.
+   A world-led card may instead be familiar through ordinary access, legibility,
+   and low friction.
+2. Exactly one dimension is the **primary new twist**.
+3. A third dimension may be new as **supporting context**, but only when it
+   makes the same twist specific. It may not add another skill, booking,
+   journey, safety issue, or social demand.
 4. No dimension is used twice.
 5. Two layers is the default. Three is the exception.
 6. Every chapter has one clear main action.
@@ -106,11 +110,11 @@ enforces that by having nowhere to put a fourth.
 
 ### What "exactly one" counts
 
-It counts **dimensions, not memories.** A chapter may cite one to four anchor
-nodes from the graph, and they may span categories; that is what draws the
-person's own orbs onto the card. The rule binds the familiarity declaration:
-of the four dimensions, exactly one is marked `new`. This is what
-`auditStretch` in `lib/weeklyPackDesign.ts` already enforces.
+It counts the **main leap**, not every unfamiliar fact. A chapter may cite one
+to four graph nodes, and an earned supporting context may also be new. But the
+person should still experience one clear challenge, not two unrelated ones.
+The deterministic audit checks that generated cards match the shape drawn
+before writing.
 
 ### Cold start
 
@@ -132,10 +136,13 @@ counted.
 | --- | --- | --- | --- |
 | `self` | 6 | 6 | 12 |
 | `known-person` | 3 | 6 | 9 |
-| `new-person` / `small-group` | 3 | 6 | 9 |
+| `new-person` | 3 | 6 | 9 |
+| `small-group` | 3 | 6 | 9 |
 
-Thirty shapes in total. The product should not use them evenly. Most of them
-are legal and lifeless, and legality is a floor.
+There are 39 company-labelled shapes. If `new-person` and `small-group` are
+treated as the same structural role, there are 30 role templates. The product
+does not use them evenly: two-layer and solo shapes are deliberately more
+likely, and unavailable social shapes are removed before the draw.
 
 ---
 
@@ -165,30 +172,35 @@ start to read as assembled rather than intended.
 
 ## Generation order
 
-1. **Choose company.** The person's weekly setting, or the weighted default.
-2. **Choose the anchor.** Something they already do, visit, or care about.
-   On `known-person`, this step is already spent.
-3. **Choose the twist.** One unused dimension, reaching into the unknown.
-4. **Decide on context.** Only if it sharpens the same idea. Default to no.
-5. **Write the action first, then the venue.** Research exists to make a
-   designed action true and current, not to substitute a place for a design.
-6. **Run the coherence test.** Cut any layer that sounds forced.
+1. **Build the eligible company set.** No real person means no social shape.
+2. **Draw company by weight.**
+3. **Draw the empty shape.** Choose only categories: anchor, primary twist,
+   and occasionally supporting context.
+4. **Supply truthful material.** Graph data supplies familiar anchors. The
+   model may design an action, but it may not manufacture exact external facts.
+5. **Research the nouns.** A venue, event, date, address, route, timetable, or
+   provider may reach the person only when live research proves it.
+6. **Fail closed.** If research cannot prove a required fact, discard the
+   chapter. Never fill the gap with a plausible-sounding substitute.
+7. **Run the coherence test.**
 
-The system is never shown to the person. Internally:
+For example:
 
-> familiar `interest` + new `activity` + new `place`
+- The draw chooses familiar `interest` + primary `activity` twist.
+- The graph supplies `film`.
+- Design proposes `learn outdoor projection`; it does **not** name a site.
+- Research must find and prove a real current workshop, including its exact
+  name, address, operating evidence, and sources.
+- If it succeeds, the card may name that verified workshop. If it cannot find
+  one, there is no card.
 
-What they read:
-
-> Love films? Catch an outdoor screening in a neighbourhood you haven't
-> explored.
-
----
+The equation chooses categories. The graph and research supply nouns.
 
 ## Graduation: why this compounds
 
-A chapter ends at `lived`. At that moment the twist stops being unfamiliar.
-The new cafe is now a place you know.
+A chapter ending at `lived` is evidence that the twist may become familiar.
+It becomes a future anchor only after the lived experience is written back to
+the graph; a status change alone does not silently rewrite familiarity.
 
 **Today's twist is tomorrow's legal anchor.**
 
@@ -198,16 +210,17 @@ which widens what can be anchored on, which puts new twists in reach that
 would have been too far a month ago. A person's world expands by one safe
 step at a time, and the system gets more to work with every time they say yes.
 
-It also supplies the anti-repetition rule for free: a twist may not name
-something the graph already marks familiar. The ontology is already built for
-this, via `EXPERIENCE_FAMILIARITIES` and the `familiar_with` relation.
+Once lived writeback exists, it can also supply the anti-repetition rule: a
+twist may not name something the graph already marks familiar. The ontology
+already has the vocabulary for this through `EXPERIENCE_FAMILIARITIES` and the
+`familiar_with` relation, but the writeback itself remains separate work.
 
 ---
 
 ## What this document does not decide
 
 The equation is a **grammar**. It says which chapters are legal. It is silent
-on which of thirty legal shapes to propose on a given Saturday, and a
+on which legal shape to propose on a given Saturday, and a
 structurally perfect chapter can still be a bad one.
 
 Ranking lives elsewhere and stays there: reach and time windows, the

@@ -10,7 +10,8 @@ Every experience must:
 - declare an honest basis: `world`, `graph`, or `social`;
 - use no graph anchors when world-led, and only real permitted anchors when
   graph- or social-led;
-- spend exactly one stretch;
+- keep one clear primary twist, with at most one subordinate supporting
+  unfamiliar context;
 - contain no invented personal or compatibility claim;
 - be feasible within its stated validity window;
 - have current evidence for every critical external dependency;

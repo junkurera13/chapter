@@ -1,9 +1,19 @@
 import "server-only";
 
+import { z } from "zod";
+
 import type { ExperienceGraphRecord } from "./backendTypes";
+import {
+  auditChapterShape,
+  chooseChapterShape,
+  seededChapterRandom,
+} from "./chapterEquation";
 import type { NowEvidenceLink, NowResearchFinding } from "./nowChapterSchema";
-import { nowResearchFindingSchema } from "./nowChapterSchema";
-import { generateStructured, NowGenerationError } from "./nowGeneration";
+import {
+  generateStructured,
+  NowGenerationError,
+  parseGroundedNowResearch,
+} from "./nowGeneration";
 import {
   isShareableCategory,
   type TogetherAnchor,
@@ -112,11 +122,15 @@ export function buildTogetherBriefPrompt(args: {
   homeCity: string;
   partnerName: string;
   avoidVenues?: readonly string[];
+  /** Pre-drawn by code in production; optional only for prompt unit tests. */
+  twistDimension?: "place" | "activity" | "interest";
 }) {
   return [
     "You design one real-world experience for TWO people to live together, from what each of their private worlds already contains.",
     "",
-    "THE ONE STRETCH is the product's governing rule. Here the person dimension is already spent: these two know each other, and doing this together is the familiar part. So keep the thread familiar to both and stretch EXACTLY ONE of place, activity, or time into the unknown. Never two. Never the generic.",
+    args.twistDimension
+      ? `The Chapter Equation has already drawn the primary twist: ${args.twistDimension}. The two people are the familiar anchor. Keep that exact twist; do not swap it for another kind of novelty.`
+      : "The two people are the familiar anchor, and the Chapter Equation uses one primary twist from place, activity, or interest.",
     "The stretch must read as a stretch for BOTH of them — not somewhere one already goes every week.",
     "",
     "DISCLOSURE RULE, absolute:",
@@ -125,6 +139,7 @@ export function buildTogetherBriefPrompt(args: {
     "- The proposal must read as a plan, not as a summary of two people.",
     "- Anchors present in BOTH lists are the safest and best material. Prefer them.",
     "",
+    "Design the shared action before the venue. Do not invent or name a venue, event, provider, route, address, or timetable at this stage.",
     "Write a research brief for a deep-research agent that will find one real, currently operating, genuinely uncommon venue or recurring event.",
     "The researchObjective must:",
     `- name the city and constrain the search to it: ${args.homeCity}.`,
@@ -171,6 +186,23 @@ export async function generateTogetherBrief(args: {
       "Your world doesn’t have enough shareable ground yet.",
     );
   }
+  const shape = chooseChapterShape({
+    company: "known-person",
+    random: seededChapterRandom(args.requestId),
+    allowContext: false,
+  });
+  const shapeIssues = auditChapterShape(shape);
+  if (shapeIssues.length > 0 || shape.twist === "people") {
+    throw new TogetherGenerationError(
+      "Chapter could not draw a legal Together shape.",
+    );
+  }
+  const twistDimension = shape.twist;
+  const briefSchema = togetherBriefDraftSchema.extend({
+    stretch: togetherBriefDraftSchema.shape.stretch.extend({
+      dimension: z.literal(twistDimension),
+    }),
+  });
 
   const draft = await generateStructured({
     prompt: buildTogetherBriefPrompt({
@@ -180,11 +212,12 @@ export async function generateTogetherBrief(args: {
       homeCity: args.homeCity,
       partnerName: args.partnerName,
       avoidVenues: args.avoidVenues,
+      twistDimension,
     }),
     schemaName: "together_brief",
     schemaDescription:
-      "A one-stretch experience thread for two people, with a deep-research objective.",
-    schema: togetherBriefDraftSchema,
+      "An experience thread for two people that follows its pre-drawn Chapter shape, with a deep-research objective.",
+    schema: briefSchema,
     requestId: args.requestId,
     signal: args.signal,
     surface: "together",
@@ -250,7 +283,7 @@ export function buildTogetherComposePrompt(args: {
     "- title: at most 7 words, no punctuation at the end.",
     "- invitation: 2-4 sentences addressed to the two of them together. It must mention each anchor label VERBATIM (exact casing) so the app can render memory orbs inline, and it must name the venue.",
     "- knownLine: one sentence starting with 'Because' explaining which thread this grew from, using anchor labels verbatim.",
-    "- unknownLine: one sentence naming what is new — the single stretch.",
+    "- unknownLine: one sentence naming the primary twist.",
     "- Keep venue facts exactly as researched. Do not invent details.",
     "",
     "NAMES: never use anyone's name, and never write 'your friend' or any stand-in for one. Address them as 'the two of you' or 'you both' only in the sense of the pair being invited — never as a claim about what they share.",
@@ -267,7 +300,7 @@ export function buildTogetherComposePrompt(args: {
   ].join("\n");
 }
 
-/** All the composer needs: labels to weave in, and the one stretch to name. */
+/** All the composer needs: labels to weave in, and the primary twist to name. */
 export type TogetherComposeBrief = {
   anchors: readonly { label: string; category: string }[];
   stretch: TogetherBrief["stretch"];
@@ -282,11 +315,13 @@ export async function composeTogetherChapter(args: {
   requestId: string;
   signal?: AbortSignal;
 }): Promise<{ content: TogetherChapterContent; evidence: NowEvidenceLink[] }> {
-  const finding = nowResearchFindingSchema.safeParse(args.researchContent);
-  if (!finding.success) {
-    throw new TogetherGenerationError(
-      "The research result did not match the expected shape.",
-    );
+  let finding: NowResearchFinding;
+  try {
+    finding = parseGroundedNowResearch(args);
+  } catch (error) {
+    throw error instanceof NowGenerationError
+      ? new TogetherGenerationError(error.message)
+      : error;
   }
 
   let content: TogetherChapterContent;
@@ -294,7 +329,7 @@ export async function composeTogetherChapter(args: {
     content = await generateStructured({
       prompt: buildTogetherComposePrompt({
         brief: args.brief,
-        finding: finding.data,
+        finding,
         homeCity: args.homeCity,
       }),
       schemaName: "together_chapter",
@@ -314,12 +349,12 @@ export async function composeTogetherChapter(args: {
   return {
     content: {
       ...content,
-      venueName: finding.data.venue_name,
-      venueArea: finding.data.venue_area,
-      address: finding.data.address ?? undefined,
-      bestTime: finding.data.best_time,
-      priceNote: finding.data.price_note ?? undefined,
-      whyUncommon: finding.data.why_uncommon,
+      venueName: finding.venue_name,
+      venueArea: finding.venue_area,
+      address: finding.address,
+      bestTime: finding.best_time,
+      priceNote: finding.price_note ?? undefined,
+      whyUncommon: finding.why_uncommon,
     },
     evidence: args.citations.slice(0, 4),
   };

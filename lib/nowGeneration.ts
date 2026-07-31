@@ -2,9 +2,15 @@ import "server-only";
 
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText, Output } from "ai";
-import type { z } from "zod";
+import { z } from "zod";
 
 import type { ExperienceGraphRecord } from "./backendTypes";
+import {
+  auditChapterShape,
+  chooseChapterShape,
+  seededChapterRandom,
+  type ChapterDimension,
+} from "./chapterEquation";
 import {
   type NowBrief,
   nowBriefSchema,
@@ -151,6 +157,8 @@ export function buildBriefPrompt(args: {
   scheduledFor?: string;
   timeWindows?: readonly NowTimeWindow[];
   reach?: NowReach;
+  /** Pre-drawn by code in production; optional only for prompt unit tests. */
+  twistDimension?: "place" | "activity" | "person" | "interest";
 }) {
   const basis = args.basis ?? "graph";
   const digest = basis === "graph" ? buildGraphDigest(args.graph) : null;
@@ -162,12 +170,15 @@ export function buildBriefPrompt(args: {
     basis === "world"
       ? "Do not infer a preference, personality, feeling, or biography from the person's first memory. Begin with what is alive, timely, and genuinely worth doing around their city now. Chapter's taste and the present world are the source; personal data is not."
       : "Use the graph as a light influence, not a biography to reenact. Transform one strong thread without making the whole proposal about the person's past.",
-    "The product rule is THE ONE STRETCH: stretch EXACTLY ONE dimension into the unknown—place, activity, person, or time. Keep everything else easy to understand, locally practical, socially ordinary, and low-friction. Never stretch two dimensions. Never propose the generic.",
+    args.twistDimension
+      ? `The Chapter Equation has already drawn the primary twist: ${args.twistDimension}. Keep that exact dimension as the one meaningful leap. Do not swap it for another kind of novelty.`
+      : "The Chapter Equation uses one primary unfamiliar twist from place, activity, person, or interest.",
     basis === "world"
       ? "This is a first experience: make it a small, solo, public experience lasting roughly 30-90 minutes, within the selected reach, with no complicated booking or preparation."
       : "",
     "",
     "Design the human action before the place. Then write a research brief for a deep-research agent that will find the real, current infrastructure needed to make that action livable.",
+    "At this design stage, do not invent or name a venue, event, provider, route, address, or timetable. Describe what research must prove; research supplies the real noun.",
     "The researchObjective must:",
     reachClause(args.homeCity, args.reach ?? NOW_DEFAULT_REACH),
     "- preserve the designed action, rhythm, or constraint instead of reducing the answer to a venue.",
@@ -179,7 +190,7 @@ export function buildBriefPrompt(args: {
       ? `- exclude these previously proposed venues: ${args.avoidVenues.join("; ")}.`
       : "",
     args.declineReason
-      ? `The person declined the previous proposal because: "${args.declineReason}". Choose a different stretch that answers that objection.`
+      ? `The person declined the previous proposal because: "${args.declineReason}". Design a different action within the pre-drawn twist that answers that objection.`
       : "",
     "",
     basis === "world"
@@ -270,7 +281,7 @@ export async function generateStructured<T>(args: {
   );
 }
 
-/** Stage 1: pick the thread, the single stretch, and write the research brief. */
+/** Stage 1: fill the pre-drawn thread and primary twist, then brief research. */
 export async function generateNowBrief(args: {
   graph: ExperienceGraphRecord;
   homeCity: string;
@@ -283,17 +294,51 @@ export async function generateNowBrief(args: {
   requestId: string;
   signal?: AbortSignal;
 }): Promise<NowBrief> {
+  const basis = args.basis ?? "graph";
+  const random = seededChapterRandom(args.requestId);
+  const anchorCandidates = [
+    ...new Set(
+      args.graph.nodes.flatMap((node) =>
+        node.category === "place" ||
+        node.category === "activity" ||
+        node.category === "interest"
+          ? [node.category]
+          : [],
+      ),
+    ),
+  ] as ChapterDimension[];
+  const shape = chooseChapterShape({
+    company: "self",
+    random,
+    anchorCandidates: basis === "graph" ? anchorCandidates : [],
+    allowContext: false,
+  });
+  const shapeIssues = auditChapterShape(shape, { worldLed: basis === "world" });
+  if (shapeIssues.length > 0) {
+    throw new NowGenerationError(
+      `Chapter could not draw a legal Now shape (${shapeIssues
+        .map((issue) => issue.code)
+        .join(", ")}).`,
+    );
+  }
+  const twistDimension =
+    shape.twist === "people" ? "person" : shape.twist;
+  const briefSchema = nowBriefSchema.extend({
+    stretch: z.object({
+      dimension: z.literal(twistDimension),
+      description: z.string().min(10).max(300),
+    }),
+  });
   const brief = await generateStructured({
-    prompt: buildBriefPrompt(args),
+    prompt: buildBriefPrompt({ ...args, twistDimension }),
     schemaName: "now_brief",
     schemaDescription:
-      "A one-stretch experience thread with a deep-research objective.",
-    schema: nowBriefSchema,
+      "An experience thread that follows its pre-drawn Chapter shape, with a deep-research objective.",
+    schema: briefSchema,
     requestId: args.requestId,
     signal: args.signal,
   });
 
-  const basis = args.basis ?? "graph";
   if (basis === "world") {
     return { ...brief, basis, anchors: [] };
   }
@@ -302,6 +347,14 @@ export async function generateNowBrief(args: {
   if (anchors.length === 0) {
     throw new NowGenerationError(
       "The brief did not anchor to real graph nodes.",
+    );
+  }
+  if (
+    shape.anchor &&
+    !anchors.some((anchor) => anchor.category === shape.anchor)
+  ) {
+    throw new NowGenerationError(
+      `The brief did not use its pre-drawn ${shape.anchor} anchor.`,
     );
   }
   return { ...brief, basis, anchors };
@@ -355,6 +408,41 @@ export function buildComposePrompt(args: {
     .join("\n");
 }
 
+export function parseGroundedNowResearch(args: {
+  researchContent: unknown;
+  citations: readonly NowEvidenceLink[];
+}) {
+  const finding = nowResearchFindingSchema.safeParse(args.researchContent);
+  if (!finding.success) {
+    throw new NowGenerationError(
+      "Research did not prove a named place, address, and current operation.",
+    );
+  }
+  if (args.citations.length === 0) {
+    throw new NowGenerationError(
+      "Research returned no source for the real-world place.",
+    );
+  }
+  const name = finding.data.venue_name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+  if (
+    /^(a |an |the ).*\b(site|venue|place|location|facility|park|event|route|class|studio)$/.test(
+      name,
+    ) ||
+    /^(local |nearby |public |municipal )?(screening )?(site|venue|place|location|facility|park|event|route|class|studio)$/.test(
+      name,
+    )
+  ) {
+    throw new NowGenerationError(
+      "Research returned a generic description instead of a real named place.",
+    );
+  }
+  return finding.data;
+}
+
 /** Stage 3: turn the verified research finding into the chapter proposal. */
 export async function composeNowChapter(args: {
   brief: NowBrief;
@@ -366,17 +454,12 @@ export async function composeNowChapter(args: {
   requestId: string;
   signal?: AbortSignal;
 }): Promise<{ content: NowChapterContent; evidence: NowEvidenceLink[] }> {
-  const finding = nowResearchFindingSchema.safeParse(args.researchContent);
-  if (!finding.success) {
-    throw new NowGenerationError(
-      "The research result did not match the expected shape.",
-    );
-  }
+  const finding = parseGroundedNowResearch(args);
 
   const composed = await generateStructured({
     prompt: buildComposePrompt({
       brief: args.brief,
-      finding: finding.data,
+      finding,
       homeCity: args.homeCity,
       scheduledFor: args.scheduledFor,
       timeWindows: args.timeWindows,
@@ -402,11 +485,11 @@ export async function composeNowChapter(args: {
       when: composed.when && composed.line.includes(composed.when)
         ? composed.when
         : "",
-      venueName: finding.data.venue_name,
-      venueArea: finding.data.venue_area,
-      address: finding.data.address ?? undefined,
-      bestTime: finding.data.best_time,
-      priceNote: finding.data.price_note ?? undefined,
+      venueName: finding.venue_name,
+      venueArea: finding.venue_area,
+      address: finding.address,
+      bestTime: finding.best_time,
+      priceNote: finding.price_note ?? undefined,
     },
     evidence: args.citations.slice(0, 4),
   };

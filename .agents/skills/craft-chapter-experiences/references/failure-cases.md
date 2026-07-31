@@ -42,13 +42,14 @@ Cause: evidence was converted into narration.
 
 Repair: keep the invitation factual and render verified anchors separately.
 
-## Two-stretch overload
+## Independent-novelty overload
 
 Symptom: a new activity with a stranger in a distant unfamiliar place.
 
 Cause: novelty was mistaken for quality.
 
-Repair: spend one novelty dimension and make the rest easy.
+Repair: keep one primary twist. Retain a supporting unfamiliar context only if
+it makes that same action concrete without adding another demand.
 
 ## Three-card monoculture
 

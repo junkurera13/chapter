@@ -74,8 +74,9 @@ something to do together; do not force them into a conversation prompt.
 
 ### New person
 
-Read [social-connection.md](social-connection.md). Spend the novelty budget on
-the person. Keep place, activity, and time familiar and low-pressure.
+Read [social-connection.md](social-connection.md). Spend the primary novelty
+budget on the person. Keep the rest familiar and low-pressure; do not add a
+supporting context to a first meeting.
 
 ### Small group
 

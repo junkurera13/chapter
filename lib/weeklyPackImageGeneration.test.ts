@@ -37,7 +37,7 @@ const design: WeeklyPackCardDesign = {
     place: "familiar",
     activity: "new",
     person: "familiar",
-    time: "familiar",
+    interest: "familiar",
   },
   stretch: {
     dimension: "activity",

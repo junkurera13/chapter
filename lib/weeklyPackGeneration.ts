@@ -45,7 +45,7 @@ import {
 } from "./weeklyPackSocial";
 
 const PACK_MODEL_ID =
-  process.env.CHAPTER_PACK_MODEL || "anthropic/claude-sonnet-5";
+  process.env.CHAPTER_PACK_MODEL || "openai/gpt-5.6-terra";
 const PACK_FALLBACK_MODEL_ID =
   process.env.CHAPTER_PACK_FALLBACK_MODEL || "moonshotai/kimi-k2.6";
 const PACK_REVIEW_MODEL_ID =
@@ -53,7 +53,7 @@ const PACK_REVIEW_MODEL_ID =
 const PACK_REVISION_MODEL_ID =
   process.env.CHAPTER_PACK_REVISION_MODEL || PACK_MODEL_ID;
 const PACK_COMPOSITION_MODEL_ID =
-  process.env.CHAPTER_PACK_COMPOSITION_MODEL || PACK_MODEL_ID;
+  process.env.CHAPTER_PACK_COMPOSITION_MODEL || "openai/gpt-5.6-luna";
 const PACK_PROCESSOR =
   process.env.CHAPTER_PACK_PROCESSOR ||
   process.env.CHAPTER_NOW_PROCESSOR ||
@@ -149,7 +149,7 @@ type PackGenerationSource = {
   context: WeeklyPackContext;
 };
 
-type PackReasoningEffort = "none" | "minimal" | "low";
+type PackReasoningEffort = "none" | "low";
 
 export function weeklyPackReasoningEffortFor(
   modelId: string,
@@ -157,7 +157,8 @@ export function weeklyPackReasoningEffortFor(
 ) {
   if (override) return override;
   if (modelId.startsWith("anthropic/")) return "low" as const;
-  if (modelId.startsWith("openai/")) return "minimal" as const;
+  if (modelId.includes("gpt-5.6-luna")) return "none" as const;
+  if (modelId.startsWith("openai/")) return "low" as const;
   return "none" as const;
 }
 
@@ -332,7 +333,7 @@ async function structurallyValidDesign(args: {
           failure,
           correction: [
             "The previous full pack failed deterministic gates.",
-            "Return all three cards again. Repair every failure without weakening the one-stretch, format, social, privacy, or evidence contracts.",
+            "Return all three cards again. Repair every failure without weakening the pre-drawn Chapter shape, format, social, privacy, or evidence contracts.",
             `PREVIOUS INVALID PACK: ${JSON.stringify(pack)}`,
             "EXACT FAILURES:",
             failure,
@@ -605,7 +606,7 @@ export function buildWeeklyPackCompositionPrompt(args: {
     "- Preserve the researched action, place, route, company, scale, and logistics. Do not redesign anything.",
     "- Use only claims present in the design and research. Do not invent biography, preference, emotion, safety, availability, cost, or travel facts.",
     "- Title: plain, specific, 3-9 words.",
-    "- Line: one natural sentence, 12-32 words, that presents the experience as an invitation.",
+    "- Line: one natural sentence, 12-32 words, that presents the experience as an invitation and includes that card's verified primaryPlace.name verbatim.",
     "- On graph or social cards, use 1-3 accepted anchor labels verbatim where they fit naturally so the interface can mark those real nodes.",
     "- On world cards, write the invitation plainly from the researched action and place. Do not invent a personal reason or imply that the memory graph caused it.",
     "- Promise: one concrete sentence stating what the person will actually do.",
@@ -675,6 +676,27 @@ export function validateWeeklyPackSocialCopy(args: {
     throw new WeeklyPackGenerationError(
       "The social card used anonymous person language.",
     );
+  }
+}
+
+export function validateWeeklyPackGroundedCopy(args: {
+  research: readonly WeeklyPackResearchResult[];
+  copy: z.infer<typeof weeklyPackCopySchema>;
+}) {
+  for (const card of args.copy.cards) {
+    const finding = args.research.find(
+      (candidate) => candidate.cardId === card.id,
+    )?.finding;
+    if (!finding) {
+      throw new WeeklyPackGenerationError(
+        `Copy for ${card.id} has no completed research finding.`,
+      );
+    }
+    if (!card.line.includes(finding.primaryPlace.name)) {
+      throw new WeeklyPackGenerationError(
+        `${card.id} copy did not name its verified real-world place verbatim.`,
+      );
+    }
   }
 }
 
@@ -798,6 +820,10 @@ export async function composeWeeklyExperienceCards(args: {
         pack: args.pack,
         copy: candidate,
         companion: args.companion,
+      });
+      validateWeeklyPackGroundedCopy({
+        research: args.research,
+        copy: candidate,
       });
       copy = candidate;
       break;

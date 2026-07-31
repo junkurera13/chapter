@@ -31,7 +31,7 @@ separate axes, allowing a small activity, mini adventure, or proper adventure
 to be lived alone, with someone known, or with someone new. See
 [`weekly-experience-packs.md`](./weekly-experience-packs.md).
 
-The weekly one-stretch contract lives in `lib/weeklyPackDesign.ts`. In a
+The Chapter Equation contract lives in `lib/chapterEquation.ts`. In a
 first-meeting card it doubles as a safety principle: when the person is the
 stretch, *everything else* — activity, neighbourhood, time of day — must be
 maximally familiar, so all novelty budget is spent on the human.
@@ -169,7 +169,7 @@ Extends the Now pipeline to two graphs:
     stretch **for both** graphs.
   - Anchors may come from either graph; the brief must never attribute an
     anchor to a person ("planned from both your worlds, revealing neither").
-  - `knownLine` speaks to what's shared; `unknownLine` names the one stretch.
+  - `knownLine` speaks to what's shared; `unknownLine` names the primary twist.
 - `composeTogetherChapter` — same as `composeNowChapter` plus the
   no-disclosure rule and the partner's first name in the invitation copy.
 - **City rule v1:** plan in the initiator's `homeCity`. If the partner has a

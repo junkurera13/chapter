@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import type { ExperienceGraphRecord } from "./backendTypes";
+import {
+  auditChapterShape,
+  chooseChapterShape,
+  type ChapterCompany,
+  type ChapterDimension,
+} from "./chapterEquation";
 import type { ExperienceNodeCategory } from "./experienceOntology";
 import { weeklyPackCompanionSchema } from "./weeklyPackSocial";
 
@@ -31,7 +37,7 @@ export const WEEKLY_PACK_STRETCH_DIMENSIONS = [
   "place",
   "activity",
   "person",
-  "time",
+  "interest",
 ] as const;
 export const WEEKLY_PACK_BASES = ["world", "graph", "social"] as const;
 export const WEEKLY_PACK_MECHANISMS = [
@@ -77,6 +83,10 @@ const scaleSchema = z.enum(WEEKLY_PACK_SCALES);
 const companySchema = z.enum(WEEKLY_PACK_COMPANIES);
 const basisSchema = z.enum(WEEKLY_PACK_BASES);
 const stretchDimensionSchema = z.enum(WEEKLY_PACK_STRETCH_DIMENSIONS);
+const storedStretchDimensionSchema = z.enum([
+  ...WEEKLY_PACK_STRETCH_DIMENSIONS,
+  "time",
+]);
 const familiaritySchema = z.enum(["familiar", "new"]);
 
 export const weeklyPackFormatSchema = z.object({
@@ -125,12 +135,21 @@ export const weeklyPackCardDesignSchema = z.object({
     place: familiaritySchema,
     activity: familiaritySchema,
     person: familiaritySchema,
-    time: familiaritySchema,
+    interest: familiaritySchema.default("familiar"),
+    /** Old stored designs may still carry this; new generation cannot. */
+    time: familiaritySchema.optional(),
   }),
   stretch: z.object({
-    dimension: stretchDimensionSchema,
+    dimension: storedStretchDimensionSchema,
     description: z.string().trim().min(15).max(400),
   }),
+  supportingContext: z
+    .object({
+      dimension: stretchDimensionSchema,
+      description: z.string().trim().min(15).max(400),
+    })
+    .nullable()
+    .default(null),
   experiencePromise: z.string().trim().min(20).max(800),
   mechanism: z.object({
     kind: z.enum(WEEKLY_PACK_MECHANISMS),
@@ -194,12 +213,18 @@ export const weeklyPackDesignModelSchema = z.object({
         place: familiaritySchema,
         activity: familiaritySchema,
         person: familiaritySchema,
-        time: familiaritySchema,
+        interest: familiaritySchema,
       }),
       stretch: z.object({
         dimension: stretchDimensionSchema,
         description: z.string(),
       }),
+      supportingContext: z
+        .object({
+          dimension: stretchDimensionSchema,
+          description: z.string(),
+        })
+        .nullable(),
       experiencePromise: z.string(),
       mechanism: z.object({
         kind: z.enum(WEEKLY_PACK_MECHANISMS),
@@ -222,14 +247,116 @@ export const weeklyPackDesignModelSchema = z.object({
 export type WeeklyPackCardDesign = z.infer<typeof weeklyPackCardDesignSchema>;
 export type WeeklyPackDesign = z.infer<typeof weeklyPackDesignSchema>;
 
+export type WeeklyPackShapeContract = {
+  cardId: WeeklyPackScale;
+  basis: WeeklyPackBasis;
+  company: WeeklyPackCompany;
+  anchorDimension: ChapterDimension | null;
+  twistDimension: ChapterDimension;
+  contextDimension: ChapterDimension | null;
+};
+
 export type WeeklyPackContext = {
   homeCity: string;
   privacyMode: "personal" | "shareable" | "intersection";
   availableCompanies: readonly WeeklyPackCompany[];
   socialMatch?: WeeklyPackSocialMatch;
+  /** Drawn before prose generation. The model fills these slots; it cannot move them. */
+  shapeContracts?: readonly WeeklyPackShapeContract[];
   maxMechanismOccurrences?: Partial<Record<WeeklyPackMechanism, number>>;
   generationNotes?: readonly string[];
 };
+
+function fromChapterDimension(
+  dimension: ChapterDimension,
+): WeeklyPackStretchDimension {
+  return dimension === "people" ? "person" : dimension;
+}
+
+function anchorCandidatesFrom(graph: ExperienceGraphRecord) {
+  return [
+    ...new Set(
+      graph.nodes.flatMap((node) =>
+        node.category === "place" ||
+        node.category === "activity" ||
+        node.category === "interest"
+          ? [node.category]
+          : [],
+      ),
+    ),
+  ] as ChapterDimension[];
+}
+
+/**
+ * Draws the three empty card grammars. It deliberately chooses no venue,
+ * event, route, person, or activity: those nouns must come from graph truth or
+ * subsequent verified research.
+ */
+export function chooseWeeklyPackShapeContracts(args: {
+  graph: ExperienceGraphRecord;
+  socialMatch?: WeeklyPackSocialMatch;
+  random: () => number;
+}): WeeklyPackShapeContract[] {
+  const anchoredScales =
+    args.socialMatch?.company === "new-person"
+      ? WEEKLY_PACK_SCALES.filter((scale) => scale !== "proper")
+      : [...WEEKLY_PACK_SCALES];
+  const anchoredIndex = Math.floor(
+    Math.min(Math.max(args.random(), 0), 1 - Number.EPSILON) *
+      anchoredScales.length,
+  );
+  const anchoredCardId = anchoredScales[anchoredIndex];
+  const anchors = anchorCandidatesFrom(args.graph);
+
+  return WEEKLY_PACK_SCALES.map((cardId) => {
+    const anchored = cardId === anchoredCardId;
+    const company: ChapterCompany =
+      anchored && args.socialMatch ? args.socialMatch.company : "self";
+    const basis: WeeklyPackBasis = anchored
+      ? args.socialMatch
+        ? "social"
+        : "graph"
+      : "world";
+    const socialAnchorCandidates: ChapterDimension[] = args.socialMatch
+      ? args.socialMatch.sharedAnchors.flatMap((anchor) =>
+          anchor.category === "place" ||
+          anchor.category === "activity" ||
+          anchor.category === "interest"
+            ? [anchor.category as ChapterDimension]
+            : [],
+        )
+      : [];
+    const shape = chooseChapterShape({
+      company,
+      random: args.random,
+      anchorCandidates:
+        basis === "graph"
+          ? anchors
+          : basis === "social" && company === "new-person"
+            ? socialAnchorCandidates
+            : [],
+      // Meeting a new person is already the primary stretch. Keep first
+      // meetings to the simpler two-layer form.
+      allowContext: company !== "new-person",
+    });
+    const issues = auditChapterShape(shape, { worldLed: basis === "world" });
+    if (issues.length > 0) {
+      throw new Error(
+        `Chapter drew an illegal ${cardId} shape: ${issues
+          .map((issue) => issue.code)
+          .join(", ")}`,
+      );
+    }
+    return {
+      cardId,
+      basis,
+      company,
+      anchorDimension: shape.anchor ?? null,
+      twistDimension: shape.twist,
+      contextDimension: shape.context ?? null,
+    };
+  });
+}
 
 export type WeeklyPackAuditIssue = {
   severity: "error" | "warning";
@@ -353,13 +480,15 @@ export function buildWeeklyPackDesignPrompt(args: {
     "- A `social` card exists only for the supplied real person and strict shared anchors.",
     "- Do not force a weak graph noun into an experience. Personal does not mean every card must be biographical.",
     "",
-    "ONE-STRETCH CONTRACT",
-    "- Every card has exactly one new dimension: place, activity, person, or time.",
-    "- Set that dimension to `new` in familiarity and all other dimensions to `familiar`.",
+    "CHAPTER EQUATION",
+    "- The empty shape of every card has already been drawn below. Follow it exactly; do not choose a different company, basis, anchor, twist, or context.",
+    "- The primary twist is the one meaningful leap. An optional supporting context may also be new only when it makes that same action concrete without adding another skill, booking, safety issue, journey, or social demand.",
+    "- Set the primary twist and optional supporting context to `new` in familiarity. Set every other dimension to `familiar`.",
     "- On world cards, `familiar` means locally accessible, socially ordinary, low-friction, and easy to understand; it does not claim prior personal familiarity.",
     "- On graph or social cards, transform the familiar thread; do not literally repeat its noun.",
-    "- A self-company card may stretch only place, activity, or time. Its person dimension must stay familiar.",
-    "- A new-person card must spend its only stretch on `person`; place, activity, and time stay familiar.",
+    "- A self-company card never uses person. A new-person card spends its primary twist on person.",
+    "- `supportingContext` must be null when contextDimension is null. Otherwise it must describe exactly that context dimension.",
+    `- PRE-DRAWN SHAPES: ${JSON.stringify(args.context.shapeContracts ?? [])}`,
     "",
     "TRUTH AND PRIVACY",
     "- World cards must set primaryAnchorId to null and anchors to an empty array.",
@@ -379,7 +508,7 @@ export function buildWeeklyPackDesignPrompt(args: {
     "- Do not expose a name, profile, one-sided fact, matching score, attraction, destiny, or supposed compatibility.",
     args.context.socialMatch
       ? [
-          `- A real ${args.context.socialMatch.company} match is available. Exactly one card must use that company value.`,
+          `- A real ${args.context.socialMatch.company} match is available and has been selected by the pre-draw. Exactly one card must use that company value.`,
           "- That card must use `social` basis. The other two cards must use `world` basis and `self` company.",
           "- The matched person's identity is deliberately withheld from this model and will be attached by the server.",
           "- The social card may anchor only to the strict shared anchors below, so its familiar ground is true for both people.",
@@ -507,17 +636,66 @@ function auditCardFormat(
 
 function auditStretch(
   card: WeeklyPackCardDesign,
+  context: WeeklyPackContext,
   issues: WeeklyPackAuditIssue[],
 ) {
+  if (card.familiarity.time === "new") {
+    addIssue(issues, {
+      code: "TIME_IS_NOT_A_DIMENSION",
+      cardId: card.id,
+      message:
+        "Time shapes logistics but cannot be the unfamiliar part of a chapter.",
+    });
+  }
   const dimensions = WEEKLY_PACK_STRETCH_DIMENSIONS.filter(
     (dimension) => card.familiarity[dimension] === "new",
   );
-  if (dimensions.length !== 1 || dimensions[0] !== card.stretch.dimension) {
+  if (card.stretch.dimension === "time") {
+    if (card.familiarity.time !== "new") {
+      addIssue(issues, {
+        code: "TIME_IS_NOT_A_DIMENSION",
+        cardId: card.id,
+        message:
+          "Time shapes logistics but cannot be the unfamiliar part of a chapter.",
+      });
+    }
+    return;
+  }
+  const contract = context.shapeContracts?.find(
+    (candidate) => candidate.cardId === card.id,
+  );
+  const expected = contract
+    ? [
+        fromChapterDimension(contract.twistDimension),
+        ...(contract.contextDimension
+          ? [fromChapterDimension(contract.contextDimension)]
+          : []),
+      ]
+    : [
+        card.stretch.dimension,
+        ...(card.supportingContext
+          ? [card.supportingContext.dimension]
+          : []),
+      ];
+  if (
+    dimensions.length !== expected.length ||
+    expected.some((dimension) => !dimensions.includes(dimension))
+  ) {
     addIssue(issues, {
-      code: "ONE_STRETCH",
+      code: "CHAPTER_SHAPE_FAMILIARITY",
       cardId: card.id,
       message:
-        "Exactly one familiarity dimension must be new, and it must match the declared stretch.",
+        "The new familiarity fields must match the pre-drawn primary twist and optional supporting context.",
+    });
+  }
+  if (
+    card.supportingContext &&
+    card.supportingContext.dimension === card.stretch.dimension
+  ) {
+    addIssue(issues, {
+      code: "CHAPTER_SHAPE_REPEATED",
+      cardId: card.id,
+      message: "The primary twist and supporting context must be different.",
     });
   }
   if (card.format.company === "self" && card.stretch.dimension === "person") {
@@ -525,6 +703,48 @@ function auditStretch(
       code: "SELF_PERSON_STRETCH",
       cardId: card.id,
       message: "A self experience cannot spend its stretch on a new person.",
+    });
+  }
+}
+
+function auditShapeContract(
+  card: WeeklyPackCardDesign,
+  context: WeeklyPackContext,
+  issues: WeeklyPackAuditIssue[],
+) {
+  const contract = context.shapeContracts?.find(
+    (candidate) => candidate.cardId === card.id,
+  );
+  if (!contract) return;
+  const actualContext = card.supportingContext?.dimension ?? null;
+  if (
+    card.basis !== contract.basis ||
+    card.format.company !== contract.company ||
+    card.stretch.dimension !== fromChapterDimension(contract.twistDimension) ||
+    actualContext !==
+      (contract.contextDimension
+        ? fromChapterDimension(contract.contextDimension)
+        : null)
+  ) {
+    addIssue(issues, {
+      code: "CHAPTER_SHAPE_DRAW_CHANGED",
+      cardId: card.id,
+      message:
+        "The generated card changed the company, basis, twist, or context chosen before writing.",
+    });
+  }
+  if (
+    contract.anchorDimension &&
+    contract.anchorDimension !== "people" &&
+    !card.anchors.some(
+      (anchor) => anchor.category === contract.anchorDimension,
+    )
+  ) {
+    addIssue(issues, {
+      code: "CHAPTER_SHAPE_ANCHOR_CHANGED",
+      cardId: card.id,
+      message:
+        "The card did not use a real graph anchor from its pre-drawn familiar dimension.",
     });
   }
 }
@@ -747,7 +967,8 @@ export function auditWeeklyPackDesign(args: {
 
   for (const card of pack.cards) {
     auditCardFormat(card, issues);
-    auditStretch(card, issues);
+    auditStretch(card, context, issues);
+    auditShapeContract(card, context, issues);
     auditConnection(card, context, issues);
     auditAnchors(card, graph, context, issues);
 
@@ -1038,7 +1259,7 @@ export function buildWeeklyPackReviewPrompt(args: {
     "HARD GATES",
     "- The pack contains exactly two world-led cards and one anchored card: graph-led normally, social-led when a real person is supplied.",
     "- World cards use no graph anchors. Graph and social cards use only real, permitted evidence.",
-    "- Each card spends exactly one stretch.",
+    "- Each card follows its pre-drawn Chapter shape: one primary twist and, only when drawn, one subordinate supporting context.",
     "- There is no invented personal or compatibility claim.",
     "- The experience has a mechanism beyond naming a venue.",
     "- The social composition is safe and useful.",
@@ -1083,7 +1304,7 @@ export function buildWeeklyPackRevisionPrompt(args: {
       ? "- Keep exactly two world cards and one social card. Do not add a separate graph card."
       : "- Keep exactly two world cards and one graph card.",
     "- Every card must use a different mechanism and familiar frame.",
-    "- Every card gets exactly one unfamiliar dimension; all other familiarity dimensions stay familiar.",
+    "- Every card keeps its pre-drawn primary twist and optional supporting context; all other familiarity dimensions stay familiar.",
     "- Do not name or choose a venue, provider, event, route, or business. Research happens later.",
     "- Do not solve actionability by adding hidden commitments, travel, equipment, skill, cost, or social demands.",
     "- Do not invent biography, preference, emotion, relationship, compatibility, or meaning.",
@@ -1167,6 +1388,7 @@ export function buildWeeklyPackResearchPrompt(args: {
     basis: args.card.basis,
     format: args.card.format,
     stretchDimension: args.card.stretch.dimension,
+    supportingContext: args.card.supportingContext,
     experiencePromise: args.card.experiencePromise,
     mechanism: args.card.mechanism,
     requirements: args.card.requirements,
@@ -1181,13 +1403,13 @@ export function buildWeeklyPackResearchPrompt(args: {
         : 360;
   return [
     "Prove one already-designed Chapter experience with current web research.",
-    "Do not replace it with a recommendation and do not add a second unfamiliar dimension.",
+    "Do not replace it with a recommendation or add any novelty beyond the designed primary twist and optional supporting context.",
     "Find the real place, event, route, material, timetable, class, or other infrastructure needed to make the action true and livable.",
     "",
     "RESEARCH RULES",
     `- Verify current operation and logistics as of ${args.currentDate}.`,
     "- Prove every critical claim with direct source URLs. Prefer first-party sources and recent operating evidence.",
-    "- Preserve the designed action, mechanism, company, scale, and single stretch.",
+    "- Preserve the designed action, mechanism, company, scale, primary twist, and optional supporting context.",
     `- The journey begins and ends in HOME CITY. Return originCity exactly as "${args.context.homeCity}" in travelFit.`,
     `- This is a day-scale experience, not destination travel. Flights are never allowed. The verified complete round trip must take at most ${travelLimitMinutes} minutes.`,
     args.card.format.geography === "beyond-city"
@@ -1348,15 +1570,11 @@ export function auditWeeklyPackResearch(args: {
     }
 
     if (finding.researchCaveats.length > 0) {
-      addIssue(
-        issues,
-        {
-          code: "RESEARCH_CAVEAT",
-          cardId: finding.cardId,
-          message: finding.researchCaveats.join(" "),
-        },
-        "warning",
-      );
+      addIssue(issues, {
+        code: "RESEARCH_UNPROVEN",
+        cardId: finding.cardId,
+        message: finding.researchCaveats.join(" "),
+      });
     }
   }
 

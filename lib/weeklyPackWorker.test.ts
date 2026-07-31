@@ -11,6 +11,7 @@ import {
 import { weeklyPackResearchRunsSchema } from "./weeklyPackGeneration";
 import {
   runWeeklyPackCycle,
+  weeklyPackContextFrom,
   type WeeklyPackWorkerDependencies,
 } from "./weeklyPackWorker";
 
@@ -62,7 +63,22 @@ function source(): WeeklyPackGenerationSource {
     graph: {
       memoryCount: 1,
       onboardingStep: "memory_ready",
-      nodes: [],
+      nodes: [
+        {
+          id: "owner-pottery",
+          sourceType: "memory",
+          category: "activity",
+          subtype: "craft",
+          kind: "activity",
+          label: "pottery",
+          description: "A real activity from the owner's graph.",
+          certainty: "fact",
+          confidence: 0.9,
+          salience: 0.8,
+          evidence: "Synthetic test evidence.",
+          createdAt: 0,
+        },
+      ],
       edges: [],
     },
   };
@@ -124,6 +140,15 @@ afterEach(() => {
 });
 
 describe("weekly pack worker", () => {
+  it("can draw a solo week even when one real person is eligible", () => {
+    const context = weeklyPackContextFrom(source(), "request-solo");
+    expect(context.availableCompanies).toEqual(["self"]);
+    expect(context.socialMatch).toBeUndefined();
+    expect(
+      context.shapeContracts?.every((contract) => contract.company === "self"),
+    ).toBe(true);
+  });
+
   it("does not claim or spend outside the local preparation window", async () => {
     const current = dependencies();
     const summary = await runWeeklyPackCycle(
@@ -177,6 +202,12 @@ describe("weekly pack worker", () => {
         designJson: expect.stringContaining('"name":"Mina"'),
       }),
     );
+    expect(
+      current.startResearch.mock.calls[0][0].context,
+    ).toBe(current.designPack.mock.calls[0][0].source.context);
+    expect(
+      current.designPack.mock.calls[0][0].source.context.shapeContracts,
+    ).toHaveLength(3);
   });
 
   it("asks Base44 for retries only on Friday", async () => {

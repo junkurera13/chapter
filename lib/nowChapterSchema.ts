@@ -1,14 +1,14 @@
 import { z } from "zod";
 
 /**
- * The one-stretch contract: every proposed chapter keeps the person's world
- * familiar except along exactly one dimension, which reaches into the unknown.
+ * The primary-twist dimensions for Now. Time still shapes when an experience
+ * works, but it is logistics rather than something the experience is made of.
  */
 export const NOW_STRETCH_DIMENSIONS = [
   "place",
   "activity",
   "person",
-  "time",
+  "interest",
 ] as const;
 
 export type NowStretchDimension = (typeof NOW_STRETCH_DIMENSIONS)[number];
@@ -129,9 +129,9 @@ export type NowBrief = z.infer<typeof nowBriefSchema>;
 export const nowResearchFindingSchema = z.object({
   venue_name: z.string().min(1).max(160),
   venue_area: z.string().min(1).max(160),
-  address: z.string().max(300).optional().nullable(),
+  address: z.string().trim().min(3).max(300),
   why_uncommon: z.string().min(1).max(1200),
-  still_operating_evidence: z.string().max(600).optional().nullable(),
+  still_operating_evidence: z.string().trim().min(5).max(600),
   best_time: z.string().min(1).max(300),
   price_note: z.string().max(300).optional().nullable(),
 });
@@ -158,7 +158,8 @@ export const NOW_RESEARCH_OUTPUT_SCHEMA = {
     },
     address: {
       type: "string",
-      description: "Street address if the sources state one, else empty.",
+      description:
+        "Verified street address from a source. If no source proves one, the research has failed.",
     },
     why_uncommon: {
       type: "string",
@@ -180,7 +181,14 @@ export const NOW_RESEARCH_OUTPUT_SCHEMA = {
       description: "Rough cost if sources state it, else empty.",
     },
   },
-  required: ["venue_name", "venue_area", "why_uncommon", "best_time"],
+  required: [
+    "venue_name",
+    "venue_area",
+    "address",
+    "why_uncommon",
+    "still_operating_evidence",
+    "best_time",
+  ],
   additionalProperties: false,
 } as const;
 

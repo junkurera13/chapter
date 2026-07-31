@@ -5,6 +5,7 @@ import {
   buildBriefPrompt,
   buildComposePrompt,
   buildGraphDigest,
+  parseGroundedNowResearch,
 } from "./nowGeneration";
 import {
   NOW_RESEARCH_OUTPUT_SCHEMA,
@@ -81,7 +82,7 @@ describe("buildGraphDigest", () => {
 });
 
 describe("buildBriefPrompt", () => {
-  it("carries the one-stretch rule, city, exclusions, and decline feedback", () => {
+  it("carries the pre-drawn twist rule, city, exclusions, and decline feedback", () => {
     const prompt = buildBriefPrompt({
       graph: sampleGraph(),
       homeCity: "Seoul",
@@ -89,7 +90,8 @@ describe("buildBriefPrompt", () => {
       declineReason: "too far away",
     });
 
-    expect(prompt).toContain("EXACTLY ONE dimension");
+    expect(prompt).toContain("one primary unfamiliar twist");
+    expect(prompt).toContain("do not invent or name a venue");
     expect(prompt).toContain("Seoul");
     expect(prompt).toContain("Old Grill House");
     expect(prompt).toContain("too far away");
@@ -173,7 +175,9 @@ describe("buildComposePrompt", () => {
   const finding = {
     venue_name: "Mangwon Charcoal House",
     venue_area: "Mangwon-dong, Seoul",
+    address: "12 Mangwon-ro, Mapo-gu, Seoul",
     why_uncommon: "Run by one family since 1978, no English signage.",
+    still_operating_evidence: "Official listing updated in July 2026.",
     best_time: "Saturday evening, from 18:00",
   };
   const brief = {
@@ -288,11 +292,27 @@ describe("now schemas", () => {
       venue_area: "Mangwon-dong, Seoul",
       why_uncommon: "Run by one grandmother since 1994; eight seats.",
       best_time: "Saturday from 6pm; closes when the charcoal runs out.",
-      address: null,
+      address: "17 Mangwon-ro, Mapo-gu, Seoul",
       price_note: null,
       still_operating_evidence: "Naver review from last month.",
     });
     expect(finding.success).toBe(true);
+  });
+
+  it("refuses plausible prose that does not identify a proven real place", () => {
+    expect(() =>
+      parseGroundedNowResearch({
+        researchContent: {
+          venue_name: "a small riverside screening site",
+          venue_area: "Seoul",
+          address: "Unknown riverside",
+          why_uncommon: "It sounds suitable.",
+          still_operating_evidence: "No current proof was found.",
+          best_time: "One afternoon",
+        },
+        citations: [{ url: "https://example.com/unrelated" }],
+      }),
+    ).toThrow(/generic description/i);
   });
 });
 
@@ -316,7 +336,9 @@ describe("buildComposePrompt", () => {
       finding: {
         venue_name: "Halmae Yeontan Gui",
         venue_area: "Mangwon-dong, Seoul",
+        address: "17 Mangwon-ro, Mapo-gu, Seoul",
         why_uncommon: "Run by one grandmother since 1994.",
+        still_operating_evidence: "Official listing updated in July 2026.",
         best_time: "Saturday evenings",
       },
       homeCity: "Seoul",

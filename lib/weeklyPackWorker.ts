@@ -13,9 +13,15 @@ import {
   type WeeklyPackPreparation,
 } from "./base44Functions";
 import {
+  chooseWeeklyPackShapeContracts,
   weeklyPackDesignArtifactSchema,
   type WeeklyPackContext,
 } from "./weeklyPackDesign";
+import {
+  chooseChapterCompany,
+  seededChapterRandom,
+  type ChapterCompany,
+} from "./chapterEquation";
 import {
   composeWeeklyExperienceCards,
   designWeeklyPack,
@@ -81,23 +87,47 @@ function errorName(error: unknown) {
   return error instanceof Error ? error.name : "UnknownError";
 }
 
-function contextFrom(source: WeeklyPackGenerationSource): WeeklyPackContext {
-  return {
-    homeCity: source.homeCity,
-    privacyMode: "personal",
-    availableCompanies: source.availableCompanies,
-    socialMatch: source.socialCandidate
+export function weeklyPackContextFrom(
+  source: WeeklyPackGenerationSource,
+  requestId: string,
+): WeeklyPackContext {
+  const random = seededChapterRandom(requestId);
+  const eligible: ChapterCompany[] = ["self"];
+  if (
+    source.socialCandidate &&
+    source.availableCompanies.includes(source.socialCandidate.company)
+  ) {
+    eligible.push(source.socialCandidate.company);
+  }
+  const company = chooseChapterCompany({ eligible, random });
+  const selectedSocial =
+    company !== "self" && source.socialCandidate?.company === company
       ? {
           company: source.socialCandidate.company,
           sharedAnchors: source.socialCandidate.sharedAnchors,
         }
-      : undefined,
+      : undefined;
+  const availableCompanies = selectedSocial
+    ? (["self", selectedSocial.company] as const)
+    : (["self"] as const);
+  return {
+    homeCity: source.homeCity,
+    privacyMode: "personal",
+    availableCompanies,
+    socialMatch: selectedSocial,
+    shapeContracts: chooseWeeklyPackShapeContracts({
+      graph: source.graph,
+      socialMatch: selectedSocial,
+      random,
+    }),
     maxMechanismOccurrences: { taste: 1 },
     generationNotes: [
       "Make the three choices feel genuinely different in action, rhythm, and commitment.",
-      source.socialCandidate
+      selectedSocial
         ? "A real person is already attached to the social card. Design for that pair; never invent or substitute another person."
-        : "No real matched person is available. Keep all three cards solo.",
+        : source.socialCandidate
+          ? "A real matched person exists, but this week's weighted draw is solo. Keep all three cards solo."
+          : "No real matched person is available. Keep all three cards solo.",
     ],
   };
 }
@@ -280,21 +310,24 @@ export async function runWeeklyPackCycle(
     summary.packsStarted += 1;
 
     try {
+      const context = weeklyPackContextFrom(source, requestId);
       const designed = await dependencies.designPack({
         source: {
           graph: source.graph,
-          context: contextFrom(source),
+          context,
         },
         requestId,
       });
       const artifact = {
         ...designed,
         homeCity: source.homeCity,
-        companion: source.socialCandidate?.companion,
+        companion: context.socialMatch
+          ? source.socialCandidate?.companion
+          : undefined,
       };
       const runs = await dependencies.startResearch({
         pack: artifact.pack,
-        context: contextFrom(source),
+        context,
         weekKey: window.weekKey,
       });
       await dependencies.setResearch({

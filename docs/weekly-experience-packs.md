@@ -111,16 +111,17 @@ Every card declares an internal basis:
   anchors; or
 - `social`: begins with one real person and only the permitted shared anchors.
 
-A normal pack contains exactly two `world` cards and one `graph` card. When a
-real social candidate is available, it contains two `world` cards and one
-`social` card instead. The social lane is then the pack's sole anchored lane.
+A normal pack contains exactly two `world` cards and one anchored card. A real
+social candidate makes their company mode eligible; it does not guarantee a
+social card. The weighted company draw may still choose a solo week. When it
+chooses the candidate, the anchored lane is `social`; otherwise it is `graph`.
 These basis labels are internal and never appear as a settings surface.
 
 Each lane records:
 
 - basis and any permitted grounded anchors;
 - one familiar frame;
-- one stretch;
+- one primary twist and, only when earned, one supporting context;
 - a scale contract;
 - a social composition;
 - the human action and experience mechanism;
@@ -290,7 +291,8 @@ Every card must pass:
   recognition of a strong or strictly shared thread for an anchored card.
 - **Transformation:** turns a current opportunity or familiar thread into an
   authored experience rather than merely naming a venue.
-- **One stretch:** spends one novelty dimension only.
+- **Chapter shape:** keeps one clear primary twist and allows at most one
+  subordinate supporting unfamiliar context.
 - **Experience mechanism:** contains a designed action, rhythm, journey,
   constraint, or shared task.
 - **Story potential:** may create a quiet or vivid moment worth remembering.
@@ -409,9 +411,10 @@ identifier leaves the server through the research boundary.
 The deployed worker supports `self`, `known-person`, and `new-person`.
 `new-person` activates only for an accepted introduction-origin connection
 whose pair has not yet recorded a lived meeting and that still holds enough
-strict shared ground. The worker prefers that still-unmet person over a
-known-person candidate, requires exactly one social card for them, and falls
-back to three solo cards when no honest match exists. When an
+strict shared ground. The worker removes unavailable company modes, then uses
+the equation's weights to choose among the eligible modes; solo remains more
+likely. A selected real person gets exactly one social card. With no selected
+person, all three cards are solo. When an
 introduction-origin social card is marked lived, Base44 records the first
 meeting and later treats that connection as `known-person`. `small-group`
 remains inactive until local density can support it.

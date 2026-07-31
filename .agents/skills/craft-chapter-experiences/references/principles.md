@@ -35,20 +35,22 @@ ritual. Research may find a place, event, route, class, material, timetable, or
 other fact that makes it possible. The researched object is supporting
 infrastructure, not automatically the experience.
 
-### Keep one familiar frame and spend one stretch
+### Keep one familiar frame and choose one primary twist
 
 Choose a frame that makes the experience easy to enter. On a graph-led card,
 that may be a grounded thread with emotional or behavioural weight. On a
 world-led card, it may be proximity, ordinary social expectations, flexible
-timing, or a familiar kind of effort. Stretch exactly one meaningful dimension:
+timing, or a familiar kind of effort. Choose one primary twist:
 
 - place;
 - activity;
 - person;
-- time.
+- interest.
 
-Do not make a person absorb an unfamiliar activity, distant place, new person,
-and difficult schedule at once.
+An optional supporting unfamiliar context is allowed only when it makes that
+same twist concrete. It cannot add another skill, booking, journey, safety
+issue, or social demand. Time shapes when the experience works; it is not a
+dimension the experience spends as novelty.
 
 ### Transform rather than repeat or merely recommend
 

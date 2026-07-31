@@ -55,8 +55,9 @@ widen either boundary.
    frame, scale, experience mechanism, and meaningful stretch.
 5. Design the experience itself: the human action, setting, constraint, rhythm,
    and reason the moment may become memorable.
-6. Spend exactly one novelty dimension per card. Keep the other dimensions
-   familiar enough that the stretch can be lived rather than merely admired.
+6. Spend one primary novelty dimension per card. Add a supporting unfamiliar
+   context only when it makes the same action concrete without adding an
+   independent burden. Keep everything else familiar enough to live.
 7. Write three separate research briefs. Make each brief prove the facts and
    logistics its designed experience needs; do not reduce every brief to
    finding a venue.
@@ -91,7 +92,7 @@ For each candidate, record:
 - basis: `world`, `graph`, or `social`;
 - exact graph anchors and evidence strength when the basis is anchored;
 - the familiar frame in one plain sentence;
-- the single stretch and its dimension;
+- the primary twist and optional supporting context;
 - the format contract;
 - the experience promise: what the person will actually do;
 - why the mechanism may create a memory or a human connection;

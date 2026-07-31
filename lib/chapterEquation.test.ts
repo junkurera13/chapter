@@ -4,8 +4,11 @@ import {
   CHAPTER_COMPANIES,
   CHAPTER_DIMENSIONS,
   auditChapterShape,
+  chooseChapterCompany,
+  chooseChapterShape,
   isLegalChapterShape,
   legalChapterShapes,
+  seededChapterRandom,
 } from "./chapterEquation";
 import { EXPERIENCE_NODE_CATEGORIES } from "./experienceOntology";
 
@@ -21,7 +24,7 @@ describe("dimensions", () => {
   });
 });
 
-describe("the one stretch", () => {
+describe("the primary twist", () => {
   it("accepts the default two-layer shape", () => {
     expect(
       isLegalChapterShape({
@@ -78,6 +81,15 @@ describe("cold start", () => {
       { coldStart: true },
     );
     expect(issues).toHaveLength(0);
+  });
+
+  it("uses the clearer world-led name too", () => {
+    expect(
+      auditChapterShape(
+        { company: "self", twist: "activity" },
+        { worldLed: true },
+      ),
+    ).toHaveLength(0);
   });
 });
 
@@ -151,7 +163,7 @@ describe("the shape space", () => {
     });
   });
 
-  it("is thirty distinct shapes across the three modes", () => {
+  it("has thirty role templates when both stranger modes share one role", () => {
     // known-person and new-person/small-group differ, but small-group repeats
     // new-person's space, so the documented total counts it once.
     expect(counts.self + counts["known-person"] + counts["new-person"]).toBe(
@@ -167,5 +179,57 @@ describe("the shape space", () => {
       expect(twoLayer.length).toBe(company === "self" ? 6 : 3);
       expect(threeLayer.length).toBe(6);
     }
+  });
+});
+
+describe("weighted draws", () => {
+  it("gives unavailable social modes zero odds", () => {
+    expect(
+      chooseChapterCompany({
+        eligible: ["self"],
+        random: () => 0.999999,
+      }),
+    ).toBe("self");
+  });
+
+  it("repeats the same draw for the same request seed", () => {
+    const first = seededChapterRandom("weekly-request-42");
+    const second = seededChapterRandom("weekly-request-42");
+    expect(Array.from({ length: 8 }, () => first())).toEqual(
+      Array.from({ length: 8 }, () => second()),
+    );
+  });
+
+  it("draws categories without inventing real-world nouns", () => {
+    expect(
+      chooseChapterShape({
+        company: "self",
+        anchorCandidates: ["interest"],
+        twistCandidates: ["activity"],
+        allowContext: false,
+        random: () => 0,
+      }),
+    ).toEqual({
+      company: "self",
+      anchor: "interest",
+      twist: "activity",
+      context: undefined,
+    });
+  });
+
+  it("makes a new person the primary twist", () => {
+    expect(
+      chooseChapterShape({
+        company: "new-person",
+        anchorCandidates: ["interest"],
+        allowContext: false,
+        random: () => 0.99,
+      }),
+    ).toMatchObject({
+      company: "new-person",
+      anchor: "interest",
+      twist: "people",
+      context: undefined,
+    });
   });
 });

@@ -193,7 +193,7 @@ async function generateObject<T>(args: {
 
 async function generatePack(fixture: WeeklyPackFixture): Promise<GeneratedPack> {
   const primaryModel =
-    process.env.CHAPTER_PACK_MODEL || "anthropic/claude-sonnet-5";
+    process.env.CHAPTER_PACK_MODEL || "openai/gpt-5.6-terra";
   const fallbackModel =
     process.env.CHAPTER_PACK_FALLBACK_MODEL || "moonshotai/kimi-k2.6";
   const modelIds = [
@@ -286,7 +286,7 @@ async function reviewPack(args: {
   const modelId =
     process.env.CHAPTER_PACK_REVIEW_MODEL ||
     process.env.CHAPTER_PACK_MODEL ||
-    "anthropic/claude-sonnet-5";
+    "openai/gpt-5.6-terra";
   const output = await generateObject({
     prompt: buildWeeklyPackReviewPrompt({
       pack: args.pack,
@@ -314,7 +314,7 @@ async function revisePack(args: {
   const primaryModel =
     process.env.CHAPTER_PACK_REVISION_MODEL ||
     process.env.CHAPTER_PACK_MODEL ||
-    "anthropic/claude-sonnet-5";
+    "openai/gpt-5.6-terra";
   const fallbackModel =
     process.env.CHAPTER_PACK_FALLBACK_MODEL || "moonshotai/kimi-k2.6";
   const modelIds = [
