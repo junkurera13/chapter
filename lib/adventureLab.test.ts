@@ -4,6 +4,7 @@ import {
   adventureLabDraftModelSchema,
   adventureLabFeedbackSchema,
   adventureLabRequestSchema,
+  adventureLabScaleForDuration,
   auditAdventureLabDraft,
   buildAdventureLabCompositionPrompt,
   buildAdventureLabPrompt,
@@ -255,6 +256,15 @@ describe("Adventure Lab crafting", () => {
         graph: graph(),
       }).valid,
     ).toBe(true);
+    expect(
+      adventureLabScaleForDuration({ min: 60, max: 90 }, "proper"),
+    ).toBe("small");
+    expect(
+      adventureLabScaleForDuration({ min: 90, max: 120 }, "proper"),
+    ).toBe("mini");
+    expect(
+      adventureLabScaleForDuration({ min: 240, max: 360 }, "small"),
+    ).toBe("proper");
   });
 
   it("preserves a graph-led familiar explanation for research", () => {

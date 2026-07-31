@@ -23,6 +23,11 @@ geography, energy, and time character.
 
 ## Launch scale contracts
 
+The weekly pack uses these as exact composition lanes. Adventure Lab uses the
+drawn scale as a preference: it must not pad or reject a strong, grounded action
+solely to hit the draw. After research proves the real duration, the Lab
+reclassifies the result as `small`, `mini`, or `proper`.
+
 ### Small activity
 
 Promise: "I could actually do this soon."

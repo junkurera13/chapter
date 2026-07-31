@@ -221,6 +221,23 @@ function durationFitsScale(
   return duration.min >= 240 && duration.max <= 720;
 }
 
+export function adventureLabScaleForDuration(
+  duration: AdventureLabDraftModel["format"]["durationMinutes"],
+  fallback: AdventureLabContract["scale"],
+): AdventureLabContract["scale"] {
+  if (
+    !Number.isInteger(duration.min) ||
+    !Number.isInteger(duration.max) ||
+    duration.min <= 0 ||
+    duration.max < duration.min
+  ) {
+    return fallback;
+  }
+  if (duration.max <= 90) return "small";
+  if (duration.max <= 240) return "mini";
+  return "proper";
+}
+
 /**
  * World-led chapters are familiar through access and legibility, never
  * because Chapter pretends the new activity already belongs to the person.
@@ -445,9 +462,10 @@ export function buildAdventureLabPrompt(args: {
     "Craft exactly one exceptional real-world Chapter adventure.",
     "The result must be a lived experience, not a recommendation, list, vague concept, venue, class listing, or generic outing.",
     "",
-    "PRE-DRAWN CONTRACT",
+    "CHAPTER SHAPE",
     JSON.stringify(experienceContract),
-    "- Follow this contract exactly. Do not change scale, basis, anchor, twist, or context.",
+    "- Follow basis, anchor, twist, and context exactly.",
+    "- Scale is a preferred commitment target, not a reason to pad or reject an otherwise strong action. Use the honest natural duration; Chapter may reclassify small, mini, or proper after research.",
     "- This is solo. Do not introduce a companion, stranger, class cohort, host relationship, or group as part of the experience.",
     `- Format for this scale: ${format}.`,
     "- Prefer established formats that are commonly free, subsidized, or moderately priced, but do not invent or promise a price before research.",
@@ -484,7 +502,7 @@ export function buildAdventureLabPrompt(args: {
     "- A restaurant, cafe, shop, market, museum, park, or class is infrastructure, never the experience by itself.",
     "- Passive attention is not participation. Telling someone to focus on, notice, compare, study, appreciate, or think about an ordinary purchase or meal does not transform it.",
     "- Spend the main leap only on twistDimension. The optional contextDimension, when present, must support the same action without adding another independent burden.",
-    "- Write experiencePromise as the complete invitation in plain language. It should be specific enough that a person can honestly say yes or no.",
+    "- Write experiencePromise as the complete invitation in plain language. It should be specific enough that a person can honestly say yes or no, but do not bake an exact duration or small/mini/proper label into the prose.",
     `- Write researchObjective as instructions to find one exact real place in or reachable from ${args.homeCity} where the designed action can genuinely happen.`,
     "- The research objective must require the exact venue, event, or route name; a verified practical arrival point; current operating evidence; relevant opening or event time; booking method when needed; price when available; and sources. A route may use a sourced station, trailhead, landmark, or coordinates rather than a building address.",
     "- It must also require the complete expected personal cost in local currency and its current USD equivalent. Research reports the truth; the application decides whether the cost is suitable.",
@@ -656,6 +674,7 @@ export function auditAdventureLabDraft(args: {
 export function buildAdventureLabCompositionPrompt(args: {
   draft: AdventureLabDraftModel;
   place: AdventureLabExperience["place"];
+  durationMinutes?: AdventureLabExperience["format"]["durationMinutes"];
 }) {
   return [
     "Write the final visible copy for one already-designed, already-researched Chapter adventure.",
@@ -664,6 +683,7 @@ export function buildAdventureLabCompositionPrompt(args: {
     "COPY CONTRACT",
     "- Preserve the exact designed action and mechanism.",
     "- Use only claims in the accepted design and verified place facts below.",
+    "- Remove or correct any duration wording from the design so it agrees with VERIFIED DURATION. The visible invitation does not need to state the duration because the card shows it separately.",
     "- title: a plain 3-7 word name for the experience. Name the core action and, only when useful, the neighbourhood. Do not put the provider's full name, class name, technique list, schedule, or explanatory clause in the title.",
     "- experiencePromise: one plain invitation that says what the person will actually do and includes the exact verified place name verbatim.",
     "- mechanismDescription: one plain explanation of how the real activity unfolds and why it is more than merely visiting the place.",
@@ -676,7 +696,12 @@ export function buildAdventureLabCompositionPrompt(args: {
       mechanism: args.draft.mechanism,
     })}`,
     `VERIFIED PLACE FACTS: ${JSON.stringify(args.place)}`,
-  ].join("\n");
+    args.durationMinutes
+      ? `VERIFIED DURATION: ${JSON.stringify(args.durationMinutes)}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function validateAdventureLabCopy(args: {
