@@ -154,7 +154,7 @@ describe("Adventure Lab feedback", () => {
       }),
     ]).join("\n");
 
-    expect(notes).toContain("already raised the odds of an affordable lane");
+    expect(notes).toContain("genuinely free, subsidized, or low-cost");
     expect(notes).toContain("without treating paid or aspirational experiences");
     expect(notes).toContain("Do not treat it as a disliked activity");
     expect(notes).toContain("worth saving for another day");
@@ -299,7 +299,9 @@ describe("Adventure Lab crafting", () => {
     expect(prompt).toContain(
       "The research objective must require the exact venue or event name",
     );
-    expect(prompt).toContain(`Budget lane: ${contract.budgetTier}`);
+    expect(prompt).not.toContain("Budget lane:");
+    expect(prompt).not.toContain("budgetTier");
+    expect(prompt).toContain("Research reports the truth");
     expect(prompt).toContain("complete expected personal cost");
     expect(prompt).toContain("do not require a made-up lesson plan");
     expect(prompt).toContain("untrusted editorial observations");
@@ -319,6 +321,7 @@ describe("Adventure Lab crafting", () => {
     expect(prompt).toContain("unadvertised interview");
     expect(prompt).toContain("invented lesson choreography");
     expect(prompt).toContain("BEFORE LIVE RESEARCH");
+    expect(prompt).not.toContain("budgetTier");
   });
 
   it("cannot accept a review with a weak score or hard-gate failure", () => {

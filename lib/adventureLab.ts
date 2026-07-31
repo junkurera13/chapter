@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import type { ExperienceGraphRecord } from "./backendTypes";
 import {
-  CHAPTER_BUDGET_CONTRACTS,
   CHAPTER_BUDGET_TIERS,
   drawChapterBudgetTier,
   type ChapterBudgetHistoryEntry,
@@ -419,19 +418,24 @@ export function buildAdventureLabPrompt(args: {
       : args.contract.scale === "mini"
         ? "2-4 hours; one destination or activity with at most one natural beat"
         : "4-12 hours; a coherent journey or short sequence worth planning";
-  const budget = CHAPTER_BUDGET_CONTRACTS[args.contract.budgetTier];
+  const experienceContract = {
+    scale: args.contract.scale,
+    basis: args.contract.basis,
+    anchorDimension: args.contract.anchorDimension,
+    twistDimension: args.contract.twistDimension,
+    contextDimension: args.contract.contextDimension,
+  };
 
   return [
     "Craft exactly one exceptional real-world Chapter adventure.",
     "The result must be a lived experience, not a recommendation, list, vague concept, venue, class listing, or generic outing.",
     "",
     "PRE-DRAWN CONTRACT",
-    JSON.stringify(args.contract),
+    JSON.stringify(experienceContract),
     "- Follow this contract exactly. Do not change scale, basis, anchor, twist, or context.",
     "- This is solo. Do not introduce a companion, stranger, class cohort, host relationship, or group as part of the experience.",
     `- Format for this scale: ${format}.`,
-    `- Budget lane: ${args.contract.budgetTier}. ${budget.designInstruction}`,
-    "- Budget is a hard all-in ceiling for one person, including booking, admission, required materials or rentals, and necessary non-local travel. Do not design an activity whose normal real-world form is likely to exceed it.",
+    "- Prefer established formats that are commonly free, subsidized, or moderately priced, but do not invent or promise a price before research.",
     "",
     "TRUTH",
     "- Design the human action first.",
@@ -467,7 +471,7 @@ export function buildAdventureLabPrompt(args: {
     "- Write experiencePromise as the complete invitation in plain language. It should be specific enough that a person can honestly say yes or no.",
     `- Write researchObjective as instructions to find one exact real place in or reachable from ${args.homeCity} where the designed action can genuinely happen.`,
     "- The research objective must require the exact venue or event name, full arrival address, current operating evidence, relevant opening or event time, booking method when needed, price when available, and sources.",
-    `- It must also require the complete expected personal cost in local currency and its current USD equivalent, proving that it is no more than USD ${budget.maxTotalUsd}.`,
+    "- It must also require the complete expected personal cost in local currency and its current USD equivalent. Research reports the truth; the application decides whether the cost is suitable.",
     "- Research must preserve the designed action. If no real current place supports it, the candidate must fail rather than being replaced with a plausible substitute.",
     "",
     `HOME CITY: ${args.homeCity}`,
@@ -684,6 +688,13 @@ export function buildAdventureLabReviewPrompt(args: {
       label: node.label,
       description: node.description,
     }));
+  const experienceContract = {
+    scale: args.contract.scale,
+    basis: args.contract.basis,
+    anchorDimension: args.contract.anchorDimension,
+    twistDimension: args.contract.twistDimension,
+    contextDimension: args.contract.contextDimension,
+  };
   return [
     "Act as a strict Chapter experience editor. Judge one pre-research adventure; do not rewrite it and do not reward polished prose.",
     "",
@@ -714,7 +725,7 @@ export function buildAdventureLabReviewPrompt(args: {
     "The adventure passes only with at least 3 in every dimension and at least 20/24 overall.",
     "Return a concise review. strongestQuality and revisionPriority must each be one short, concrete sentence.",
     "",
-    `CONTRACT: ${JSON.stringify(args.contract)}`,
+    `CONTRACT: ${JSON.stringify(experienceContract)}`,
     `AVAILABLE GRAPH NODES: ${JSON.stringify(graphNodes)}`,
     `DRAFT: ${JSON.stringify(args.draft)}`,
   ].join("\n");
@@ -808,7 +819,7 @@ export function buildAdventureLabGenerationNotes(
 
   if (recent.some((item) => item.tags.includes("too-expensive-now"))) {
     notes.push(
-      "Recent feedback says cost blocked an otherwise plausible experience. The executable budget draw has already raised the odds of an affordable lane; obey its ceiling without treating paid or aspirational experiences as permanently banned.",
+      "Recent feedback says cost blocked an otherwise plausible experience. Prefer a genuinely free, subsidized, or low-cost public format next without treating paid or aspirational experiences as permanently banned.",
     );
   }
   if (recent.some((item) => item.tags.includes("save-for-later"))) {

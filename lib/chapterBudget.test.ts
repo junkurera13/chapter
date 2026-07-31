@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  auditAdventureLabBudgetCost,
   auditChapterBudgetCost,
   CHAPTER_SPLURGE_COOLDOWN_MS,
   classifyChapterCost,
@@ -96,6 +97,37 @@ describe("Chapter budget lanes", () => {
     ).toBe(false);
     expect(
       auditChapterBudgetCost({
+        requestedTier: "splurge",
+        estimatedTotalUsd: 200,
+      }).valid,
+    ).toBe(true);
+  });
+
+  it("lets the lab use a verified planned fallback without opening the splurge gate", () => {
+    expect(
+      auditAdventureLabBudgetCost({
+        scale: "mini",
+        requestedTier: "accessible",
+        estimatedTotalUsd: 55,
+      }).valid,
+    ).toBe(true);
+    expect(
+      auditAdventureLabBudgetCost({
+        scale: "small",
+        requestedTier: "accessible",
+        estimatedTotalUsd: 55,
+      }).valid,
+    ).toBe(false);
+    expect(
+      auditAdventureLabBudgetCost({
+        scale: "mini",
+        requestedTier: "accessible",
+        estimatedTotalUsd: 200,
+      }).valid,
+    ).toBe(false);
+    expect(
+      auditAdventureLabBudgetCost({
+        scale: "mini",
         requestedTier: "splurge",
         estimatedTotalUsd: 200,
       }).valid,

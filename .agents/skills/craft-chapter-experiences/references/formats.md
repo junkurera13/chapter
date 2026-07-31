@@ -95,15 +95,17 @@ Use one card at each launch scale until evidence supports a wider deck:
 ## Cost cadence
 
 Cost is a commitment lane above the format, not a Chapter novelty dimension.
-Draw `accessible`, `planned`, or `splurge` before design, then require research
-to prove the all-in cost for one person fits that lane. Do not ask the model to
-choose how expensive its own idea may be.
+Draw `accessible`, `planned`, or `splurge` before design, but do not give the
+design model an exact price to invent around. Research proves the actual all-in
+cost for one person and code applies the cadence afterward.
 
-Small experiences are always accessible. Mini and proper experiences may draw
-planned or splurge lanes, but splurges must remain rare and are ineligible for
-28 days after one is offered. Treat “too expensive right now” as evidence to
-raise affordable odds, not as dislike of the underlying activity. “Save for
-later” preserves the activity as an aspirational possibility.
+Small experiences are always accessible. In Adventure Lab, a mini or proper
+experience targeting `accessible` may keep a fully verified `planned` result
+rather than fail the whole generation over a moderate price. A result above
+USD 100 still requires an eligible `splurge` draw. Splurges remain rare and are
+ineligible for 28 days after one is offered. Treat “too expensive right now” as
+evidence to raise affordable odds, not as dislike of the underlying activity.
+“Save for later” preserves the activity as an aspirational possibility.
 
 Choose an internal basis independently:
 

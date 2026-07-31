@@ -28,7 +28,7 @@ import {
   type AdventureLabBudgetHistoryEntry,
 } from "./adventureLab";
 import {
-  auditChapterBudgetCost,
+  auditAdventureLabBudgetCost,
   CHAPTER_BUDGET_CONTRACTS,
   classifyChapterCost,
 } from "./chapterBudget";
@@ -414,6 +414,7 @@ async function composeDraft(args: {
 async function researchDraft(args: {
   draft: AdventureLabDraftModel;
   homeCity: string;
+  scale: "small" | "mini" | "proper";
   requestedBudgetTier: keyof typeof CHAPTER_BUDGET_CONTRACTS;
   requestId: string;
 }): Promise<{
@@ -436,8 +437,8 @@ async function researchDraft(args: {
     "A chain or franchise branch is allowed when that exact branch supports the action. Do not reject infrastructure merely because the brand has multiple locations; the designed action, not venue obscurity, makes this an experience.",
     "Search across multiple candidate places internally and return the strongest fully proved one, not merely the first or most unusual result.",
     `Start from ${args.homeCity} and respect the experience's stated geography and duration.`,
-    `The pre-drawn budget lane is ${args.requestedBudgetTier}: ${CHAPTER_BUDGET_CONTRACTS[args.requestedBudgetTier].designInstruction}`,
     "Calculate the complete expected personal cost, including booking, admission, required materials or rentals, and necessary non-local travel. Use a conservative normal price rather than a temporary promotional minimum.",
+    "Do not disqualify an otherwise exact real-world match because of its cost. Report the complete actual cost honestly; the application applies its own cost cadence after research.",
     "Prove the exact name, arrival address, current operation, relevant hours or event date, booking method only when advance booking is actually required, and price when a source states it.",
     "Judge only dependencies that the designed action genuinely needs. Do not demand proof of irrelevant negatives such as no companion, no lesson, or no membership when official branch information already proves ordinary walk-in, day-pass, public-session, or booking access for the action.",
     "Set qualification_status to qualified only when the exact named place and every genuinely critical dependency are currently proved. If none qualifies, return no-qualified-result honestly and explain the missing proof; never put 'closest candidate', 'disqualified', or a failure disclaimer inside venue_name.",
@@ -531,7 +532,8 @@ async function researchDraft(args: {
         true,
       );
     }
-    const budgetAudit = auditChapterBudgetCost({
+    const budgetAudit = auditAdventureLabBudgetCost({
+      scale: args.scale,
       requestedTier: args.requestedBudgetTier,
       estimatedTotalUsd: cost.estimated_total_cost_usd,
     });
@@ -647,6 +649,7 @@ export async function craftAdventureLabExperience(args: {
           researched = await researchDraft({
             draft: normalizedDraft,
             homeCity: args.homeCity,
+            scale: contract.scale,
             requestedBudgetTier: contract.budgetTier,
             requestId: args.requestId,
           });

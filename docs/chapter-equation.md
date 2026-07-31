@@ -63,24 +63,28 @@ Cost changes whether a person can realistically say yes; it does not change
 what is familiar or new. Every legal chapter therefore receives a separate
 commitment lane after its scale and equation shape are drawn:
 
-| Lane | Launch ceiling | How it should feel |
+| Lane | Target ceiling | How it should feel |
 | --- | ---: | --- |
 | `accessible` | USD 30 equivalent | Free or cheap enough to do without saving up. |
 | `planned` | USD 100 equivalent | A considered purchase, but not a major event. |
 | `splurge` | USD 250 equivalent | A rare experience worth saving for. |
 
-The ceiling is all-in for one person: booking, admission, required materials
-or rentals, and any travel intrinsic to the experience. Research must prove a
+The target is all-in for one person: booking, admission, required materials or
+rentals, and any travel intrinsic to the experience. Research must prove a
 conservative normal price rather than a temporary promotional minimum.
 
 These lanes have odds and memory. Small activities are always `accessible`.
-Mini adventures usually are; proper adventures are allowed more commitment.
-After a `splurge` is shown, another is ineligible for four weeks. Feedback such
-as “too expensive right now” raises the affordable odds without deleting an
-otherwise good activity, while “save for later” preserves the possibility of a
-future aspirational experience. `lib/chapterBudget.ts` is the executable
-contract currently used by Adventure Lab; the weekly production worker still
-needs to adopt the same persisted draw before this cadence ships to Now.
+Mini adventures usually target that lane, but Adventure Lab may keep a fully
+verified `planned` result rather than fail the whole generation over a moderate
+price. A result above USD 100 still requires an eligible `splurge` draw. After a
+`splurge` is shown, another is ineligible for four weeks. Feedback such as “too
+expensive right now” raises the affordable odds without deleting an otherwise
+good activity, while “save for later” preserves the possibility of a future
+aspirational experience. The design model never invents or promises a price;
+research reports the actual all-in cost and code applies this cadence.
+`lib/chapterBudget.ts` is the executable contract currently used by Adventure
+Lab; the weekly production worker still needs to adopt the same persisted draw
+before this cadence ships to Now.
 
 ---
 

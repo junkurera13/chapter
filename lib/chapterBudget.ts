@@ -146,3 +146,37 @@ export function auditChapterBudgetCost(args: {
   }
   return { valid: true, message: "" };
 }
+
+/**
+ * In the Lab, an affordable draw is a preference for mini and proper
+ * experiences rather than a reason to discard a fully proved moderate-cost
+ * result. Small experiences stay strictly affordable, and a real splurge
+ * still requires the rare splurge draw with its four-week cooldown.
+ */
+export function auditAdventureLabBudgetCost(args: {
+  scale: "small" | "mini" | "proper";
+  requestedTier: ChapterBudgetTier;
+  estimatedTotalUsd: number;
+}) {
+  const actualTier = classifyChapterCost(args.estimatedTotalUsd);
+  const maximum =
+    args.scale === "small"
+      ? CHAPTER_BUDGET_CONTRACTS.accessible.maxTotalUsd
+      : args.requestedTier === "splurge"
+        ? CHAPTER_BUDGET_CONTRACTS.splurge.maxTotalUsd
+        : CHAPTER_BUDGET_CONTRACTS.planned.maxTotalUsd;
+
+  if (
+    !Number.isFinite(args.estimatedTotalUsd) ||
+    args.estimatedTotalUsd < 0 ||
+    args.estimatedTotalUsd > maximum
+  ) {
+    return {
+      valid: false,
+      actualTier,
+      message: `The verified total of USD ${args.estimatedTotalUsd} exceeds this ${args.scale} experience's current ceiling of USD ${maximum}.`,
+    };
+  }
+
+  return { valid: true, actualTier, message: "" };
+}
