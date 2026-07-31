@@ -34,14 +34,12 @@ const TAB_VIEWS = ["you", "now", "together"] as const;
 export default function ChapterApp({
   viewer,
   initialGraph,
-  onConnectPhone,
   initialTab = 0,
   justConnected = false,
   initialWeeklyPackReview,
 }: {
   viewer: AuthenticatedViewer;
   initialGraph: ExperienceGraphRecord;
-  onConnectPhone: () => void;
   initialTab?: ChapterTabIndex;
   /** Arrived here by accepting an invitation moments ago. */
   justConnected?: boolean;
@@ -391,7 +389,6 @@ export default function ChapterApp({
         onChange={changeTab}
         worldLocked={worldLocked}
         viewer={viewer}
-        onConnectPhone={onConnectPhone}
         canReviewNow={canReviewNow}
         onReviewNow={() => changeWeeklyPackReview("sealed")}
       />

@@ -15,7 +15,6 @@ import type { ExperienceGraphRecord } from "@/lib/backendTypes";
 import ChapterLoadingMark from "@/components/chapter-loading-mark";
 
 import ChapterApp from "./ChapterApp";
-import PhoneConnection from "./PhoneConnection";
 import type { ChapterTabIndex } from "./BottomNavigation";
 import type { WeeklyPackReviewState } from "@/lib/weeklyPackPreview";
 import styles from "./AuthGate.module.css";
@@ -40,7 +39,6 @@ export default function AuthGate({
 }) {
   const router = useRouter();
   const [state, setState] = useState<GateState>({ status: "checking" });
-  const [phoneConnectionOpen, setPhoneConnectionOpen] = useState(false);
 
   async function resolveApp() {
     if (!hasBase44Session()) {
@@ -98,22 +96,10 @@ export default function AuthGate({
   }
 
   if (state.status === "ready") {
-    if (!state.viewer.messagingConnected && phoneConnectionOpen) {
-      return (
-        <PhoneConnection
-          viewer={state.viewer}
-          onConnected={(viewer) =>
-            setState({ status: "ready", viewer, graph: state.graph })
-          }
-          onSkip={() => setPhoneConnectionOpen(false)}
-        />
-      );
-    }
     return (
       <ChapterApp
         viewer={state.viewer}
         initialGraph={state.graph}
-        onConnectPhone={() => setPhoneConnectionOpen(true)}
         initialTab={initialTab}
         justConnected={justConnected}
         initialWeeklyPackReview={initialWeeklyPackReview}

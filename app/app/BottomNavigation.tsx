@@ -16,7 +16,6 @@ type BottomNavigationProps = {
   onChange: (index: ChapterTabIndex) => void;
   worldLocked: boolean;
   viewer: AuthenticatedViewer;
-  onConnectPhone: () => void;
   canReviewNow: boolean;
   onReviewNow: () => void;
 };
@@ -26,7 +25,6 @@ export default function BottomNavigation({
   onChange,
   worldLocked,
   viewer,
-  onConnectPhone,
   canReviewNow,
   onReviewNow,
 }: BottomNavigationProps) {
@@ -148,20 +146,6 @@ export default function BottomNavigation({
           <div className={styles.accountMenu} id="chapter-account-menu">
             <p className={styles.accountName}>{viewer.name || "Your account"}</p>
             <p className={styles.accountEmail}>{viewer.email}</p>
-            {viewer.messagingConnected ? (
-              <p className={styles.messagingStatus}>iMessage connected</p>
-            ) : (
-              <button
-                type="button"
-                className={styles.connectPhone}
-                onClick={() => {
-                  setAccountOpen(false);
-                  onConnectPhone();
-                }}
-              >
-                Connect iMessage
-              </button>
-            )}
             {canReviewNow ? (
               <button
                 type="button"
