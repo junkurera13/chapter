@@ -448,7 +448,7 @@ export function parseGroundedNowResearch(args: {
     finding.data.price_note ?? "",
   ].join(" ");
   if (
-    /\b(no qualifying|could not (?:be )?verified|could not verify|not (?:a )?verified|unable to verify|no (?:current |supporting )?(?:proof|evidence) (?:was )?found|best (?:available|documented) candidate,? but)\b/i.test(
+    /\b(no qualifying|could not (?:be )?verified|could not verify|not (?:a )?verified|unable to verify|no (?:current |supporting )?(?:proof|evidence) (?:was )?found|(?:best|closest) (?:available|documented) (?:option|candidate),? but|disqualified)\b/i.test(
       proof,
     )
   ) {

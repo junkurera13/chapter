@@ -10,6 +10,7 @@ import {
   buildAdventureLabGenerationNotes,
   buildAdventureLabReviewPrompt,
   compactAdventureLabPriceNote,
+  compactAdventureLabResearchText,
   drawAdventureLabContract,
   enforceAdventureLabReviewThresholds,
   validateAdventureLabCopy,
@@ -208,6 +209,20 @@ describe("Adventure Lab crafting", () => {
     expect(compact.endsWith("…")).toBe(true);
   });
 
+  it("fits verbose hidden research evidence without cutting mid-sentence", () => {
+    const first = `${"Verified cost evidence ".repeat(12).trim()}.`;
+    const second = `${"Additional conversion evidence ".repeat(12).trim()}.`;
+    const third = `${"Unneeded repetition ".repeat(20).trim()}.`;
+    const compact = compactAdventureLabResearchText(
+      `${first} ${second} ${third}`,
+      600,
+    );
+
+    expect(compact.length).toBeLessThanOrEqual(600);
+    expect(compact.endsWith(".")).toBe(true);
+    expect(compact).not.toContain("Unneeded repetition");
+  });
+
   it("draws only legal solo contracts with a real graph anchor when needed", () => {
     for (let index = 0; index < 30; index += 1) {
       const contract = drawAdventureLabContract(graph(), `seed-${index}`);
@@ -259,7 +274,7 @@ describe("Adventure Lab crafting", () => {
         transformation: 3,
         experienceMechanism: 4,
         storyPotential: 3,
-        researchability: 3,
+        researchability: 4,
         restraintAndTruth: 3,
       },
       strongestQuality:
@@ -276,6 +291,12 @@ describe("Adventure Lab crafting", () => {
       enforceAdventureLabReviewThresholds({
         ...accepted,
         scores: { ...accepted.scores, storyPotential: 2 },
+      }).verdict,
+    ).toBe("reject");
+    expect(
+      enforceAdventureLabReviewThresholds({
+        ...accepted,
+        scores: { ...accepted.scores, researchability: 3 },
       }).verdict,
     ).toBe("reject");
     expect(

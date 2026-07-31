@@ -356,6 +356,27 @@ describe("now schemas", () => {
       }),
     ).toThrow(/did not prove the promised activity/i);
   });
+
+  it("refuses a named branch that research itself marks as disqualified", () => {
+    expect(() =>
+      parseGroundedNowResearch({
+        researchContent: {
+          venue_name:
+            "A real climbing branch — closest documented candidate, but it is disqualified by an inherited venue rule.",
+          venue_area: "Sadang, Seoul",
+          address: "939 Gwacheon-daero, Gwanak-gu, Seoul",
+          why_uncommon:
+            "The place is real, but the research says this result did not qualify.",
+          still_operating_evidence:
+            "A current branch page lists public opening hours.",
+          best_time:
+            "Public hours are listed, but a required first-visit condition was not verified.",
+          price_note: "The exact current branch price could not be verified.",
+        },
+        citations: [{ url: "https://example.com/current-branch" }],
+      }),
+    ).toThrow(/did not prove the promised activity/i);
+  });
 });
 
 describe("buildComposePrompt", () => {

@@ -243,6 +243,25 @@ export function compactAdventureLabPriceNote(value: string) {
   return `${prefix.slice(0, Math.max(lastWordBoundary, 1)).trimEnd()}…`;
 }
 
+/** Keep as many complete sourced sentences as fit in a non-visible audit field. */
+export function compactAdventureLabResearchText(
+  value: string,
+  maximum: number,
+) {
+  const normalized = value.replace(/\s+/gu, " ").trim();
+  if (normalized.length <= maximum) return normalized;
+
+  const prefix = normalized.slice(0, maximum);
+  const sentenceEnds = [...prefix.matchAll(/[.!?](?=\s|$)/gu)];
+  const lastSentenceEnd = sentenceEnds.at(-1)?.index;
+  if (lastSentenceEnd !== undefined && lastSentenceEnd + 1 >= maximum / 4) {
+    return prefix.slice(0, lastSentenceEnd + 1);
+  }
+
+  const shortened = prefix.slice(0, Math.max(prefix.lastIndexOf(" "), 1));
+  return `${shortened.trimEnd()}…`;
+}
+
 const SCALE_WEIGHTS = {
   small: 5,
   mini: 3,
@@ -571,6 +590,7 @@ export function enforceAdventureLabReviewThresholds(
   const rejected =
     review.hardGateFailures.length > 0 ||
     scores.some((score) => score < 3) ||
+    review.scores.researchability < 4 ||
     total < 20;
   return {
     ...review,
@@ -582,7 +602,10 @@ export function describeAdventureLabReviewFailure(
   review: AdventureLabReview,
 ) {
   const lowScores = Object.entries(review.scores)
-    .filter(([, score]) => score < 3)
+    .filter(
+      ([dimension, score]) =>
+        score < 3 || (dimension === "researchability" && score < 4),
+    )
     .map(([dimension, score]) => `${dimension} ${score}/4`);
   const total = Object.values(review.scores).reduce(
     (sum, score) => sum + score,
