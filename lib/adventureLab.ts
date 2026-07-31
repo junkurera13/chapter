@@ -225,6 +225,24 @@ export type AdventureLabDraftModel = z.infer<
 export type AdventureLabReview = z.infer<typeof adventureLabReviewSchema>;
 export type AdventureLabCopy = z.infer<typeof adventureLabCopySchema>;
 
+/**
+ * Parallel may repeat its full sourcing explanation in the visible price
+ * field even though `cost_basis` already carries that detail. Preserve its
+ * first complete factual sentence rather than rejecting an otherwise proved
+ * place for verbose formatting.
+ */
+export function compactAdventureLabPriceNote(value: string) {
+  const normalized = value.replace(/\s+/gu, " ").trim();
+  if (normalized.length <= 300) return normalized;
+
+  const firstSentence = normalized.match(/^.*?[.!?](?=\s|$)/u)?.[0];
+  if (firstSentence && firstSentence.length <= 300) return firstSentence;
+
+  const prefix = normalized.slice(0, 299);
+  const lastWordBoundary = prefix.lastIndexOf(" ");
+  return `${prefix.slice(0, Math.max(lastWordBoundary, 1)).trimEnd()}…`;
+}
+
 const SCALE_WEIGHTS = {
   small: 5,
   mini: 3,

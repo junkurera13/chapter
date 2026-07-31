@@ -9,6 +9,7 @@ import {
   buildAdventureLabPrompt,
   buildAdventureLabGenerationNotes,
   buildAdventureLabReviewPrompt,
+  compactAdventureLabPriceNote,
   drawAdventureLabContract,
   enforceAdventureLabReviewThresholds,
   validateAdventureLabCopy,
@@ -191,6 +192,22 @@ describe("Adventure Lab feedback", () => {
 });
 
 describe("Adventure Lab crafting", () => {
+  it("keeps a concise verified price when research repeats its full cost basis", () => {
+    const concise =
+      "₩15,000 expected total: ₩10,000 for the activity plus ₩5,000 for transport.";
+    const verbose = `${concise} ${"The cited source confirms every part of this estimate. ".repeat(8)}`;
+
+    expect(verbose.length).toBeGreaterThan(300);
+    expect(compactAdventureLabPriceNote(verbose)).toBe(concise);
+  });
+
+  it("safely shortens a price note with no sentence boundary", () => {
+    const compact = compactAdventureLabPriceNote("price ".repeat(100));
+
+    expect(compact.length).toBeLessThanOrEqual(300);
+    expect(compact.endsWith("…")).toBe(true);
+  });
+
   it("draws only legal solo contracts with a real graph anchor when needed", () => {
     for (let index = 0; index < 30; index += 1) {
       const contract = drawAdventureLabContract(graph(), `seed-${index}`);

@@ -16,6 +16,7 @@ import {
   buildAdventureLabCompositionPrompt,
   buildAdventureLabPrompt,
   buildAdventureLabReviewPrompt,
+  compactAdventureLabPriceNote,
   describeAdventureLabReviewFailure,
   drawAdventureLabContract,
   enforceAdventureLabReviewThresholds,
@@ -58,7 +59,7 @@ const ADVENTURE_LAB_MODEL_TIMEOUT_MS = 180_000;
 const ADVENTURE_LAB_RESEARCH_TIMEOUT_MS = 12 * 60_000;
 
 const adventureLabResearchCostSchema = z.object({
-  price_note: z.string().trim().min(1).max(300),
+  price_note: z.string().trim().min(1).max(2_000),
   estimated_total_cost_usd: z.number().min(0).max(10_000),
   cost_basis: z.string().trim().min(10).max(600),
 });
@@ -70,7 +71,7 @@ const ADVENTURE_LAB_RESEARCH_OUTPUT_SCHEMA = {
     price_note: {
       type: "string",
       description:
-        "Complete expected personal cost in the venue's local currency. Include booking, admission, required materials or rentals, and necessary non-local travel. Write 'Free' only when sources prove zero cost.",
+        "One concise sentence under 240 characters giving the complete expected personal cost in the venue's local currency and a short breakdown. Include booking, admission, required materials or rentals, and necessary non-local travel. Put detailed sourcing and conversion work in cost_basis. Write 'Free' only when sources prove zero cost.",
     },
     estimated_total_cost_usd: {
       type: "number",
@@ -444,11 +445,20 @@ async function researchDraft(args: {
         "research",
       );
     }
+    const cost = adventureLabResearchCostSchema.parse(result.content);
+    const researchContent =
+      result.content &&
+      typeof result.content === "object" &&
+      !Array.isArray(result.content)
+        ? {
+            ...result.content,
+            price_note: compactAdventureLabPriceNote(cost.price_note),
+          }
+        : result.content;
     const finding = parseGroundedNowResearch({
-      researchContent: result.content,
+      researchContent,
       citations: result.citations,
     });
-    const cost = adventureLabResearchCostSchema.parse(result.content);
     const budgetAudit = auditChapterBudgetCost({
       requestedTier: args.requestedBudgetTier,
       estimatedTotalUsd: cost.estimated_total_cost_usd,
