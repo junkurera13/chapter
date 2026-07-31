@@ -1,11 +1,7 @@
 import { z } from "zod";
 
 import type { ExperienceGraphRecord } from "./backendTypes";
-import {
-  CHAPTER_BUDGET_TIERS,
-  drawChapterBudgetTier,
-  type ChapterBudgetHistoryEntry,
-} from "./chapterBudget";
+import { CHAPTER_BUDGET_TIERS } from "./chapterBudget";
 import {
   auditChapterShape,
   chooseChapterShape,
@@ -49,17 +45,8 @@ export const adventureLabFeedbackSchema = z.object({
   createdAt: z.number().int().positive(),
 });
 
-export const adventureLabBudgetHistoryEntrySchema = z.object({
-  tier: z.enum(CHAPTER_BUDGET_TIERS),
-  createdAt: z.number().int().positive(),
-});
-
 export const adventureLabRequestSchema = z.object({
   feedback: z.array(adventureLabFeedbackSchema).max(24).default([]),
-  recentBudgets: z
-    .array(adventureLabBudgetHistoryEntrySchema)
-    .max(12)
-    .default([]),
 });
 
 const adventureLabExperienceSchema = z.object({
@@ -68,7 +55,7 @@ const adventureLabExperienceSchema = z.object({
   title: z.string().trim().min(3).max(60),
   budget: z.object({
     tier: z.enum(CHAPTER_BUDGET_TIERS),
-    estimatedTotalUsd: z.number().min(0).max(250),
+    estimatedTotalUsd: z.number().min(0),
     costBasis: z.string().trim().min(3).max(600),
   }),
   format: z.object({
@@ -142,9 +129,6 @@ export type AdventureLabFeedbackTag = z.infer<
 >;
 export type AdventureLabBatch = z.infer<typeof adventureLabBatchSchema>;
 export type AdventureLabExperience = AdventureLabBatch["experiences"][number];
-export type AdventureLabBudgetHistoryEntry = z.infer<
-  typeof adventureLabBudgetHistoryEntrySchema
->;
 
 export const adventureLabContractSchema = z.object({
   scale: z.enum(WEEKLY_PACK_SCALES),
@@ -156,7 +140,6 @@ export const adventureLabContractSchema = z.object({
   contextDimension: z
     .enum(["activity", "place", "interest"])
     .nullable(),
-  budgetTier: z.enum(CHAPTER_BUDGET_TIERS),
 });
 
 export const adventureLabDraftModelSchema = z.object({
@@ -184,36 +167,6 @@ export const adventureLabDraftModelSchema = z.object({
   researchObjective: z.string(),
 });
 
-export const adventureLabReviewModelSchema = z.object({
-  hardGateFailures: z.array(z.string()),
-  scores: z.object({
-    recognition: z.number(),
-    transformation: z.number(),
-    experienceMechanism: z.number(),
-    storyPotential: z.number(),
-    researchability: z.number(),
-    restraintAndTruth: z.number(),
-  }),
-  strongestQuality: z.string(),
-  revisionPriority: z.string(),
-  verdict: z.enum(["accept", "reject"]),
-});
-
-export const adventureLabReviewSchema = z.object({
-  hardGateFailures: z.array(z.string().trim().min(3).max(300)),
-  scores: z.object({
-    recognition: z.number().int().min(0).max(4),
-    transformation: z.number().int().min(0).max(4),
-    experienceMechanism: z.number().int().min(0).max(4),
-    storyPotential: z.number().int().min(0).max(4),
-    researchability: z.number().int().min(0).max(4),
-    restraintAndTruth: z.number().int().min(0).max(4),
-  }),
-  strongestQuality: z.string().trim().min(10).max(400),
-  revisionPriority: z.string().trim().min(10).max(400),
-  verdict: z.enum(["accept", "reject"]),
-});
-
 export const adventureLabCopyModelSchema = z.object({
   title: z.string(),
   experiencePromise: z.string(),
@@ -232,7 +185,6 @@ export type AdventureLabContract = z.infer<
 export type AdventureLabDraftModel = z.infer<
   typeof adventureLabDraftModelSchema
 >;
-export type AdventureLabReview = z.infer<typeof adventureLabReviewSchema>;
 export type AdventureLabCopy = z.infer<typeof adventureLabCopySchema>;
 
 const WORLD_FAMILIAR_THREADS: Record<
@@ -247,6 +199,28 @@ const WORLD_FAMILIAR_THREADS: Record<
     "One deliberately planned solo day with a clear shape and purpose.",
 };
 
+const DEFAULT_DURATION_BY_SCALE = {
+  small: { min: 45, max: 75 },
+  mini: { min: 150, max: 210 },
+  proper: { min: 300, max: 540 },
+} as const;
+
+function durationFitsScale(
+  duration: AdventureLabDraftModel["format"]["durationMinutes"],
+  scale: AdventureLabContract["scale"],
+) {
+  if (
+    !Number.isInteger(duration.min) ||
+    !Number.isInteger(duration.max) ||
+    duration.min > duration.max
+  ) {
+    return false;
+  }
+  if (scale === "small") return duration.min >= 30 && duration.max <= 90;
+  if (scale === "mini") return duration.min >= 120 && duration.max <= 240;
+  return duration.min >= 240 && duration.max <= 720;
+}
+
 /**
  * World-led chapters are familiar through access and legibility, never
  * because Chapter pretends the new activity already belongs to the person.
@@ -255,8 +229,60 @@ export function normalizeAdventureLabDraft(
   draft: AdventureLabDraftModel,
   contract: AdventureLabContract,
 ) {
+  const duration = durationFitsScale(
+    draft.format.durationMinutes,
+    contract.scale,
+  )
+    ? draft.format.durationMinutes
+    : DEFAULT_DURATION_BY_SCALE[contract.scale];
+  const format =
+    contract.scale === "small"
+      ? {
+          ...draft.format,
+          structure: "single-action" as const,
+          effort:
+            draft.format.effort === "spontaneous"
+              ? ("spontaneous" as const)
+              : ("lightly-planned" as const),
+          geography:
+            draft.format.geography === "neighbourhood"
+              ? ("neighbourhood" as const)
+              : ("city" as const),
+          durationMinutes: duration,
+        }
+      : contract.scale === "mini"
+        ? {
+            ...draft.format,
+            structure:
+              draft.format.structure === "single-action"
+                ? ("single-action" as const)
+                : ("destination" as const),
+            effort:
+              draft.format.effort === "spontaneous"
+                ? ("spontaneous" as const)
+                : ("lightly-planned" as const),
+            geography:
+              draft.format.geography === "neighbourhood"
+                ? ("neighbourhood" as const)
+                : ("city" as const),
+            durationMinutes: duration,
+          }
+        : {
+            ...draft.format,
+            structure:
+              draft.format.structure === "sequence"
+                ? ("sequence" as const)
+                : ("journey" as const),
+            effort: "deliberately-planned" as const,
+            geography:
+              draft.format.geography === "beyond-city"
+                ? ("beyond-city" as const)
+                : ("city" as const),
+            durationMinutes: duration,
+          };
   return {
     ...draft,
+    format,
     familiarThread:
       contract.basis === "world"
         ? WORLD_FAMILIAR_THREADS[contract.scale]
@@ -341,11 +367,6 @@ function graphAnchorDimensions(graph: ExperienceGraphRecord) {
 export function drawAdventureLabContract(
   graph: ExperienceGraphRecord,
   seed: string,
-  options: {
-    feedback?: readonly AdventureLabFeedback[];
-    recentBudgets?: readonly ChapterBudgetHistoryEntry[];
-    nowMs?: number;
-  } = {},
 ): AdventureLabContract {
   const random = seededChapterRandom(seed);
   const anchorCandidates = graphAnchorDimensions(graph);
@@ -365,21 +386,12 @@ export function drawAdventureLabContract(
     );
   }
   const scale = weightedScale(random);
-  const latestFeedback = options.feedback?.at(-1);
   return adventureLabContractSchema.parse({
     scale,
     basis,
     anchorDimension: shape.anchor ?? null,
     twistDimension: shape.twist,
     contextDimension: shape.context ?? null,
-    budgetTier: drawChapterBudgetTier({
-      scale,
-      random,
-      recentBudgets: options.recentBudgets,
-      nowMs: options.nowMs,
-      preferAffordable: latestFeedback?.tags.includes("too-expensive-now"),
-      preserveAspirational: latestFeedback?.tags.includes("save-for-later"),
-    }),
   });
 }
 
@@ -417,7 +429,7 @@ export function buildAdventureLabPrompt(args: {
       : [];
   const format =
     args.contract.scale === "small"
-      ? "30-90 minutes; one spontaneous action; neighbourhood or nearby city"
+      ? "30-90 minutes; one compact action; neighbourhood or city; walk-in access or one simple public booking"
       : args.contract.scale === "mini"
         ? "2-4 hours; one destination or activity with at most one natural beat"
         : "4-12 hours; a coherent journey or short sequence worth planning";
@@ -474,7 +486,7 @@ export function buildAdventureLabPrompt(args: {
     "- Spend the main leap only on twistDimension. The optional contextDimension, when present, must support the same action without adding another independent burden.",
     "- Write experiencePromise as the complete invitation in plain language. It should be specific enough that a person can honestly say yes or no.",
     `- Write researchObjective as instructions to find one exact real place in or reachable from ${args.homeCity} where the designed action can genuinely happen.`,
-    "- The research objective must require the exact venue or event name, full arrival address, current operating evidence, relevant opening or event time, booking method when needed, price when available, and sources.",
+    "- The research objective must require the exact venue, event, or route name; a verified practical arrival point; current operating evidence; relevant opening or event time; booking method when needed; price when available; and sources. A route may use a sourced station, trailhead, landmark, or coordinates rather than a building address.",
     "- It must also require the complete expected personal cost in local currency and its current USD equivalent. Research reports the truth; the application decides whether the cost is suitable.",
     "- Research must preserve the designed action. If no real current place supports it, the candidate must fail rather than being replaced with a plausible substitute.",
     "",
@@ -544,10 +556,13 @@ export function auditAdventureLabDraft(args: {
   if (
     contract.scale === "small" &&
     (draft.format.structure !== "single-action" ||
-      draft.format.effort !== "spontaneous" ||
+      draft.format.effort === "deliberately-planned" ||
       draft.format.geography === "beyond-city")
   ) {
-    add("SMALL_FORMAT", "A small adventure must stay spontaneous and compact.");
+    add(
+      "SMALL_FORMAT",
+      "A small adventure must stay compact and require at most one simple booking.",
+    );
   }
   if (
     contract.scale === "proper" &&
@@ -638,106 +653,6 @@ export function auditAdventureLabDraft(args: {
   return { valid: issues.length === 0, issues };
 }
 
-export function enforceAdventureLabReviewThresholds(
-  review: AdventureLabReview,
-): AdventureLabReview {
-  const scores = Object.values(review.scores);
-  const total = scores.reduce((sum, score) => sum + score, 0);
-  // This is a pre-research review. A 3 means the action is credibly
-  // researchable; live research, not the editor's guess, settles the facts.
-  const rejected =
-    review.hardGateFailures.length > 0 ||
-    scores.some((score) => score < 3) ||
-    total < 20;
-  return {
-    ...review,
-    verdict: rejected ? "reject" : "accept",
-  };
-}
-
-export function describeAdventureLabReviewFailure(
-  review: AdventureLabReview,
-) {
-  const lowScores = Object.entries(review.scores)
-    .filter(([, score]) => score < 3)
-    .map(([dimension, score]) => `${dimension} ${score}/4`);
-  const total = Object.values(review.scores).reduce(
-    (sum, score) => sum + score,
-    0,
-  );
-  return [
-    ...review.hardGateFailures,
-    ...lowScores,
-    ...(total < 20 ? [`total ${total}/24`] : []),
-    `Editor priority: ${review.revisionPriority}`,
-  ].join("; ");
-}
-
-export function buildAdventureLabReviewPrompt(args: {
-  draft: AdventureLabDraftModel;
-  contract: AdventureLabContract;
-  graph: ExperienceGraphRecord;
-  homeCity: string;
-}) {
-  const graphNodes =
-    args.contract.basis === "graph"
-      ? args.graph.nodes
-          .filter(
-            (node) =>
-              node.category === "place" ||
-              node.category === "activity" ||
-              node.category === "interest",
-          )
-          .map((node) => ({
-            id: node.id,
-            category: node.category,
-            label: node.label,
-            description: node.description,
-          }))
-      : [];
-  const experienceContract = {
-    scale: args.contract.scale,
-    basis: args.contract.basis,
-    anchorDimension: args.contract.anchorDimension,
-    twistDimension: args.contract.twistDimension,
-    contextDimension: args.contract.contextDimension,
-  };
-  return [
-    "Act as a strict Chapter experience editor. Judge one pre-research adventure; do not rewrite it and do not reward polished prose.",
-    "",
-    "THIS REVIEW HAPPENS BEFORE LIVE RESEARCH",
-    "- The draft must not contain a venue, event, address, schedule, price, or claim of current availability yet.",
-    `- Judge whether the designed action can realistically be researched in or from ${args.homeCity}. Do not reject it merely because research has not supplied the location yet.`,
-    "",
-    "HARD GATES",
-    "- It follows the supplied Chapter contract: a familiar anchor, one unfamiliar twist, and at most one subordinate unfamiliar context.",
-    "- It contains no invented biography, preference, feeling, relationship, venue, event, logistics, or availability.",
-    args.contract.basis === "world"
-      ? "- Its familiarThread is only an ordinary access frame. It does not repeat the proposed activity or imply that the activity comes from the person's history."
-      : "- Its familiarThread is supported only by the selected real graph anchors and does not relabel the new twist as familiar.",
-    "- It is a real participatory experience, not a recommendation, generic outing, normal purchase, meal, or venue with decorative instructions.",
-    "- Its mechanism creates real access, skill, making, service, movement, performance, or discovery. Arbitrary counts, ordering sequences, journaling, documenting, rating, photographing evidence, passive noticing, or role-playing as a critic or investigator all fail.",
-    "- It does not depend on a worker granting an unadvertised interview, lesson, tasting, demonstration, conversation, or special access.",
-    "- An established public format could plausibly support the exact action without redesigning it.",
-    "- The exact action is expressed at the level a provider publicly advertises. Reject invented lesson choreography, correction rounds, item counts, material variants, finishing or firing outcomes, take-home promises, or combinations of separate formats unless they are intrinsic to one established public format.",
-    "Any hard-gate failure means rejection. Name the concrete field and reason.",
-    "",
-    "SCORING: use integers from 0-4.",
-    "- recognition: truthful use of the supplied familiar frame, or immediate local legibility for a world-led draft.",
-    "- transformation: the familiar frame becomes a genuinely different way of living, not the same noun in a new place.",
-    "- experienceMechanism: the person does something intrinsically worthwhile with real structure and stakes.",
-    "- storyPotential: completing it would leave a concrete memory, skill, object, contribution, threshold crossed, or story.",
-    "- researchability: the exact action is clear and the objective can prove one current place without substituting a weaker activity.",
-    "- restraintAndTruth: no invented meaning, fake specificity, second novelty, inflated effort, or self-conscious performance.",
-    "The adventure passes only with at least 3 in every dimension and at least 20/24 overall.",
-    "Return a concise review. strongestQuality and revisionPriority must each be one short, concrete sentence.",
-    "",
-    `CONTRACT: ${JSON.stringify(experienceContract)}`,
-    `AVAILABLE GRAPH NODES: ${JSON.stringify(graphNodes)}`,
-    `DRAFT: ${JSON.stringify(args.draft)}`,
-  ].join("\n");
-}
-
 export function buildAdventureLabCompositionPrompt(args: {
   draft: AdventureLabDraftModel;
   place: AdventureLabExperience["place"];
@@ -817,7 +732,7 @@ export function buildAdventureLabGenerationNotes(
   feedback: readonly AdventureLabFeedback[],
 ) {
   const notes = [
-    "This is the rapid Adventure Lab. Design first without inventing logistics; a separate live research stage will supply the exact place and address before the adventure reaches the reviewer.",
+    "This is the rapid Adventure Lab. Design first without inventing logistics; a separate live research stage will supply the exact place and arrival details before anything is shown.",
     "Make the human action concrete enough to judge without external logistics. A generic or imaginary setting is not allowed to carry the idea.",
     "Keep every card solo. The lab has no confirmed person attached to an experience.",
   ];

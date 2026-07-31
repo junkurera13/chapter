@@ -115,28 +115,10 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     }
-    const hasUsableAnchor = graph.nodes.some(
-      (node) =>
-        node.category === "place" ||
-        node.category === "activity" ||
-        node.category === "interest",
-    );
-    if (!hasUsableAnchor) {
-      return Response.json(
-        {
-          error:
-            "Add one memory about a place, activity, or interest before using the lab.",
-          code: "ADVENTURE_LAB_MEMORY_REQUIRED",
-        },
-        { status: 409 },
-      );
-    }
-
     const crafted = await craftAdventureLabExperience({
       graph,
       homeCity: now.homeCity,
       feedback: payload.data.feedback,
-      recentBudgets: payload.data.recentBudgets,
       requestId,
     });
 

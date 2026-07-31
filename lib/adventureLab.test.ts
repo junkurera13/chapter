@@ -8,11 +8,9 @@ import {
   buildAdventureLabCompositionPrompt,
   buildAdventureLabPrompt,
   buildAdventureLabGenerationNotes,
-  buildAdventureLabReviewPrompt,
   compactAdventureLabPriceNote,
   compactAdventureLabResearchText,
   drawAdventureLabContract,
-  enforceAdventureLabReviewThresholds,
   normalizeAdventureLabDraft,
   validateAdventureLabCopy,
   type AdventureLabFeedback,
@@ -131,7 +129,7 @@ describe("Adventure Lab feedback", () => {
     const notes = buildAdventureLabGenerationNotes([]);
 
     expect(notes.join("\n")).toContain(
-      "a separate live research stage will supply the exact place and address",
+      "a separate live research stage will supply the exact place and arrival details",
     );
     expect(notes.join("\n")).toContain("Keep every card solo");
     expect(notes.join("\n")).toContain("human action concrete");
@@ -193,16 +191,8 @@ describe("Adventure Lab feedback", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts recent cost history but remains compatible with old requests", () => {
-    expect(adventureLabRequestSchema.parse({})).toEqual({
-      feedback: [],
-      recentBudgets: [],
-    });
-    expect(
-      adventureLabRequestSchema.parse({
-        recentBudgets: [{ tier: "splurge", createdAt: 1_800_000_000_000 }],
-      }).recentBudgets,
-    ).toEqual([{ tier: "splurge", createdAt: 1_800_000_000_000 }]);
+  it("keeps an empty lab request simple", () => {
+    expect(adventureLabRequestSchema.parse({})).toEqual({ feedback: [] });
   });
 });
 
@@ -214,7 +204,6 @@ describe("Adventure Lab crafting", () => {
       anchorDimension: null,
       twistDimension: "activity",
       contextDimension: null,
-      budgetTier: "accessible",
     };
     const draft = validDraft(contract);
     const normalized = normalizeAdventureLabDraft(
@@ -230,14 +219,51 @@ describe("Adventure Lab crafting", () => {
     expect(normalized.familiarThread).not.toMatch(/ceramic|clay/i);
   });
 
-  it("preserves a graph-led familiar explanation for independent review", () => {
+  it("assigns compact format labels instead of rejecting a usable small idea", () => {
+    const contract: AdventureLabContract = {
+      scale: "small",
+      basis: "world",
+      anchorDimension: null,
+      twistDimension: "activity",
+      contextDimension: null,
+    };
+    const draft = validDraft(contract);
+    const normalized = normalizeAdventureLabDraft(
+      {
+        ...draft,
+        format: {
+          ...draft.format,
+          structure: "destination",
+          effort: "deliberately-planned",
+          geography: "beyond-city",
+          durationMinutes: { min: 120, max: 180 },
+        },
+      },
+      contract,
+    );
+
+    expect(normalized.format).toMatchObject({
+      structure: "single-action",
+      effort: "lightly-planned",
+      geography: "city",
+      durationMinutes: { min: 45, max: 75 },
+    });
+    expect(
+      auditAdventureLabDraft({
+        draft: normalized,
+        contract,
+        graph: graph(),
+      }).valid,
+    ).toBe(true);
+  });
+
+  it("preserves a graph-led familiar explanation for research", () => {
     const contract: AdventureLabContract = {
       scale: "small",
       basis: "graph",
       anchorDimension: "activity",
       twistDimension: "interest",
       contextDimension: null,
-      budgetTier: "accessible",
     };
     const draft = validDraft(contract);
 
@@ -304,9 +330,7 @@ describe("Adventure Lab crafting", () => {
 
     expect(prompt).toContain("Craft exactly one");
     expect(prompt).toContain("Do not choose, name, or imply a specific venue");
-    expect(prompt).toContain(
-      "The research objective must require the exact venue or event name",
-    );
+    expect(prompt).toContain("a verified practical arrival point");
     expect(prompt).not.toContain("Budget lane:");
     expect(prompt).not.toContain("budgetTier");
     expect(prompt).toContain("Research reports the truth");
@@ -316,71 +340,6 @@ describe("Adventure Lab crafting", () => {
     expect(prompt).toContain("untrusted editorial observations");
     expect(prompt).not.toContain('"label":"Film"');
     expect(prompt).not.toContain('"label":"Riverside walks"');
-  });
-
-  it("gives the independent editor the concrete anti-larp gates", () => {
-    const contract = drawAdventureLabContract(graph(), "review-seed");
-    const prompt = buildAdventureLabReviewPrompt({
-      draft: validDraft(contract),
-      contract,
-      graph: graph(),
-      homeCity: "Seoul",
-    });
-
-    expect(prompt).toContain("normal purchase, meal");
-    expect(prompt).toContain("passive noticing");
-    expect(prompt).toContain("unadvertised interview");
-    expect(prompt).toContain("invented lesson choreography");
-    expect(prompt).toContain("BEFORE LIVE RESEARCH");
-    expect(prompt).not.toContain("budgetTier");
-    expect(prompt).not.toContain('"label":"Film"');
-  });
-
-  it("cannot accept a review with a weak score or hard-gate failure", () => {
-    const accepted = {
-      hardGateFailures: [],
-      scores: {
-        recognition: 4,
-        transformation: 3,
-        experienceMechanism: 4,
-        storyPotential: 3,
-        researchability: 4,
-        restraintAndTruth: 3,
-      },
-      strongestQuality:
-        "The repair leaves the person with a real skill and restored object.",
-      revisionPriority:
-        "Keep the activity concrete when live research supplies the place.",
-      verdict: "accept" as const,
-    };
-
-    expect(enforceAdventureLabReviewThresholds(accepted).verdict).toBe(
-      "accept",
-    );
-    expect(
-      enforceAdventureLabReviewThresholds({
-        ...accepted,
-        scores: { ...accepted.scores, storyPotential: 2 },
-      }).verdict,
-    ).toBe("reject");
-    expect(
-      enforceAdventureLabReviewThresholds({
-        ...accepted,
-        scores: { ...accepted.scores, researchability: 3 },
-      }).verdict,
-    ).toBe("accept");
-    expect(
-      enforceAdventureLabReviewThresholds({
-        ...accepted,
-        scores: { ...accepted.scores, researchability: 2 },
-      }).verdict,
-    ).toBe("reject");
-    expect(
-      enforceAdventureLabReviewThresholds({
-        ...accepted,
-        hardGateFailures: ["The mechanism is an ordinary purchase."],
-      }).verdict,
-    ).toBe("reject");
   });
 
   it("makes final copy name the proved place without adding a new experience", () => {
@@ -454,7 +413,6 @@ describe("Adventure Lab crafting", () => {
       anchorDimension: null,
       twistDimension: "activity",
       contextDimension: null,
-      budgetTier: "accessible",
     };
     const draft = validDraft(contract);
     const audit = auditAdventureLabDraft({
@@ -484,7 +442,6 @@ describe("Adventure Lab crafting", () => {
       anchorDimension: null,
       twistDimension: "interest",
       contextDimension: null,
-      budgetTier: "accessible",
     };
     const draft = validDraft(contract);
     const audit = auditAdventureLabDraft({
@@ -514,7 +471,6 @@ describe("Adventure Lab crafting", () => {
       anchorDimension: "place",
       twistDimension: "interest",
       contextDimension: null,
-      budgetTier: "planned",
     };
     const draft = validDraft(contract);
     const audit = auditAdventureLabDraft({
@@ -547,7 +503,6 @@ describe("Adventure Lab crafting", () => {
       anchorDimension: null,
       twistDimension: "place",
       contextDimension: null,
-      budgetTier: "accessible",
     };
     const draft = validDraft(contract);
     const audit = auditAdventureLabDraft({

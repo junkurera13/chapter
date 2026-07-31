@@ -1,0 +1,31 @@
+.page {
+  height: 100svh;
+  overflow-y: auto;
+  background: #fff;
+  overscroll-behavior-y: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+
+.page::-webkit-scrollbar {
+  display: none;
+}
+
+.frame {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  padding: 2rem;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+@media (max-width: 383px) {
+  .frame {
+    padding: 1.5rem;
+  }
+
+  .frame > * {
+    width: calc(100vw - 3rem);
+  }
+}

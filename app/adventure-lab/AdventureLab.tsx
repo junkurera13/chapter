@@ -6,23 +6,19 @@ import { useMemo, useState } from "react";
 
 import ChapterLoadingMark from "@/components/chapter-loading-mark";
 import {
-  adventureLabBudgetHistoryEntrySchema,
   adventureLabBatchSchema,
   adventureLabFeedbackSchema,
   type AdventureLabBatch,
-  type AdventureLabBudgetHistoryEntry,
   type AdventureLabFeedback,
   type AdventureLabFeedbackTag,
   type AdventureLabExperience,
 } from "@/lib/adventureLab";
-import { compactChapterBudgetHistory } from "@/lib/chapterBudget";
 
 import styles from "./page.module.css";
 
 type LabPhase = "idle" | "crafting" | "ready" | "error";
 
 const FEEDBACK_STORAGE_KEY = "chapter:adventure-lab:feedback:v1";
-const BUDGET_STORAGE_KEY = "chapter:adventure-lab:budget-history:v1";
 const MAX_STORED_FEEDBACK = 24;
 
 const FEEDBACK_OPTIONS: Array<{
@@ -90,31 +86,6 @@ function storeFeedback(feedback: readonly AdventureLabFeedback[]) {
   );
 }
 
-function readBudgetHistory() {
-  try {
-    const raw = window.localStorage.getItem(BUDGET_STORAGE_KEY);
-    if (!raw) return [];
-    const value = JSON.parse(raw) as unknown;
-    const parsed = adventureLabBudgetHistoryEntrySchema
-      .array()
-      .safeParse(value);
-    if (parsed.success) return compactChapterBudgetHistory(parsed.data);
-  } catch {
-    // Invalid local history should never stop a new generation.
-  }
-  window.localStorage.removeItem(BUDGET_STORAGE_KEY);
-  return [];
-}
-
-function storeBudgetHistory(
-  history: readonly AdventureLabBudgetHistoryEntry[],
-) {
-  window.localStorage.setItem(
-    BUDGET_STORAGE_KEY,
-    JSON.stringify(compactChapterBudgetHistory(history)),
-  );
-}
-
 function durationLabel(experience: AdventureLabExperience) {
   const { min, max } = experience.format.durationMinutes;
   const render = (minutes: number) => {
@@ -173,10 +144,7 @@ function feedbackForChat(feedback: readonly AdventureLabFeedback[]) {
   ].join("\n");
 }
 
-async function requestBatch(
-  feedback: readonly AdventureLabFeedback[],
-  recentBudgets: readonly AdventureLabBudgetHistoryEntry[],
-) {
+async function requestBatch(feedback: readonly AdventureLabFeedback[]) {
   const accessToken = await getAccessToken();
   if (!accessToken) throw new Error("Open Chapter and sign in first.");
 
@@ -187,7 +155,7 @@ async function requestBatch(
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ feedback, recentBudgets }),
+    body: JSON.stringify({ feedback }),
   });
   const payload = (await response.json().catch(() => ({}))) as {
     value?: unknown;
@@ -242,15 +210,7 @@ export default function AdventureLab() {
     setMessage("");
     setCopied(false);
     try {
-      const budgetHistory = readBudgetHistory();
-      const nextBatch = await requestBatch(feedback, budgetHistory);
-      storeBudgetHistory([
-        ...budgetHistory,
-        ...nextBatch.experiences.map((candidate) => ({
-          tier: candidate.budget.tier,
-          createdAt: nextBatch.createdAt,
-        })),
-      ]);
+      const nextBatch = await requestBatch(feedback);
       setBatch(nextBatch);
       setExperienceIndex(0);
       resetResponse();

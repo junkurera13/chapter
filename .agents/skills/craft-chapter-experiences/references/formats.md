@@ -30,7 +30,7 @@ Promise: "I could actually do this soon."
 - Duration: roughly 30–90 minutes.
 - Structure: one sharp action or compact ritual.
 - Geography: normally neighbourhood or nearby city.
-- Effort: spontaneous; avoid complicated booking.
+- Effort: walk-in or one simple public booking; avoid complicated planning.
 - Cost: low enough that accepting does not require deliberation.
 - Failure: a generic errand, ordinary meal, or trivialised version of a larger
   experience.
@@ -99,13 +99,13 @@ Draw `accessible`, `planned`, or `splurge` before design, but do not give the
 design model an exact price to invent around. Research proves the actual all-in
 cost for one person and code applies the cadence afterward.
 
-Small experiences are always accessible. In Adventure Lab, a mini or proper
-experience targeting `accessible` may keep a fully verified `planned` result
-rather than fail the whole generation over a moderate price. A result above
-USD 100 still requires an eligible `splurge` draw. Splurges remain rare and are
-ineligible for 28 days after one is offered. Treat “too expensive right now” as
-evidence to raise affordable odds, not as dislike of the underlying activity.
-“Save for later” preserves the activity as an aspirational possibility.
+Small experiences are always accessible in the shipped product contract, and
+splurges remain rare and ineligible for 28 days after one is offered. Adventure
+Lab is an evaluation surface: it reports the researched all-in price but does
+not reject an otherwise grounded experience because of cost. Treat “too
+expensive right now” as feedback on future cost odds, not as dislike of the
+underlying activity. “Save for later” preserves the activity as an aspirational
+possibility.
 
 Choose an internal basis independently:
 

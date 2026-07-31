@@ -10,28 +10,18 @@ import {
   adventureLabCopyModelSchema,
   adventureLabCopySchema,
   adventureLabDraftModelSchema,
-  adventureLabReviewModelSchema,
-  adventureLabReviewSchema,
   auditAdventureLabDraft,
   buildAdventureLabCompositionPrompt,
   buildAdventureLabPrompt,
-  buildAdventureLabReviewPrompt,
   compactAdventureLabPriceNote,
   compactAdventureLabResearchText,
-  describeAdventureLabReviewFailure,
   drawAdventureLabContract,
-  enforceAdventureLabReviewThresholds,
   normalizeAdventureLabDraft,
   validateAdventureLabCopy,
   type AdventureLabDraftModel,
   type AdventureLabFeedback,
-  type AdventureLabBudgetHistoryEntry,
 } from "./adventureLab";
-import {
-  auditAdventureLabBudgetCost,
-  CHAPTER_BUDGET_CONTRACTS,
-  classifyChapterCost,
-} from "./chapterBudget";
+import { classifyChapterCost } from "./chapterBudget";
 import {
   NOW_RESEARCH_OUTPUT_SCHEMA,
   type NowResearchFinding,
@@ -45,18 +35,6 @@ import {
 const ADVENTURE_LAB_MODEL =
   process.env.CHAPTER_ADVENTURE_LAB_MODEL ||
   "openai/gpt-5.6-terra";
-const ADVENTURE_LAB_REVIEW_MODEL =
-  process.env.CHAPTER_ADVENTURE_LAB_REVIEW_MODEL ||
-  ADVENTURE_LAB_MODEL;
-const ADVENTURE_LAB_COMPOSITION_MODEL =
-  process.env.CHAPTER_ADVENTURE_LAB_COMPOSITION_MODEL ||
-  "openai/gpt-5.6-luna";
-const ADVENTURE_LAB_FALLBACK_MODEL =
-  process.env.CHAPTER_ADVENTURE_LAB_FALLBACK_MODEL ||
-  "google/gemini-3.1-flash-lite";
-const ADVENTURE_LAB_SECONDARY_FALLBACK_MODEL =
-  process.env.CHAPTER_ADVENTURE_LAB_SECONDARY_FALLBACK_MODEL ||
-  "moonshotai/kimi-k2.6";
 const ADVENTURE_LAB_MODEL_TIMEOUT_MS = 180_000;
 const ADVENTURE_LAB_RESEARCH_TIMEOUT_MS = 12 * 60_000;
 const ADVENTURE_LAB_MAX_RESEARCH_ATTEMPTS = 3;
@@ -65,7 +43,7 @@ const adventureLabResearchCostSchema = z.object({
   qualification_status: z.enum(["qualified", "no-qualified-result"]),
   qualification_note: z.string().trim().min(1).max(10_000),
   price_note: z.string().trim().min(1).max(10_000),
-  estimated_total_cost_usd: z.number().min(0).max(10_000),
+  estimated_total_cost_usd: z.number().min(0),
   cost_basis: z.string().trim().min(10).max(10_000),
 });
 
@@ -88,6 +66,11 @@ const ADVENTURE_LAB_RESEARCH_OUTPUT_SCHEMA = {
       type: "string",
       description:
         "Exact name of the single real, currently operating branch, venue, event, route, or provider that supports the designed action. A chain or franchise branch is allowed when that exact branch genuinely supports the action; never disqualify a place merely because its brand has other locations.",
+    },
+    address: {
+      type: "string",
+      description:
+        "A verified practical arrival point. For a building, use its full street address. For a route or outdoor area, use a sourced trailhead, station exit, named landmark, or coordinates; do not require the route to designate one mandatory official start.",
     },
     why_uncommon: {
       type: "string",
@@ -174,15 +157,6 @@ function modelTuning(modelId: string, temperature: number) {
   return modelId.startsWith("openai/") ? {} : { temperature };
 }
 
-function fallbackModels(primary: string) {
-  return [
-    ...new Set([
-      ADVENTURE_LAB_FALLBACK_MODEL,
-      ADVENTURE_LAB_SECONDARY_FALLBACK_MODEL,
-    ]),
-  ].filter((modelId) => modelId !== primary);
-}
-
 async function generateDraft(args: {
   modelId: string;
   prompt: string;
@@ -232,91 +206,6 @@ async function generateDraft(args: {
   }
 }
 
-async function reviewDraft(args: {
-  draft: AdventureLabDraftModel;
-  contract: ReturnType<typeof drawAdventureLabContract>;
-  graph: ExperienceGraphRecord;
-  homeCity: string;
-  requestId: string;
-}) {
-  const failures: string[] = [];
-  for (const modelId of [
-    ADVENTURE_LAB_REVIEW_MODEL,
-    ...fallbackModels(ADVENTURE_LAB_REVIEW_MODEL),
-  ]) {
-    const startedAt = Date.now();
-    try {
-      const result = await generateText({
-        model: openrouter(
-          modelId,
-          modelSettings(modelId, reasoningEffortFor(modelId)),
-        ),
-        messages: [
-          {
-            role: "user",
-            content: buildAdventureLabReviewPrompt(args),
-          },
-        ],
-        output: Output.object({
-          name: "adventure_lab_review",
-          description:
-            "A strict independent editorial review of one pre-research Chapter adventure.",
-          schema: adventureLabReviewModelSchema,
-        }),
-        ...modelTuning(modelId, 0.15),
-        maxOutputTokens: 3_000,
-        maxRetries: 0,
-        timeout: { totalMs: ADVENTURE_LAB_MODEL_TIMEOUT_MS },
-      });
-      const modelReview = adventureLabReviewModelSchema.parse(result.output);
-      const review = enforceAdventureLabReviewThresholds(
-        adventureLabReviewSchema.parse({
-          ...modelReview,
-          hardGateFailures: modelReview.hardGateFailures.map((failure) =>
-            compactAdventureLabResearchText(failure, 300),
-          ),
-          strongestQuality: compactAdventureLabResearchText(
-            modelReview.strongestQuality,
-            400,
-          ),
-          revisionPriority: compactAdventureLabResearchText(
-            modelReview.revisionPriority,
-            400,
-          ),
-        }),
-      );
-      console.info(
-        [
-          "[adventure-lab:review] completed",
-          `requestId=${args.requestId}`,
-          `model=${modelId}`,
-          `elapsedMs=${Date.now() - startedAt}`,
-          `verdict=${review.verdict}`,
-          `scores=${JSON.stringify(review.scores)}`,
-        ].join(" "),
-      );
-      return { review, modelId };
-    } catch (error) {
-      const message =
-        error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-      failures.push(`${modelId}: ${message}`);
-      console.warn(
-        [
-          "[adventure-lab:review] failed",
-          `requestId=${args.requestId}`,
-          `model=${modelId}`,
-          `elapsedMs=${Date.now() - startedAt}`,
-          `error=${message}`,
-        ].join(" "),
-      );
-    }
-  }
-  throw new AdventureLabGenerationError(
-    `No model produced a valid independent review. ${failures.join(" | ")}`,
-    "provider",
-  );
-}
-
 async function composeDraft(args: {
   draft: AdventureLabDraftModel;
   place: {
@@ -332,10 +221,7 @@ async function composeDraft(args: {
 }) {
   const failures: string[] = [];
   let correction = "";
-  for (const modelId of [
-    ADVENTURE_LAB_COMPOSITION_MODEL,
-    ...fallbackModels(ADVENTURE_LAB_COMPOSITION_MODEL),
-  ]) {
+  for (const modelId of [ADVENTURE_LAB_MODEL, ADVENTURE_LAB_MODEL]) {
     const startedAt = Date.now();
     try {
       const result = await generateText({
@@ -428,8 +314,6 @@ async function composeDraft(args: {
 async function researchDraft(args: {
   draft: AdventureLabDraftModel;
   homeCity: string;
-  scale: "small" | "mini" | "proper";
-  requestedBudgetTier: keyof typeof CHAPTER_BUDGET_CONTRACTS;
   requestId: string;
 }): Promise<{
   finding: NowResearchFinding;
@@ -452,8 +336,11 @@ async function researchDraft(args: {
     "Search across multiple candidate places internally and return the strongest fully proved one, not merely the first or most unusual result.",
     `Start from ${args.homeCity} and respect the experience's stated geography and duration.`,
     "Calculate the complete expected personal cost, including booking, admission, required materials or rentals, and necessary non-local travel. Use a conservative normal price rather than a temporary promotional minimum.",
-    "Do not disqualify an otherwise exact real-world match because of its cost. Report the complete actual cost honestly; the application applies its own cost cadence after research.",
+    "Do not disqualify an otherwise exact real-world match because of its cost. Report the complete actual cost honestly; cost is not a qualification gate in Adventure Lab.",
     "Prove the exact name, arrival address, current operation, relevant hours or event date, booking method only when advance booking is actually required, and price when a source states it.",
+    "For a documented walking route, trail, or outdoor area, a sourced station exit, trailhead, named landmark, or coordinates is a valid arrival point. Do not reject it merely because the route has no single mandatory official start or finish.",
+    "A small experience may use one straightforward reservation or a fixed public session. Do not reject it merely because it is not walk-in.",
+    "Solo means the person does not need to bring a companion. Attending an advertised class, workshop, or public session alone still qualifies even when staff or other attendees are present.",
     "Judge only dependencies that the designed action genuinely needs. Do not demand proof of irrelevant negatives such as no companion, no lesson, or no membership when official branch information already proves ordinary walk-in, day-pass, public-session, or booking access for the action.",
     "Set qualification_status to qualified only when the exact named place and every genuinely critical dependency are currently proved. If none qualifies, return no-qualified-result honestly and explain the missing proof; never put 'closest candidate', 'disqualified', or a failure disclaimer inside venue_name.",
     "",
@@ -546,18 +433,6 @@ async function researchDraft(args: {
         true,
       );
     }
-    const budgetAudit = auditAdventureLabBudgetCost({
-      scale: args.scale,
-      requestedTier: args.requestedBudgetTier,
-      estimatedTotalUsd: cost.estimated_total_cost_usd,
-    });
-    if (!budgetAudit.valid) {
-      throw new AdventureLabGenerationError(
-        budgetAudit.message,
-        "research",
-        true,
-      );
-    }
     console.info(
       [
         "[adventure-lab:research] completed",
@@ -584,7 +459,7 @@ async function researchDraft(args: {
 type AbandonedAdventureLabDirection = {
   draft: AdventureLabDraftModel;
   failure: string;
-  stage: "editor" | "research";
+  stage: "design" | "research";
 };
 
 function buildResearchRecoveryCorrection(
@@ -613,7 +488,6 @@ export async function craftAdventureLabExperience(args: {
   graph: ExperienceGraphRecord;
   homeCity: string;
   feedback: readonly AdventureLabFeedback[];
-  recentBudgets: readonly AdventureLabBudgetHistoryEntry[];
   requestId: string;
 }) {
   if (!process.env.OPENROUTER_API_KEY) {
@@ -623,10 +497,7 @@ export async function craftAdventureLabExperience(args: {
     );
   }
 
-  const contract = drawAdventureLabContract(args.graph, args.requestId, {
-    feedback: args.feedback,
-    recentBudgets: args.recentBudgets,
-  });
+  const contract = drawAdventureLabContract(args.graph, args.requestId);
   console.info(
     `[adventure-lab] contract requestId=${args.requestId} contract=${JSON.stringify(contract)}`,
   );
@@ -634,7 +505,7 @@ export async function craftAdventureLabExperience(args: {
     ADVENTURE_LAB_MODEL,
     ADVENTURE_LAB_MODEL,
     ADVENTURE_LAB_MODEL,
-    ...fallbackModels(ADVENTURE_LAB_MODEL),
+    ADVENTURE_LAB_MODEL,
   ];
   const failures: string[] = [];
   let correction = "";
@@ -667,47 +538,12 @@ export async function craftAdventureLabExperience(args: {
         graph: args.graph,
       });
       if (audit.valid) {
-        const reviewed = await reviewDraft({
-          draft: normalizedDraft,
-          contract,
-          graph: args.graph,
-          homeCity: args.homeCity,
-          requestId: args.requestId,
-        });
-        if (reviewed.review.verdict !== "accept") {
-          const failure = describeAdventureLabReviewFailure(
-            reviewed.review,
-          );
-          failures.push(`${modelId} review: ${failure}`);
-          if (researchAttempts > 0) {
-            abandonedDirections.push({
-              draft: normalizedDraft,
-              failure,
-              stage: "editor",
-            });
-            researchRecoveryCorrection =
-              buildResearchRecoveryCorrection(abandonedDirections);
-            correction = "";
-          } else {
-            correction = [
-              "The previous adventure passed structural checks but failed an independent Chapter editor.",
-              "Return the complete adventure again and repair the concrete weaknesses without changing the pre-drawn contract.",
-              `PREVIOUS REJECTED ADVENTURE: ${JSON.stringify(normalizedDraft)}`,
-              "EDITOR REVIEW:",
-              failure,
-            ].join("\n");
-          }
-          continue;
-        }
-
         let researched: Awaited<ReturnType<typeof researchDraft>>;
         try {
           researchAttempts += 1;
           researched = await researchDraft({
             draft: normalizedDraft,
             homeCity: args.homeCity,
-            scale: contract.scale,
-            requestedBudgetTier: contract.budgetTier,
             requestId: args.requestId,
           });
         } catch (error) {
@@ -739,7 +575,7 @@ export async function craftAdventureLabExperience(args: {
               models.length - modelIndex - 1,
               ADVENTURE_LAB_MODEL,
               ADVENTURE_LAB_MODEL,
-              ...fallbackModels(ADVENTURE_LAB_MODEL),
+              ADVENTURE_LAB_MODEL,
             );
             continue;
           }
@@ -760,8 +596,23 @@ export async function craftAdventureLabExperience(args: {
           bestTime: researched.finding.best_time,
           priceNote: researched.finding.price_note ?? undefined,
         };
+        const simpleBooking = /\b(book(?:ed|ing)?|reserv(?:e|ed|ation)|register(?:ed|ation)?|advance|fixed (?:time|session)|scheduled session)\b/i.test(
+          `${researched.finding.best_time} ${researched.finding.price_note ?? ""}`,
+        );
+        const groundedDraft: AdventureLabDraftModel = {
+          ...normalizedDraft,
+          format: {
+            ...normalizedDraft.format,
+            effort:
+              contract.scale === "proper"
+                ? "deliberately-planned"
+                : simpleBooking
+                  ? "lightly-planned"
+                  : normalizedDraft.format.effort,
+          },
+        };
         const composed = await composeDraft({
-          draft: normalizedDraft,
+          draft: groundedDraft,
           place,
           contract,
           graph: args.graph,
@@ -805,7 +656,6 @@ export async function craftAdventureLabExperience(args: {
             },
           ),
           modelId,
-          reviewModelId: reviewed.modelId,
           compositionModelId: composed.modelId,
         };
       }
@@ -817,7 +667,7 @@ export async function craftAdventureLabExperience(args: {
         abandonedDirections.push({
           draft: normalizedDraft,
           failure,
-          stage: "editor",
+          stage: "design",
         });
         researchRecoveryCorrection =
           buildResearchRecoveryCorrection(abandonedDirections);

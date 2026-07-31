@@ -73,18 +73,17 @@ The target is all-in for one person: booking, admission, required materials or
 rentals, and any travel intrinsic to the experience. Research must prove a
 conservative normal price rather than a temporary promotional minimum.
 
-These lanes have odds and memory. Small activities are always `accessible`.
-Mini adventures usually target that lane, but Adventure Lab may keep a fully
-verified `planned` result rather than fail the whole generation over a moderate
-price. A result above USD 100 still requires an eligible `splurge` draw. After a
-`splurge` is shown, another is ineligible for four weeks. Feedback such as “too
-expensive right now” raises the affordable odds without deleting an otherwise
-good activity, while “save for later” preserves the possibility of a future
-aspirational experience. The design model never invents or promises a price;
-research reports the actual all-in cost and code applies this cadence.
-`lib/chapterBudget.ts` is the executable contract currently used by Adventure
-Lab; the weekly production worker still needs to adopt the same persisted draw
-before this cadence ships to Now.
+These lanes have odds and memory in the product policy. Small activities are
+always `accessible`, and a `splurge` should be rare and unavailable again for
+four weeks. Feedback such as “too expensive right now” should raise affordable
+odds without deleting an otherwise good activity, while “save for later” keeps
+an aspirational possibility alive.
+
+Adventure Lab deliberately does not reject a proved experience because of
+price. It reports the real all-in cost so the reviewer can evaluate the idea
+without turning a budget preference into another generation failure. The
+weekly production worker still needs to adopt the persisted cost draw before
+this cadence ships to Now.
 
 ---
 
