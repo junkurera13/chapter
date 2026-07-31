@@ -93,6 +93,9 @@ function dependencies() {
     pollResearch: vi.fn<WeeklyPackWorkerDependencies["pollResearch"]>(
       async () => ({ status: "pending" as const }),
     ),
+    retryResearch: vi.fn<WeeklyPackWorkerDependencies["retryResearch"]>(
+      async ({ runs }) => runs,
+    ),
     composeCards: vi.fn(async () => []),
     completePreparation: vi.fn(async () => ({
       pack: {} as never,
@@ -124,13 +127,19 @@ function dependencies() {
           revisionReviews: [],
         }) as never,
     ),
+    redesignPack: vi.fn<WeeklyPackWorkerDependencies["redesignPack"]>(
+      async () => ({ pack: { cards: [] } }) as never,
+    ),
     startResearch: vi.fn<WeeklyPackWorkerDependencies["startResearch"]>(
       async () => [
-        { cardId: "small" as const, runId: "run-small" },
-        { cardId: "mini" as const, runId: "run-mini" },
-        { cardId: "proper" as const, runId: "run-proper" },
+        { cardId: "small" as const, runId: "run-small", attempt: 1 },
+        { cardId: "mini" as const, runId: "run-mini", attempt: 1 },
+        { cardId: "proper" as const, runId: "run-proper", attempt: 1 },
       ],
     ),
+    startResearchForCards: vi.fn<
+      WeeklyPackWorkerDependencies["startResearchForCards"]
+    >(async () => []),
     setResearch: vi.fn(async () => ({
       preparation: preparation(),
     })),
@@ -250,9 +259,9 @@ describe("weekly pack worker", () => {
       homeCity: "Seoul",
     } as unknown as WeeklyPackDesignArtifact;
     const runs = [
-      { cardId: "small" as const, runId: "run-small" },
-      { cardId: "mini" as const, runId: "run-mini" },
-      { cardId: "proper" as const, runId: "run-proper" },
+      { cardId: "small" as const, runId: "run-small", attempt: 1 },
+      { cardId: "mini" as const, runId: "run-mini", attempt: 1 },
+      { cardId: "proper" as const, runId: "run-proper", attempt: 1 },
     ];
     vi.spyOn(weeklyPackDesignArtifactSchema, "parse").mockReturnValue(artifact);
     vi.spyOn(weeklyPackResearchRunsSchema, "parse").mockReturnValue(runs);
@@ -281,5 +290,196 @@ describe("weekly pack worker", () => {
     });
     expect(current.completePreparation).toHaveBeenCalledTimes(1);
     expect(current.listCandidates).not.toHaveBeenCalled();
+  });
+
+  it("keeps strong research runs and persists a targeted card retry", async () => {
+    const current = dependencies();
+    const stored = preparation({
+      design: { stored: "artifact" },
+      researchRuns: { stored: "runs" },
+    });
+    current.listPreparations.mockResolvedValue({ preparations: [stored] });
+    const artifact = {
+      pack: { cards: [] },
+      homeCity: "Bangbae-dong, Seoul, South Korea",
+      revisionReviews: [],
+    } as unknown as WeeklyPackDesignArtifact;
+    const runs = [
+      { cardId: "small" as const, runId: "run-small", attempt: 1 },
+      { cardId: "mini" as const, runId: "run-mini", attempt: 1 },
+      { cardId: "proper" as const, runId: "run-proper", attempt: 1 },
+    ];
+    const retriedRuns = [
+      runs[0],
+      { cardId: "mini" as const, runId: "run-mini-retry", attempt: 2 },
+      runs[2],
+    ];
+    vi.spyOn(weeklyPackDesignArtifactSchema, "parse").mockReturnValue(artifact);
+    vi.spyOn(weeklyPackResearchRunsSchema, "parse").mockReturnValue(runs);
+    current.pollResearch.mockResolvedValue({
+      status: "retry",
+      failedCardIds: ["mini"],
+      feedback: "mini RESEARCH_UNPROVEN: booking was not proved",
+    });
+    current.retryResearch.mockResolvedValue(retriedRuns);
+
+    const summary = await runWeeklyPackCycle(
+      { now: WEDNESDAY_IN_SEOUL, maxNewPacks: 0 },
+      current as unknown as WeeklyPackWorkerDependencies,
+    );
+
+    expect(summary.researchPending).toBe(1);
+    expect(summary.preparationFailures).toBe(0);
+    expect(current.retryResearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runs,
+        failedCardIds: ["mini"],
+        homeCity: "Bangbae-dong, Seoul, South Korea",
+      }),
+    );
+    expect(current.setResearch).toHaveBeenCalledWith({
+      packId: "pack-1",
+      designJson: JSON.stringify(artifact),
+      researchRunIdsJson: JSON.stringify(retriedRuns),
+    });
+    expect(current.composeCards).not.toHaveBeenCalled();
+    expect(retriedRuns[0]).toBe(runs[0]);
+    expect(retriedRuns[2]).toBe(runs[2]);
+  });
+
+  it("abandons an unresearchable direction after its targeted retry is exhausted", async () => {
+    const current = dependencies();
+    const stored = preparation({
+      design: { stored: "artifact" },
+      researchRuns: { stored: "runs" },
+      generationRequestId: "request-existing",
+    });
+    current.listPreparations.mockResolvedValue({ preparations: [stored] });
+    const failedCard = {
+      id: "proper",
+      experiencePromise: "Join a supervised habitat-restoration shift.",
+      mechanism: { kind: "help", description: "Restore a habitat." },
+    };
+    const artifact = {
+      pack: { cards: [failedCard] },
+      homeCity: "Seoul",
+      revisionReviews: [],
+      researchDesignAttempt: 1,
+    } as unknown as WeeklyPackDesignArtifact;
+    const runs = [
+      { cardId: "small" as const, runId: "run-small", attempt: 1 },
+      { cardId: "mini" as const, runId: "run-mini", attempt: 1 },
+      { cardId: "proper" as const, runId: "run-proper-retry", attempt: 2 },
+    ];
+    const redesignedPack = { cards: [] };
+    const redesignedRuns = [
+      { cardId: "proper" as const, runId: "next-proper", attempt: 1 },
+    ];
+    vi.spyOn(weeklyPackDesignArtifactSchema, "parse").mockReturnValue(artifact);
+    vi.spyOn(weeklyPackResearchRunsSchema, "parse").mockReturnValue(runs);
+    current.pollResearch.mockResolvedValue({
+      status: "retry",
+      failedCardIds: ["proper"],
+      feedback: "proper RESEARCH_UNPROVEN: no supervised shift exists",
+    });
+    current.redesignPack.mockResolvedValue({ pack: redesignedPack } as never);
+    current.startResearchForCards.mockResolvedValue(redesignedRuns);
+
+    const summary = await runWeeklyPackCycle(
+      { now: WEDNESDAY_IN_SEOUL, maxNewPacks: 0 },
+      current as unknown as WeeklyPackWorkerDependencies,
+    );
+
+    expect(summary.researchPending).toBe(1);
+    expect(summary.preparationFailures).toBe(0);
+    expect(current.retryResearch).not.toHaveBeenCalled();
+    expect(current.fetchSource).toHaveBeenCalledWith("owner-1");
+    expect(current.redesignPack).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: "request-existing",
+        failedCardIds: ["proper"],
+        abandonedDirections: expect.arrayContaining([
+          expect.objectContaining({
+            cardId: "proper",
+            experiencePromise: failedCard.experiencePromise,
+          }),
+        ]),
+      }),
+    );
+    expect(current.setResearch).toHaveBeenCalledWith({
+      packId: "pack-1",
+      designJson: JSON.stringify({
+        pack: redesignedPack,
+        researchDesignAttempt: 2,
+        researchDesignAttempts: { small: 1, mini: 1, proper: 2 },
+        abandonedResearchDirections: [
+          {
+            cardId: "proper",
+            experiencePromise: failedCard.experiencePromise,
+            mechanismKind: failedCard.mechanism.kind,
+            mechanismDescription: failedCard.mechanism.description,
+            failure: "proper RESEARCH_UNPROVEN: no supervised shift exists",
+          },
+        ],
+        homeCity: "Seoul",
+        companion: undefined,
+      }),
+      researchRunIdsJson: JSON.stringify([
+        runs[0],
+        runs[1],
+        redesignedRuns[0],
+      ]),
+    });
+  });
+
+  it("reclaims a preparation immediately when the original fails on Friday", async () => {
+    const current = dependencies();
+    current.listPreparations.mockResolvedValue({
+      preparations: [
+        preparation({
+          design: { stored: "artifact" },
+          researchRuns: { stored: "runs" },
+        }),
+      ],
+    });
+    vi.spyOn(weeklyPackDesignArtifactSchema, "parse").mockReturnValue({
+      pack: { cards: [] },
+      homeCity: "Seoul",
+      revisionReviews: [],
+      researchDesignAttempt: 3,
+    } as unknown as WeeklyPackDesignArtifact);
+    vi.spyOn(weeklyPackResearchRunsSchema, "parse").mockReturnValue([
+      { cardId: "small", runId: "run-small", attempt: 2 },
+      { cardId: "mini", runId: "run-mini", attempt: 1 },
+      { cardId: "proper", runId: "run-proper", attempt: 1 },
+    ]);
+    current.pollResearch.mockResolvedValue({
+      status: "retry",
+      failedCardIds: ["small"],
+      feedback: "small remained unproved",
+    });
+    current.retryResearch.mockRejectedValue(
+      new Error("research attempt limit reached"),
+    );
+
+    const summary = await runWeeklyPackCycle(
+      {
+        now: Date.parse("2026-07-31T03:00:00.000Z"),
+        maxNewPacks: 1,
+      },
+      current as unknown as WeeklyPackWorkerDependencies,
+    );
+
+    expect(summary.preparationFailures).toBe(1);
+    expect(summary.packsStarted).toBe(1);
+    expect(current.failPreparation).toHaveBeenCalledTimes(1);
+    expect(current.claimPreparation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ownerUserId: "owner-1",
+        retryOnly: true,
+      }),
+    );
+    expect(current.designPack).toHaveBeenCalledTimes(1);
+    expect(current.startResearch).toHaveBeenCalledTimes(1);
   });
 });

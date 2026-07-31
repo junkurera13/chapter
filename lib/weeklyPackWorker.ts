@@ -26,7 +26,10 @@ import {
   composeWeeklyExperienceCards,
   designWeeklyPack,
   pollWeeklyPackResearch,
+  redesignWeeklyPackAfterResearchFailure,
+  retryWeeklyPackResearch,
   startWeeklyPackResearch,
+  startWeeklyPackResearchForCards,
   weeklyPackResearchRunsSchema,
 } from "./weeklyPackGeneration";
 import {
@@ -40,6 +43,7 @@ type WorkerDependencies = {
     limit?: number,
   ) => Promise<{ preparations: WeeklyPackPreparation[] }>;
   pollResearch: typeof pollWeeklyPackResearch;
+  retryResearch: typeof retryWeeklyPackResearch;
   composeCards: typeof composeWeeklyExperienceCards;
   completePreparation: typeof completeWeeklyPackPreparation;
   failPreparation: typeof failWeeklyPackPreparation;
@@ -51,14 +55,19 @@ type WorkerDependencies = {
   ) => Promise<WeeklyPackGenerationSource>;
   claimPreparation: typeof claimWeeklyPackPreparation;
   designPack: typeof designWeeklyPack;
+  redesignPack: typeof redesignWeeklyPackAfterResearchFailure;
   startResearch: typeof startWeeklyPackResearch;
+  startResearchForCards: typeof startWeeklyPackResearchForCards;
   setResearch: typeof setWeeklyPackResearch;
   newRequestId: () => string;
 };
 
+const MAX_RESEARCH_DESIGN_ATTEMPTS = 3;
+
 const productionDependencies: WorkerDependencies = {
   listPreparations: listWeeklyPackPreparations,
   pollResearch: pollWeeklyPackResearch,
+  retryResearch: retryWeeklyPackResearch,
   composeCards: composeWeeklyExperienceCards,
   completePreparation: completeWeeklyPackPreparation,
   failPreparation: failWeeklyPackPreparation,
@@ -66,7 +75,9 @@ const productionDependencies: WorkerDependencies = {
   fetchSource: fetchWeeklyPackGenerationSource,
   claimPreparation: claimWeeklyPackPreparation,
   designPack: designWeeklyPack,
+  redesignPack: redesignWeeklyPackAfterResearchFailure,
   startResearch: startWeeklyPackResearch,
+  startResearchForCards: startWeeklyPackResearchForCards,
   setResearch: setWeeklyPackResearch,
   newRequestId: () => crypto.randomUUID(),
 };
@@ -183,6 +194,121 @@ export async function advanceWeeklyPackPreparation(
   if (research.status === "pending") {
     return { status: "pending" as const };
   }
+  if (research.status === "retry") {
+    if (!artifact.homeCity) {
+      throw new Error("Weekly pack retry requires a stored home city.");
+    }
+    const failedCardIds = new Set(research.failedCardIds);
+    const exhaustedCardIds = runs
+      .filter(
+        (run) => failedCardIds.has(run.cardId) && run.attempt >= 2,
+      )
+      .map((run) => run.cardId);
+    if (exhaustedCardIds.length > 0) {
+      const recoveryCardIds = new Set(exhaustedCardIds);
+      const legacyAttempt = artifact.researchDesignAttempt ?? 1;
+      const researchDesignAttempts = artifact.researchDesignAttempts ?? {
+        small: legacyAttempt,
+        mini: legacyAttempt,
+        proper: legacyAttempt,
+      };
+      const exhaustedAtLimit = exhaustedCardIds.filter(
+        (cardId) =>
+          researchDesignAttempts[cardId] >=
+          MAX_RESEARCH_DESIGN_ATTEMPTS,
+      );
+      if (exhaustedAtLimit.length > 0) {
+        throw new Error(
+          `Research remained unproved after ${MAX_RESEARCH_DESIGN_ATTEMPTS} designs: ${exhaustedAtLimit.join(", ")}.`,
+        );
+      }
+
+      const source = await dependencies.fetchSource(
+        preparation.ownerUserId,
+      );
+      const requestId =
+        preparation.generationRequestId ?? dependencies.newRequestId();
+      const context = weeklyPackContextFrom(source, requestId);
+      const latestAbandonedDirections = artifact.pack.cards
+        .filter((card) => recoveryCardIds.has(card.id))
+        .map((card) => ({
+          cardId: card.id,
+          experiencePromise: card.experiencePromise,
+          mechanismKind: card.mechanism.kind,
+          mechanismDescription: card.mechanism.description,
+          failure: research.feedback.slice(0, 500),
+        }));
+      const abandonedDirections = [
+        ...(artifact.abandonedResearchDirections ?? []),
+        ...latestAbandonedDirections,
+      ]
+        .slice(-9)
+        .map((direction) => ({
+          ...direction,
+          experiencePromise: direction.experiencePromise.slice(0, 180),
+          mechanismDescription: direction.mechanismDescription.slice(0, 180),
+          failure: direction.failure.slice(0, 180),
+        }));
+      const designed = await dependencies.redesignPack({
+        source: { graph: source.graph, context },
+        requestId,
+        previousPack: artifact.pack,
+        failedCardIds: exhaustedCardIds,
+        abandonedDirections,
+        feedback: research.feedback,
+      });
+      const nextResearchDesignAttempts = {
+        ...researchDesignAttempts,
+      };
+      for (const cardId of exhaustedCardIds) {
+        nextResearchDesignAttempts[cardId] += 1;
+      }
+      const nextArtifact = {
+        ...designed,
+        researchDesignAttempt: Math.max(
+          ...Object.values(nextResearchDesignAttempts),
+        ),
+        researchDesignAttempts: nextResearchDesignAttempts,
+        abandonedResearchDirections: abandonedDirections,
+        homeCity: source.homeCity,
+        companion: context.socialMatch
+          ? source.socialCandidate?.companion
+          : undefined,
+      };
+      const replacementRuns = await dependencies.startResearchForCards({
+        pack: nextArtifact.pack,
+        context,
+        weekKey: preparation.weekKey,
+        cardIds: exhaustedCardIds,
+      });
+      const replacementByCard = new Map(
+        replacementRuns.map((run) => [run.cardId, run]),
+      );
+      const nextRuns = runs.map(
+        (run) => replacementByCard.get(run.cardId) ?? run,
+      );
+      await dependencies.setResearch({
+        packId: preparation.id,
+        designJson: JSON.stringify(nextArtifact),
+        researchRunIdsJson: JSON.stringify(nextRuns),
+      });
+      return { status: "redesigning" as const };
+    }
+    const nextRuns = await dependencies.retryResearch({
+      pack: artifact.pack,
+      runs,
+      homeCity: artifact.homeCity,
+      weekKey: preparation.weekKey,
+      failedCardIds: research.failedCardIds,
+      feedback: research.feedback,
+    });
+    await dependencies.setResearch({
+      packId: preparation.id,
+      designJson: JSON.stringify(artifact),
+      researchRunIdsJson: JSON.stringify(nextRuns),
+    });
+    return { status: "retrying" as const };
+  }
 
   const cards = await dependencies.composeCards({
     pack: artifact.pack,
@@ -270,6 +396,13 @@ export async function runWeeklyPackCycle(
         summary.researchPending += 1;
         continue;
       }
+      if (
+        result.status === "retrying" ||
+        result.status === "redesigning"
+      ) {
+        summary.researchPending += 1;
+        continue;
+      }
       summary.packsReady += 1;
     } catch (error) {
       summary.preparationFailures += 1;
@@ -279,6 +412,19 @@ export async function runWeeklyPackCycle(
         "research or composition",
         error,
       );
+      if (
+        preparation.attemptCount < 3 &&
+        isWeeklyPackRetryDay({
+          timezone: preparation.timezone,
+          now,
+        })
+      ) {
+        // Let the candidate pass claim again in this same daily cycle. Without
+        // this, the only Friday invocation can consume the retry window while
+        // failing the original preparation, leaving no later Friday run to
+        // perform the documented retry.
+        ownersAlreadyProcessed.delete(preparation.ownerUserId);
+      }
     }
   }
 

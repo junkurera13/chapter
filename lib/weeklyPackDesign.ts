@@ -1220,6 +1220,27 @@ export const weeklyPackDesignArtifactSchema = z.object({
   /** Older and offline-lab artifacts may include an editorial model review. */
   review: weeklyPackReviewSchema.optional(),
   revisionReviews: z.array(weeklyPackReviewSchema).max(2).default([]),
+  /** Legacy aggregate retained for older stored artifacts. */
+  researchDesignAttempt: z.number().int().min(1).max(3).default(1),
+  researchDesignAttempts: z
+    .object({
+      small: z.number().int().min(1).max(3),
+      mini: z.number().int().min(1).max(3),
+      proper: z.number().int().min(1).max(3),
+    })
+    .default({ small: 1, mini: 1, proper: 1 }),
+  abandonedResearchDirections: z
+    .array(
+      z.object({
+        cardId: z.enum(["small", "mini", "proper"]),
+        experiencePromise: z.string().trim().min(1).max(1_000),
+        mechanismKind: z.string().trim().min(1).max(80),
+        mechanismDescription: z.string().trim().min(1).max(1_000),
+        failure: z.string().trim().min(1).max(500),
+      }),
+    )
+    .max(9)
+    .default([]),
   homeCity: z.string().trim().min(2).max(160).optional(),
   companion: weeklyPackCompanionSchema.optional(),
 });
@@ -1480,7 +1501,7 @@ export function buildWeeklyPackResearchPrompt(args: {
     "- Prove every critical claim with direct source URLs. Prefer first-party sources and recent operating evidence.",
     "- Preserve the designed action, mechanism, company, scale, primary twist, and optional supporting context. Never redesign the card into an easier recommendation.",
     "- Search across multiple candidates internally and return the strongest fully proved one, not merely the first or strangest result.",
-    `- The journey begins and ends in HOME CITY. Return originCity exactly as "${args.context.homeCity}" in travelFit.`,
+    `- The journey begins and ends at HOME LOCATION. Return originCity exactly as "${args.context.homeCity}" in travelFit. Return destinationCity as the actual municipality containing primaryPlace; it may be broader than the neighbourhood-level HOME LOCATION.`,
     `- This is a day-scale experience, not destination travel. Flights are never allowed. The verified complete round trip must take at most ${travelLimitMinutes} minutes.`,
     args.card.format.geography === "beyond-city"
       ? "- A beyond-city destination is allowed only when surface transport and the experience both fit comfortably inside this card's stated duration."
@@ -1511,6 +1532,37 @@ function normalizeIdentity(value: string) {
     .normalize("NFKD")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
+}
+
+function localityParts(value: string) {
+  return value
+    .split(",")
+    .map(normalizeIdentity)
+    .filter(Boolean);
+}
+
+/**
+ * A saved home location may be more precise than a research provider's city
+ * field (for example, "Bangbae-dong, Seoul, South Korea" versus
+ * "Seoul, South Korea"). Treat a complete comma-delimited locality suffix as
+ * the same place without allowing an unrelated city that merely shares a
+ * country token.
+ */
+function sameLocality(first: string, second: string) {
+  const normalizedFirst = normalizeIdentity(first);
+  const normalizedSecond = normalizeIdentity(second);
+  if (normalizedFirst === normalizedSecond) return true;
+
+  const firstParts = localityParts(first);
+  const secondParts = localityParts(second);
+  const contained = (smaller: string[], larger: string[]) =>
+    smaller.length > 0 &&
+    smaller.every((part) => larger.includes(part));
+
+  return (
+    contained(firstParts, secondParts) ||
+    contained(secondParts, firstParts)
+  );
 }
 
 export function auditWeeklyPackResearch(args: {
@@ -1591,13 +1643,7 @@ export function auditWeeklyPackResearch(args: {
           message: `${finding.cardId} research did not prove its travel fit from ${args.homeCity}.`,
         });
       } else {
-        const origin = normalizeIdentity(travelFit.originCity);
-        const homeCity = normalizeIdentity(args.homeCity);
-        if (
-          origin !== homeCity &&
-          !origin.includes(homeCity) &&
-          !homeCity.includes(origin)
-        ) {
+        if (!sameLocality(travelFit.originCity, args.homeCity)) {
           addIssue(issues, {
             code: "RESEARCH_TRAVEL_ORIGIN",
             cardId: finding.cardId,
@@ -1633,7 +1679,7 @@ export function auditWeeklyPackResearch(args: {
         }
         if (
           design.format.geography !== "beyond-city" &&
-          normalizeIdentity(travelFit.destinationCity) !== homeCity
+          !sameLocality(travelFit.destinationCity, args.homeCity)
         ) {
           addIssue(issues, {
             code: "RESEARCH_DESTINATION_CITY",

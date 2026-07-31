@@ -1,11 +1,90 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  pollWeeklyPackResearch,
+  retryWeeklyPackResearch,
   runWeeklyPackModelAttempts,
   validateWeeklyPackGroundedCopy,
   WeeklyPackGenerationError,
+  weeklyPackModelSettingsFor,
   weeklyPackReasoningEffortFor,
+  weeklyPackResearchRunsSchema,
 } from "./weeklyPackGeneration";
+
+function researchFinding(
+  cardId: "small" | "mini" | "proper",
+  researchCaveats: string[] = [],
+) {
+  return {
+    cardId,
+    workingTitle: `${cardId} working title`,
+    experienceAction:
+      cardId === "small"
+        ? "Trace one compact neighbourhood loop and record a single changing detail before returning home."
+        : cardId === "mini"
+          ? "Shape one clay vessel at a wheel, finish its surface, and leave it for firing."
+          : "Follow one continuous ridge route, make three terrain-led navigation choices, and descend by the verified exit.",
+    experienceType: `${cardId} experience`,
+    primaryPlace: {
+      name: `${cardId} verified place`,
+      area: "Seoul",
+      address: `${cardId} Synthetic-ro, Seoul`,
+    },
+    routeOrSequence:
+      "Arrive at the verified entrance, complete the action, and return by the documented route.",
+    logistics: {
+      availability: "Verified for the complete validity window.",
+      booking: "No advance booking is required.",
+      cost: "The complete expected cost is verified.",
+      travel: "The outward and return routes are verified.",
+      equipment: "Only ordinary personal items are required.",
+      accessibility: "The documented access conditions are stated.",
+      weather: "The action has a verified weather condition.",
+      safety: "The arrival and exit conditions are verified.",
+    },
+    travelFit: {
+      originCity: "Seoul",
+      destinationCity: "Seoul",
+      roundTripMinutes: 60,
+      requiresFlight: false,
+      withinDesignedGeography: true,
+    },
+    criticalFacts: [
+      {
+        claim: "The place currently operates.",
+        sourceUrls: ["https://example.com/current"],
+      },
+      {
+        claim: "The stated route currently operates.",
+        sourceUrls: ["https://example.com/route"],
+      },
+    ],
+    researchCaveats,
+  };
+}
+
+const researchPack = {
+  cards: (["small", "mini", "proper"] as const).map((id) => ({
+    id,
+    basis: "world",
+    format: {
+      scale: id,
+      company: "self",
+      structure: id === "proper" ? "journey" : "single-action",
+      effort: id === "proper" ? "deliberately-planned" : "spontaneous",
+      geography: id === "proper" ? "beyond-city" : "city",
+      durationMinutes: { min: 60, max: id === "proper" ? 360 : 120 },
+      energy: "quiet and focused",
+      timeCharacter: "during verified opening hours",
+    },
+    stretch: { dimension: "activity", description: "A new action." },
+    experiencePromise: "Complete one clear action at one verified place.",
+    mechanism: { kind: "make", description: "Make one small object." },
+    requirements: [],
+    researchObjective: "Prove the place and every critical dependency.",
+    connectionSafety: null,
+  })),
+} as never;
 
 describe("weekly pack model attempts", () => {
   it("routes reasoning effort through OpenRouter model settings", () => {
@@ -24,6 +103,32 @@ describe("weekly pack model attempts", () => {
         "none",
       ),
     ).toBe("none");
+  });
+
+  it("routes GPT-5.6 through Azure without the incompatible strict parameter filter", () => {
+    expect(
+      weeklyPackModelSettingsFor("openai/gpt-5.6-terra", "low"),
+    ).toEqual({
+      reasoning: { effort: "low" },
+      provider: {
+        order: ["azure"],
+        allow_fallbacks: true,
+        data_collection: "deny",
+        require_parameters: false,
+        zdr: true,
+      },
+    });
+    expect(
+      weeklyPackModelSettingsFor("moonshotai/kimi-k2.6", "none"),
+    ).toEqual({
+      reasoning: { effort: "none" },
+      provider: {
+        allow_fallbacks: true,
+        data_collection: "deny",
+        require_parameters: true,
+        zdr: true,
+      },
+    });
   });
 
   it("lets the primary model repair its own deterministic failure before fallback", async () => {
@@ -120,5 +225,111 @@ describe("weekly pack real-world grounding", () => {
         },
       }),
     ).toThrow(WeeklyPackGenerationError);
+  });
+
+  it("reads legacy research run records as first attempts", () => {
+    expect(
+      weeklyPackResearchRunsSchema.parse([
+        { cardId: "small", runId: "run-small" },
+        { cardId: "mini", runId: "run-mini" },
+        { cardId: "proper", runId: "run-proper" },
+      ]),
+    ).toEqual([
+      { cardId: "small", runId: "run-small", attempt: 1 },
+      { cardId: "mini", runId: "run-mini", attempt: 1 },
+      { cardId: "proper", runId: "run-proper", attempt: 1 },
+    ]);
+  });
+
+  it("returns only the cards that fail the post-research audit", async () => {
+    const runs = weeklyPackResearchRunsSchema.parse([
+      { cardId: "small", runId: "run-small" },
+      { cardId: "mini", runId: "run-mini" },
+      { cardId: "proper", runId: "run-proper" },
+    ]);
+    const result = await pollWeeklyPackResearch(
+      { pack: researchPack, runs, homeCity: "Seoul" },
+      async (runId) => {
+        const cardId = runId.replace("run-", "") as
+          | "small"
+          | "mini"
+          | "proper";
+        return {
+          status: "completed" as const,
+          content: researchFinding(
+            cardId,
+            cardId === "mini" ? ["A critical booking remains unproved."] : [],
+          ),
+          citations: [],
+        };
+      },
+    );
+
+    expect(result.status).toBe("retry");
+    if (result.status !== "retry") throw new Error("expected retry");
+    expect(result.failedCardIds).toEqual(["mini"]);
+    expect(result.feedback).toContain("RESEARCH_UNPROVEN");
+  });
+
+  it("restarts only failed cards and keeps accepted research run ids", async () => {
+    const runs = weeklyPackResearchRunsSchema.parse([
+      { cardId: "small", runId: "run-small" },
+      { cardId: "mini", runId: "run-mini" },
+      { cardId: "proper", runId: "run-proper" },
+    ]);
+    const startResearch = vi.fn(
+      async (args: {
+        input: string;
+        outputSchema: Record<string, unknown>;
+        processor?: string;
+        metadata?: Record<string, string>;
+      }) => ({ runId: `run-${args.metadata?.card}-retry` }),
+    );
+
+    const nextRuns = await retryWeeklyPackResearch(
+      {
+        pack: researchPack,
+        runs,
+        homeCity: "Seoul",
+        weekKey: "2026-08-01",
+        failedCardIds: ["mini"],
+        feedback: "mini RESEARCH_UNPROVEN: booking was not proved",
+      },
+      startResearch,
+    );
+
+    expect(startResearch).toHaveBeenCalledTimes(1);
+    expect(startResearch.mock.calls[0][0].metadata).toEqual(
+      expect.objectContaining({ card: "mini", attempt: "2" }),
+    );
+    expect(nextRuns).toEqual([
+      runs[0],
+      { cardId: "mini", runId: "run-mini-retry", attempt: 2 },
+      runs[2],
+    ]);
+  });
+
+  it("does not start partial paid retries after one failed card is exhausted", async () => {
+    const runs = weeklyPackResearchRunsSchema.parse([
+      { cardId: "small", runId: "run-small", attempt: 1 },
+      { cardId: "mini", runId: "run-mini", attempt: 2 },
+      { cardId: "proper", runId: "run-proper", attempt: 1 },
+    ]);
+    const startResearch = vi.fn(async () => ({ runId: "unused" }));
+
+    await expect(
+      retryWeeklyPackResearch(
+        {
+          pack: researchPack,
+          runs,
+          homeCity: "Seoul",
+          weekKey: "2026-08-01",
+          failedCardIds: ["small", "mini"],
+          feedback: "Both cards failed.",
+        },
+        startResearch,
+      ),
+    ).rejects.toThrow("mini failed after 2 attempts");
+    expect(startResearch).not.toHaveBeenCalled();
   });
 });

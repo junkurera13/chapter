@@ -58,14 +58,6 @@ const openrouter = createOpenRouter({
   compatibility: "strict",
   appName: "Chapter",
   appUrl: "https://usechapter.vercel.app",
-  extraBody: {
-    provider: {
-      allow_fallbacks: true,
-      data_collection: "deny",
-      require_parameters: true,
-      zdr: true,
-    },
-  },
 });
 
 export class WeeklyPackGenerationError extends Error {
@@ -78,6 +70,7 @@ export class WeeklyPackGenerationError extends Error {
 export const weeklyPackResearchRunSchema = z.object({
   cardId: z.enum(["small", "mini", "proper"]),
   runId: z.string().trim().min(1).max(160),
+  attempt: z.number().int().min(1).max(2).default(1),
 });
 
 export const weeklyPackResearchRunsSchema = z
@@ -85,6 +78,21 @@ export const weeklyPackResearchRunsSchema = z
   .length(3);
 
 export type WeeklyPackResearchRun = z.infer<typeof weeklyPackResearchRunSchema>;
+
+const MAX_RESEARCH_ATTEMPTS_PER_CARD = 2;
+
+export type WeeklyPackResearchPoll =
+  | { status: "pending" }
+  | {
+      status: "retry";
+      failedCardIds: WeeklyPackScale[];
+      feedback: string;
+    }
+  | {
+      status: "completed";
+      results: WeeklyPackResearchResult[];
+      audit: ReturnType<typeof auditWeeklyPackResearch>;
+    };
 
 export const weeklyPackResearchResultSchema = z.object({
   cardId: z.enum(["small", "mini", "proper"]),
@@ -148,6 +156,26 @@ export function weeklyPackReasoningEffortFor(
   return "none" as const;
 }
 
+export function weeklyPackModelSettingsFor(
+  modelId: string,
+  reasoning: PackReasoningEffort,
+) {
+  const gpt56 = modelId.includes("gpt-5.6-");
+  return {
+    reasoning: { effort: reasoning },
+    provider: {
+      ...(gpt56 ? { order: ["azure"] } : {}),
+      allow_fallbacks: true,
+      data_collection: "deny" as const,
+      // The AI SDK emits max_tokens while Azure advertises
+      // max_completion_tokens. OpenRouter translates it, but its strict
+      // parameter pre-filter would incorrectly remove the only ZDR endpoint.
+      require_parameters: !gpt56,
+      zdr: true,
+    },
+  };
+}
+
 function modelTuning(modelId: string, temperature: number) {
   return modelId.startsWith("anthropic/") || modelId.startsWith("openai/")
     ? {}
@@ -174,11 +202,13 @@ async function generateObject<T>(args: {
     const result = await generateText({
       // The OpenRouter adapter reads reasoning from its per-model settings.
       // Passing the generic AI SDK `reasoning` call option is ignored here.
-      model: openrouter(args.modelId, {
-        reasoning: {
-          effort: weeklyPackReasoningEffortFor(args.modelId, args.reasoning),
-        },
-      }),
+      model: openrouter(
+        args.modelId,
+        weeklyPackModelSettingsFor(
+          args.modelId,
+          weeklyPackReasoningEffortFor(args.modelId, args.reasoning),
+        ),
+      ),
       messages: [{ role: "user", content: args.prompt }],
       output: Output.object({
         name: args.schemaName,
@@ -289,6 +319,7 @@ async function structurallyValidDesign(args: {
   schemaName: string;
   requestId: string;
   temperature: number;
+  transformPack?: (pack: WeeklyPackDesign) => WeeklyPackDesign;
 }) {
   const result = await runWeeklyPackModelAttempts({
     modelIds: args.modelIds,
@@ -304,7 +335,10 @@ async function structurallyValidDesign(args: {
           maxOutputTokens: 16_000,
           requestId: args.requestId,
         });
-        const pack = normalizeDesign(output, args.source);
+        const normalizedPack = normalizeDesign(output, args.source);
+        const pack = args.transformPack
+          ? args.transformPack(normalizedPack)
+          : normalizedPack;
         const audit = auditWeeklyPackDesign({
           pack,
           graph: args.source.graph,
@@ -366,13 +400,81 @@ export async function designWeeklyPack(args: {
   return { pack };
 }
 
-export async function startWeeklyPackResearch(args: {
+export async function redesignWeeklyPackAfterResearchFailure(args: {
+  source: PackGenerationSource;
+  requestId: string;
+  previousPack: WeeklyPackDesign;
+  failedCardIds: readonly WeeklyPackScale[];
+  abandonedDirections: readonly {
+    cardId: WeeklyPackScale;
+    experiencePromise: string;
+    mechanismKind: string;
+    mechanismDescription: string;
+    failure: string;
+  }[];
+  feedback: string;
+}) {
+  const failedCardIds = new Set(args.failedCardIds);
+  if (failedCardIds.size === 0) {
+    throw new WeeklyPackGenerationError(
+      "Research recovery did not identify a failed card.",
+    );
+  }
+  const preservedCards = args.previousPack.cards.filter(
+    (card) => !failedCardIds.has(card.id),
+  );
+  const pack = await structurallyValidDesign({
+    prompt: [
+      buildWeeklyPackDesignPrompt({
+        graph: args.source.graph,
+        context: args.source.context,
+      }),
+      "",
+      "LIVE RESEARCH RECOVERY",
+      "Live research proved that the abandoned directions below cannot currently satisfy Chapter's deterministic truth gates.",
+      `Replace only these failed cards: ${[...failedCardIds].join(", ")}.`,
+      "Choose a genuinely different participant action and established public format while preserving each failed card's pre-drawn shape contract, basis, dimensions, company, and scale.",
+      "Do not revisit an abandoned activity family by changing only its venue, provider, recipe, route, or wording.",
+      "Every card not named as failed is already proved. It will be preserved byte-for-byte and must remain compatible with the replacement directions.",
+      `PROVED CARDS TO PRESERVE: ${JSON.stringify(preservedCards)}`,
+      `ALL ABANDONED DIRECTIONS: ${JSON.stringify(args.abandonedDirections)}`,
+      `LATEST RESEARCH FAILURES: ${args.feedback}`,
+    ].join("\n"),
+    source: args.source,
+    modelIds: [PACK_MODEL_ID],
+    schemaName: "weekly_pack_research_recovery",
+    requestId: args.requestId,
+    temperature: 0.68,
+    transformPack: (candidate) => ({
+      ...candidate,
+      cards: candidate.cards.map((card) => {
+        const preserved = args.previousPack.cards.find(
+          (previous) => previous.id === card.id && !failedCardIds.has(card.id),
+        );
+        return preserved ?? card;
+      }),
+    }),
+  });
+  return { pack };
+}
+
+async function startWeeklyPackResearchRuns(args: {
   pack: WeeklyPackDesign;
   context: WeeklyPackContext;
   weekKey: string;
+  cardIds: readonly WeeklyPackScale[];
 }) {
-  const runs = await Promise.all(
-    args.pack.cards.map(async (card) => {
+  const requestedCardIds = new Set(args.cardIds);
+  const cards = args.pack.cards.filter((card) =>
+    requestedCardIds.has(card.id),
+  );
+  if (cards.length === 0 || cards.length !== requestedCardIds.size) {
+    throw new WeeklyPackGenerationError(
+      "Weekly research could not match every requested card.",
+    );
+  }
+  return Promise.all(
+    cards.map(async (card) => {
       const { runId } = await startParallelResearch({
         processor: PACK_PROCESSOR,
         input: buildWeeklyPackResearchPrompt({
@@ -391,10 +493,118 @@ export async function startWeeklyPackResearch(args: {
           card: card.id,
         },
       });
-      return { cardId: card.id, runId };
+      return weeklyPackResearchRunSchema.parse({
+        cardId: card.id,
+        runId,
+        attempt: 1,
+      });
     }),
   );
+}
+
+export async function startWeeklyPackResearch(args: {
+  pack: WeeklyPackDesign;
+  context: WeeklyPackContext;
+  weekKey: string;
+}) {
+  const runs = await startWeeklyPackResearchRuns({
+    ...args,
+    cardIds: args.pack.cards.map(({ id }) => id),
+  });
   return weeklyPackResearchRunsSchema.parse(runs);
+}
+
+export function startWeeklyPackResearchForCards(args: {
+  pack: WeeklyPackDesign;
+  context: WeeklyPackContext;
+  weekKey: string;
+  cardIds: readonly WeeklyPackScale[];
+}) {
+  return startWeeklyPackResearchRuns(args);
+}
+
+export async function retryWeeklyPackResearch(args: {
+  pack: WeeklyPackDesign;
+  runs: WeeklyPackResearchRun[];
+  homeCity: string;
+  weekKey: string;
+  failedCardIds: readonly WeeklyPackScale[];
+  feedback: string;
+}, startResearch = startParallelResearch) {
+  const failedCardIds = new Set(args.failedCardIds);
+  if (failedCardIds.size === 0) {
+    throw new WeeklyPackGenerationError(
+      "Research retry did not identify a failed card.",
+    );
+  }
+
+  const retryRuns = args.runs.filter((run) => failedCardIds.has(run.cardId));
+  if (retryRuns.length !== failedCardIds.size) {
+    throw new WeeklyPackGenerationError(
+      "Research retry did not match every failed card to a stored run.",
+    );
+  }
+  const exhausted = retryRuns.find(
+    (run) => run.attempt >= MAX_RESEARCH_ATTEMPTS_PER_CARD,
+  );
+  if (exhausted) {
+    throw new WeeklyPackGenerationError(
+      `Research for ${exhausted.cardId} failed after ${exhausted.attempt} attempts.`,
+    );
+  }
+  const missingDesign = retryRuns.find(
+    (run) => !args.pack.cards.some(({ id }) => id === run.cardId),
+  );
+  if (missingDesign) {
+    throw new WeeklyPackGenerationError(
+      `Research retry could not find the ${missingDesign.cardId} design.`,
+    );
+  }
+
+  const context: WeeklyPackContext = {
+    homeCity: args.homeCity,
+    privacyMode: "personal",
+    availableCompanies: [
+      ...new Set(args.pack.cards.map((card) => card.format.company)),
+    ],
+  };
+  const nextRuns = await Promise.all(
+    args.runs.map(async (run) => {
+      if (!failedCardIds.has(run.cardId)) return run;
+
+      const card = args.pack.cards.find(({ id }) => id === run.cardId);
+      // Preflight above proves the design exists before any paid run starts.
+      if (!card) throw new WeeklyPackGenerationError("Missing retry design.");
+      const attempt = run.attempt + 1;
+      const { runId } = await startResearch({
+        processor: PACK_PROCESSOR,
+        input: [
+          buildWeeklyPackResearchPrompt({
+            card,
+            context,
+            currentDate: new Date().toISOString().slice(0, 10),
+          }),
+          "",
+          "RESEARCH RETRY",
+          "The previous finding failed Chapter's deterministic truth gates. Search different candidates when necessary; do not defend or lightly rewrite the failed finding.",
+          `EXACT FAILURE: ${args.feedback.slice(0, 6_000)}`,
+          "Return researchCaveats only when a critical dependency remains unproved. An unresolved critical dependency must remain explicit and will fail this card again.",
+        ].join("\n"),
+        outputSchema: z.toJSONSchema(
+          weeklyPackResearchFindingSchema,
+        ) as Record<string, unknown>,
+        metadata: {
+          app: "chapter",
+          surface: "weekly-pack-retry",
+          week: args.weekKey,
+          card: card.id,
+          attempt: `${attempt}`,
+        },
+      });
+      return { cardId: run.cardId, runId, attempt };
+    }),
+  );
+  return weeklyPackResearchRunsSchema.parse(nextRuns);
 }
 
 export async function pollWeeklyPackResearch(args: {
@@ -402,54 +612,103 @@ export async function pollWeeklyPackResearch(args: {
   runs: WeeklyPackResearchRun[];
   homeCity?: string;
   requestId?: string;
-}) {
+}, fetchResearch = fetchParallelResearchResult): Promise<WeeklyPackResearchPoll> {
   const results = await Promise.all(
     args.runs.map(async (run) => ({
       run,
-      result: await fetchParallelResearchResult(run.runId, 2),
+      result: await fetchResearch(run.runId, 2),
     })),
   );
-  if (results.some(({ result }) => result.status === "failed")) {
-    throw new WeeklyPackGenerationError(
-      "One of the three weekly research runs failed.",
-    );
+  const providerFailures = results
+    .filter(({ result }) => result.status === "failed")
+    .map(({ run }) => run.cardId);
+  if (providerFailures.length > 0) {
+    return {
+      status: "retry",
+      failedCardIds: providerFailures,
+      feedback: `Parallel failed research for ${providerFailures.join(", ")}.`,
+    };
   }
   if (results.some(({ result }) => result.status === "pending")) {
     return { status: "pending" as const };
   }
 
-  const completed = results.map(({ run, result }) => {
-    if (result.status !== "completed") {
-      throw new WeeklyPackGenerationError("Research is not complete.");
-    }
-    const raw =
-      typeof result.content === "string"
-        ? JSON.parse(result.content)
-        : result.content;
-    const finding = weeklyPackResearchFindingSchema.parse(raw);
-    if (finding.cardId !== run.cardId) {
-      throw new WeeklyPackGenerationError(
-        `Research for ${run.cardId} returned the wrong card id.`,
+  const completed: WeeklyPackResearchResult[] = [];
+  const invalidCards: WeeklyPackScale[] = [];
+  const invalidMessages: string[] = [];
+  for (const { run, result } of results) {
+    try {
+      if (result.status !== "completed") {
+        throw new Error("Research is not complete.");
+      }
+      const raw =
+        typeof result.content === "string"
+          ? JSON.parse(result.content)
+          : result.content;
+      const finding = weeklyPackResearchFindingSchema.parse(raw);
+      if (finding.cardId !== run.cardId) {
+        throw new Error(`returned card id ${finding.cardId}`);
+      }
+      completed.push(
+        weeklyPackResearchResultSchema.parse({
+          cardId: run.cardId,
+          runId: run.runId,
+          finding,
+          citations: result.citations,
+        }),
+      );
+    } catch (error) {
+      invalidCards.push(run.cardId);
+      invalidMessages.push(
+        `${run.cardId}: ${error instanceof Error ? error.message : "invalid structured result"}`,
       );
     }
-    return weeklyPackResearchResultSchema.parse({
-      cardId: run.cardId,
-      runId: run.runId,
-      finding,
-      citations: result.citations,
-    });
-  });
+  }
+  if (invalidCards.length > 0) {
+    return {
+      status: "retry",
+      failedCardIds: invalidCards,
+      feedback: invalidMessages.join("\n"),
+    };
+  }
   const audit = auditWeeklyPackResearch({
     pack: args.pack,
     findings: completed.map((result) => result.finding),
     homeCity: args.homeCity,
   });
   if (!audit.valid) {
-    throw new WeeklyPackGenerationError(
-      `Weekly research failed pack audit: ${audit.errors
-        .map((issue) => issue.code)
-        .join(", ")}.`,
-    );
+    const failedCardIds = new Set<WeeklyPackScale>();
+    for (const issue of audit.errors) {
+      if (
+        issue.cardId === "small" ||
+        issue.cardId === "mini" ||
+        issue.cardId === "proper"
+      ) {
+        failedCardIds.add(issue.cardId);
+      }
+    }
+    for (const cardId of audit.collidingCardIds) {
+      if (
+        cardId === "small" ||
+        cardId === "mini" ||
+        cardId === "proper"
+      ) {
+        failedCardIds.add(cardId);
+      }
+    }
+    return {
+      status: "retry",
+      failedCardIds:
+        failedCardIds.size > 0
+          ? [...failedCardIds]
+          : args.pack.cards.map(({ id }) => id),
+      feedback: audit.errors
+        .map(
+          (issue) =>
+            `${issue.cardId ? `${issue.cardId} ` : ""}${issue.code}: ${issue.message}`,
+        )
+        .join("\n"),
+    };
   }
   console.info(
     [

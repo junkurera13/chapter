@@ -688,5 +688,38 @@ describe("weekly pack design lab", () => {
         "RESEARCH_TRAVEL_TOO_LONG",
       ]),
     );
+
+    const neighbourhoodHome = auditWeeklyPackResearch({
+      pack,
+      homeCity: "Bangbae-dong, Seoul, South Korea",
+      findings: [
+        finding("small", "Seoripul Park", {
+          originCity: "Bangbae-dong, Seoul, South Korea",
+          destinationCity: "Seoul, South Korea",
+          roundTripMinutes: 40,
+          requiresFlight: false,
+          withinDesignedGeography: true,
+        }),
+        finding("mini", "Foyu Clay Ceramic Studio", {
+          originCity: "Bangbae-dong, Seoul, South Korea",
+          destinationCity: "Seoul, South Korea",
+          roundTripMinutes: 60,
+          requiresFlight: false,
+          withinDesignedGeography: true,
+        }),
+        finding("proper", "Suwon Sports Center", {
+          originCity: "Bangbae-dong, Seoul, South Korea",
+          destinationCity: "Suwon, South Korea",
+          roundTripMinutes: 180,
+          requiresFlight: false,
+          withinDesignedGeography: true,
+        }),
+      ],
+    });
+    expect(
+      neighbourhoodHome.errors.filter(
+        (issue) => issue.code === "RESEARCH_DESTINATION_CITY",
+      ),
+    ).toEqual([]);
   });
 });
