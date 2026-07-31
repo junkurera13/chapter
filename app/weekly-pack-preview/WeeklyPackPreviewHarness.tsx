@@ -6,8 +6,10 @@ import type { WeeklyPackReviewState } from "@/lib/weeklyPackPreview";
 
 export default function WeeklyPackPreviewHarness({
   state,
+  showCreator = false,
 }: {
   state: WeeklyPackReviewState;
+  showCreator?: boolean;
 }) {
   function changeState(nextState: WeeklyPackReviewState) {
     const url = new URL(window.location.href);
@@ -21,6 +23,7 @@ export default function WeeklyPackPreviewHarness({
         key={state}
         reviewState={state}
         onReviewStateChange={changeState}
+        canCreateExperiences={showCreator}
       />
       <WeeklyPackReviewToolbar
         state={state}

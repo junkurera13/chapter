@@ -57,9 +57,31 @@ export function loadWeeklyPack() {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   return weeklyPackFetch<{
     pack: WeeklyExperiencePack | null;
+    preparing: boolean;
     timezone: string;
     homeCity: string;
   }>({ query: { timezone } });
+}
+
+export type WeeklyPackGenerationResult = {
+  pack: WeeklyExperiencePack | null;
+  generationStatus: "idle" | "preparing";
+};
+
+export function createWeeklyPackExperiences() {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  return weeklyPackFetch<WeeklyPackGenerationResult>({
+    method: "POST",
+    body: { action: "create", timezone },
+  });
+}
+
+export function advanceWeeklyPackGeneration() {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  return weeklyPackFetch<WeeklyPackGenerationResult>({
+    method: "POST",
+    body: { action: "advance", timezone },
+  });
 }
 
 export function revealWeeklyCard(packId: string, cardId: WeeklyPackScale) {

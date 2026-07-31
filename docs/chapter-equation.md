@@ -79,11 +79,9 @@ four weeks. Feedback such as “too expensive right now” should raise affordab
 odds without deleting an otherwise good activity, while “save for later” keeps
 an aspirational possibility alive.
 
-Adventure Lab deliberately does not reject a proved experience because of
-price. It reports the real all-in cost so the reviewer can evaluate the idea
-without turning a budget preference into another generation failure. The
-weekly production worker still needs to adopt the persisted cost draw before
-this cadence ships to Now.
+The weekly production worker still needs to adopt a persisted cost draw before
+this cadence is considered shipped in Now. Until then, this table is product
+policy rather than a claim about the current generator.
 
 ---
 

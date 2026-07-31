@@ -63,7 +63,6 @@ conversation models are currently fixed in `agent/agent.ts`.
 | --- | --- | --- |
 | Onboarding memory extraction (multimodal) | `google/gemini-3.1-flash-lite`, falling back to `moonshotai/kimi-k2.6` | `CHAPTER_MEMORY_MODEL`, `CHAPTER_MEMORY_FALLBACK_MODEL` |
 | Eve conversation (web + iMessage) | `deepseek/deepseek-v4-flash` for text, `moonshotai/kimi-k2.6` for image-bearing turns | none |
-| Local Adventure Lab | `openai/gpt-5.6-terra` designs and writes the final card; up to three Parallel runs prove or reject the real-world action | `CHAPTER_ADVENTURE_LAB_MODEL` |
 | Weekly-pack design and final card copy | `openai/gpt-5.6-terra`, with bounded deterministic retries | `CHAPTER_PACK_MODEL`, `CHAPTER_PACK_COMPOSITION_MODEL` |
 | Weekly-pack environmental images | OpenRouter Image API with `krea/krea-2-large`; durable media on fal CDN | `CHAPTER_PACK_IMAGE_MODEL` |
 | Together briefs, chapters and legacy Now fallback | `moonshotai/kimi-k2.6`, falling back to `deepseek/deepseek-v4-flash` | `CHAPTER_NOW_MODEL`, `CHAPTER_NOW_FALLBACK_MODEL` |
@@ -74,9 +73,11 @@ conversation models are currently fixed in `agent/agent.ts`.
 OpenRouter calls are pinned to zero-data-retention providers with
 `data_collection: "deny"`.
 
-`/adventure-lab` is a development-only reviewer harness. Its layout and
-feedback controls are disposable testing infrastructure, not the production
-Now interface or a reference for that interface's design.
+The product owner's account has one server-enforced testing affordance in the
+real **Now** surface: its orb can start a fresh stored three-card pack at any
+time. The result uses the same reveal, choice, scheduling, and chosen-experience
+states as an ordinary Saturday pack. No other account receives the control or
+can invoke its paid generation actions.
 
 ## How the pieces fit
 
@@ -186,7 +187,7 @@ npx eve info --json
 npx eve channels list --json
 ```
 
-`npm test` currently runs 356 tests across 50 files.
+`npm test` currently runs 369 tests across 51 files.
 
 The production pass should additionally verify Google sign-in, phone linking,
 the iMessage webhook health route, one real memory turn, private graph

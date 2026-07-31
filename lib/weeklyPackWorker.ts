@@ -132,6 +132,75 @@ export function weeklyPackContextFrom(
   };
 }
 
+export async function startClaimedWeeklyPack(
+  args: {
+    source: WeeklyPackGenerationSource;
+    preparation: WeeklyPackPreparation;
+    requestId: string;
+    weekKey: string;
+  },
+  dependencies: WorkerDependencies = productionDependencies,
+) {
+  const context = weeklyPackContextFrom(args.source, args.requestId);
+  const designed = await dependencies.designPack({
+    source: {
+      graph: args.source.graph,
+      context,
+    },
+    requestId: args.requestId,
+  });
+  const artifact = {
+    ...designed,
+    homeCity: args.source.homeCity,
+    companion: context.socialMatch
+      ? args.source.socialCandidate?.companion
+      : undefined,
+  };
+  const runs = await dependencies.startResearch({
+    pack: artifact.pack,
+    context,
+    weekKey: args.weekKey,
+  });
+  await dependencies.setResearch({
+    packId: args.preparation.id,
+    designJson: JSON.stringify(artifact),
+    researchRunIdsJson: JSON.stringify(runs),
+  });
+}
+
+export async function advanceWeeklyPackPreparation(
+  preparation: WeeklyPackPreparation,
+  dependencies: WorkerDependencies = productionDependencies,
+) {
+  const artifact = weeklyPackDesignArtifactSchema.parse(preparation.design);
+  const runs = weeklyPackResearchRunsSchema.parse(preparation.researchRuns);
+  const research = await dependencies.pollResearch({
+    pack: artifact.pack,
+    runs,
+    homeCity: artifact.homeCity,
+    requestId: preparation.generationRequestId,
+  });
+  if (research.status === "pending") {
+    return { status: "pending" as const };
+  }
+
+  const cards = await dependencies.composeCards({
+    pack: artifact.pack,
+    research: research.results,
+    requestId: preparation.generationRequestId ?? dependencies.newRequestId(),
+    companion: artifact.companion,
+  });
+  const completed = await dependencies.completePreparation({
+    packId: preparation.id,
+    cardsJson: JSON.stringify(cards),
+    researchJson: JSON.stringify({
+      results: research.results,
+      audit: research.audit,
+    }),
+  });
+  return { status: "ready" as const, pack: completed.pack };
+}
+
 async function safelyFail(
   dependencies: WorkerDependencies,
   packId: string,
@@ -192,49 +261,15 @@ export async function runWeeklyPackCycle(
     summary.preparationsExamined += 1;
     ownersAlreadyProcessed.add(preparation.ownerUserId);
 
-    let artifact;
-    let runs;
     try {
-      artifact = weeklyPackDesignArtifactSchema.parse(preparation.design);
-      runs = weeklyPackResearchRunsSchema.parse(preparation.researchRuns);
-    } catch (error) {
-      summary.preparationFailures += 1;
-      await safelyFail(
+      const result = await advanceWeeklyPackPreparation(
+        preparation,
         dependencies,
-        preparation.id,
-        "stored artifact validation",
-        error,
       );
-      continue;
-    }
-
-    try {
-      const research = await dependencies.pollResearch({
-        pack: artifact.pack,
-        runs,
-        homeCity: artifact.homeCity,
-        requestId: preparation.generationRequestId,
-      });
-      if (research.status === "pending") {
+      if (result.status === "pending") {
         summary.researchPending += 1;
         continue;
       }
-
-      const cards = await dependencies.composeCards({
-        pack: artifact.pack,
-        research: research.results,
-        requestId:
-          preparation.generationRequestId ?? dependencies.newRequestId(),
-        companion: artifact.companion,
-      });
-      await dependencies.completePreparation({
-        packId: preparation.id,
-        cardsJson: JSON.stringify(cards),
-        researchJson: JSON.stringify({
-          results: research.results,
-          audit: research.audit,
-        }),
-      });
       summary.packsReady += 1;
     } catch (error) {
       summary.preparationFailures += 1;
@@ -310,31 +345,15 @@ export async function runWeeklyPackCycle(
     summary.packsStarted += 1;
 
     try {
-      const context = weeklyPackContextFrom(source, requestId);
-      const designed = await dependencies.designPack({
-        source: {
-          graph: source.graph,
-          context,
+      await startClaimedWeeklyPack(
+        {
+          source,
+          preparation: claim.preparation,
+          requestId,
+          weekKey: window.weekKey,
         },
-        requestId,
-      });
-      const artifact = {
-        ...designed,
-        homeCity: source.homeCity,
-        companion: context.socialMatch
-          ? source.socialCandidate?.companion
-          : undefined,
-      };
-      const runs = await dependencies.startResearch({
-        pack: artifact.pack,
-        context,
-        weekKey: window.weekKey,
-      });
-      await dependencies.setResearch({
-        packId: claim.preparation.id,
-        designJson: JSON.stringify(artifact),
-        researchRunIdsJson: JSON.stringify(runs),
-      });
+        dependencies,
+      );
     } catch (error) {
       summary.preparationFailures += 1;
       await safelyFail(

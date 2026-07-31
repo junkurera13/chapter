@@ -9,6 +9,7 @@ export type AuthenticatedViewer = {
   phone?: string;
   assignedPhone?: string;
   messagingConnected: boolean;
+  canCreateExperiences?: boolean;
 };
 
 type MySessionResponse = {

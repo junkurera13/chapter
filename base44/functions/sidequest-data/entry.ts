@@ -31,6 +31,7 @@ import {
   weeklyCompanionFamiliarity,
   weeklyCardsHaveConcretePeopleAndPlaces,
 } from "../../shared/weekly-companion.ts";
+import { canCreateWeeklyPacks } from "../../shared/weekly-pack-creator.ts";
 
 // Base44 entity rows are dynamic at this SDK boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -229,6 +230,7 @@ function viewerRecord(viewer: Row, user: Row) {
     messagingConnected: Boolean(user.phone && user.assigned_phone),
     introductionsMuted: Boolean(user.introductions_muted),
     homeCity: stringValue(user.home_city) || undefined,
+    canCreateExperiences: canCreateWeeklyPacks(viewer.email),
   };
 }
 
@@ -612,6 +614,7 @@ function weeklyPackPreparationRecord(row: Row) {
     generationRequestId:
       stringValue(row.generation_request_id) || undefined,
     attemptCount: Number(row.attempt_count) || 0,
+    updatedAt: Number(row.updated_at) || Number(row.created_at) || 0,
   };
 }
 
@@ -719,6 +722,66 @@ async function weeklySocialCandidateFor(
     companion: selected.companion,
     sharedAnchors: selected.sharedAnchors,
   };
+}
+
+async function weeklyPackGenerationSourceFor(base44: Row, user: Row) {
+  const timezone = validTimezone(user.timezone);
+  const homeCity =
+    stringValue(user.home_city) || stringValue(user.current_city);
+  if (!timezone || !homeCity) {
+    return {
+      error: "weekly pack context incomplete",
+      status: 409,
+    } as const;
+  }
+
+  const connections = base44.asServiceRole.entities.SidequestConnection;
+  const [{ memoryRows, projected }, connectionRows] = await Promise.all([
+    projectedGraphFor(base44, user),
+    readWithRateLimitRetry(() =>
+      connections.filter(
+        {
+          status: "accepted",
+          $or: [
+            { user_a_id: user.id },
+            { user_b_id: user.id },
+          ],
+        },
+        "-created_at",
+        24,
+      )
+    ),
+  ]);
+  if (memoryRows.length === 0 || projected.nodes.length === 0) {
+    return {
+      error: "weekly pack graph not ready",
+      status: 409,
+    } as const;
+  }
+  const socialCandidate = await weeklySocialCandidateFor(
+    base44,
+    user,
+    planningNodesFromProjected(projected.nodes),
+    connectionRows,
+  );
+  return {
+    source: {
+      ownerUserId: user.id,
+      homeCity,
+      timezone,
+      availableCompanies: [
+        "self",
+        ...(socialCandidate ? [socialCandidate.company] : []),
+      ],
+      ...(socialCandidate ? { socialCandidate } : {}),
+      graph: {
+        memoryCount: memoryRows.length,
+        onboardingStep: user.onboarding_step,
+        nodes: projected.nodes.map((node: Row) => graphNodeRecord(node)),
+        edges: projected.edges.map(graphEdgeRecord),
+      },
+    },
+  } as const;
 }
 
 /**
@@ -2000,61 +2063,118 @@ Deno.serve(async (req) => {
       if (!user) {
         return Response.json({ error: "user not found" }, { status: 404 });
       }
-      const timezone = validTimezone(user.timezone);
-      const homeCity =
-        stringValue(user.home_city) || stringValue(user.current_city);
-      if (!timezone || !homeCity) {
+      const result = await weeklyPackGenerationSourceFor(base44, user);
+      if ("error" in result) {
         return Response.json(
-          { error: "weekly pack context incomplete" },
-          { status: 409 },
+          { error: result.error },
+          { status: result.status },
+        );
+      }
+      return Response.json({ value: result.source });
+    }
+
+    if (action === "claimMyWeeklyPackCreatorPreparation") {
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+      if (!canCreateWeeklyPacks(viewer.email)) {
+        return Response.json({ error: "not found" }, { status: 404 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const weekKey = stringValue(data.weekKey);
+      const timezone = validTimezone(data.timezone);
+      const releaseAt = Number(data.releaseAt);
+      const expiresAt = Number(data.expiresAt);
+      const generationRequestId = stringValue(data.generationRequestId).slice(
+        0,
+        160,
+      );
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(weekKey) ||
+        !timezone ||
+        !Number.isFinite(releaseAt) ||
+        !Number.isFinite(expiresAt) ||
+        expiresAt <= releaseAt ||
+        !generationRequestId
+      ) {
+        return Response.json({ error: "invalid preparation" }, { status: 400 });
+      }
+
+      if (timezone !== user.timezone) {
+        await users.update(user.id, { timezone });
+        user.timezone = timezone;
+      }
+      const sourceResult = await weeklyPackGenerationSourceFor(base44, user);
+      if ("error" in sourceResult) {
+        return Response.json(
+          { error: sourceResult.error },
+          { status: sourceResult.status },
         );
       }
 
-      const connections = base44.asServiceRole.entities.SidequestConnection;
-      const [{ memoryRows, projected }, connectionRows] = await Promise.all([
-        projectedGraphFor(base44, user),
-        readWithRateLimitRetry(() =>
-          connections.filter(
-            {
-              status: "accepted",
-              $or: [
-                { user_a_id: user.id },
-                { user_b_id: user.id },
-              ],
-            },
-            "-created_at",
-            24,
-          )
-        ),
-      ]);
-      if (memoryRows.length === 0 || projected.nodes.length === 0) {
-        return Response.json(
-          { error: "weekly pack graph not ready" },
-          { status: 409 },
-        );
+      const packs = base44.asServiceRole.entities.WeeklyExperiencePack;
+      const latest = await readWithRateLimitRetry(() =>
+        packs.filter({ owner_user_id: user.id }, "-created_at", 1)
+      );
+      if (latest[0]?.status === "preparing") {
+        return Response.json({
+          value: {
+            claimed: false,
+            preparation: weeklyPackPreparationRecord(latest[0]),
+          },
+        });
       }
-      const socialCandidate = await weeklySocialCandidateFor(
-        base44,
-        user,
-        planningNodesFromProjected(projected.nodes),
-        connectionRows,
+
+      const now = Date.now();
+      const created = await packs.create({
+        owner_user_id: user.id,
+        week_key: weekKey,
+        timezone,
+        status: "preparing",
+        release_at: releaseAt,
+        expires_at: expiresAt,
+        generation_request_id: generationRequestId,
+        attempt_count: 1,
+        revealed_card_ids: "",
+        created_at: now,
+        updated_at: now,
+      });
+      return Response.json({
+        value: {
+          claimed: true,
+          preparation: weeklyPackPreparationRecord(created),
+          source: sourceResult.source,
+        },
+      });
+    }
+
+    if (action === "getMyWeeklyPackCreatorPreparation") {
+      if (!trustedInternalCall(data)) return untrustedInternalCall();
+      const viewer = await authenticatedViewer(base44);
+      if (!viewer) {
+        return Response.json({ error: "authentication required" }, { status: 401 });
+      }
+      if (!canCreateWeeklyPacks(viewer.email)) {
+        return Response.json({ error: "not found" }, { status: 404 });
+      }
+
+      const user = await ensureSidequestUser(users, viewer);
+      const packs = base44.asServiceRole.entities.WeeklyExperiencePack;
+      const rows = await readWithRateLimitRetry(() =>
+        packs.filter(
+          { owner_user_id: user.id, status: "preparing" },
+          "-created_at",
+          1,
+        )
       );
       return Response.json({
         value: {
-          ownerUserId: user.id,
-          homeCity,
-          timezone,
-          availableCompanies: [
-            "self",
-            ...(socialCandidate ? [socialCandidate.company] : []),
-          ],
-          ...(socialCandidate ? { socialCandidate } : {}),
-          graph: {
-            memoryCount: memoryRows.length,
-            onboardingStep: user.onboarding_step,
-            nodes: projected.nodes.map((node: Row) => graphNodeRecord(node)),
-            edges: projected.edges.map(graphEdgeRecord),
-          },
+          preparation: rows[0]
+            ? weeklyPackPreparationRecord(rows[0])
+            : null,
         },
       });
     }
@@ -2322,11 +2442,12 @@ Deno.serve(async (req) => {
       }
       const packs = base44.asServiceRole.entities.WeeklyExperiencePack;
       const rows = await readWithRateLimitRetry(() =>
-        packs.filter({ owner_user_id: user.id }, "-release_at", 1)
+        packs.filter({ owner_user_id: user.id }, "-created_at", 1)
       );
       return Response.json({
         value: {
           pack: rows[0] ? weeklyPackRecord(rows[0]) : null,
+          preparing: rows[0]?.status === "preparing",
           timezone: timezone || validTimezone(user.timezone) || "UTC",
           homeCity:
             stringValue(user.home_city) || stringValue(user.current_city),

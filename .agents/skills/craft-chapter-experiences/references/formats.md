@@ -23,10 +23,7 @@ geography, energy, and time character.
 
 ## Launch scale contracts
 
-The weekly pack uses these as exact composition lanes. Adventure Lab uses the
-drawn scale as a preference: it must not pad or reject a strong, grounded action
-solely to hit the draw. After research proves the real duration, the Lab
-reclassifies the result as `small`, `mini`, or `proper`.
+The weekly pack uses these as exact composition lanes.
 
 ### Small activity
 
@@ -104,13 +101,12 @@ Draw `accessible`, `planned`, or `splurge` before design, but do not give the
 design model an exact price to invent around. Research proves the actual all-in
 cost for one person and code applies the cadence afterward.
 
-Small experiences are always accessible in the shipped product contract, and
-splurges remain rare and ineligible for 28 days after one is offered. Adventure
-Lab is an evaluation surface: it reports the researched all-in price but does
-not reject an otherwise grounded experience because of cost. Treat “too
+Small experiences are always accessible in the product contract, and splurges
+remain rare and ineligible for 28 days after one is offered. Treat “too
 expensive right now” as feedback on future cost odds, not as dislike of the
 underlying activity. “Save for later” preserves the activity as an aspirational
-possibility.
+possibility. The production worker has not yet persisted this cadence, so do
+not describe those odds as shipped.
 
 Choose an internal basis independently:
 

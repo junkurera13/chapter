@@ -171,6 +171,7 @@ export function fetchMyNow(accessToken: string) {
 export function fetchMyWeeklyPack(timezone: string, accessToken: string) {
   return invokeSidequestData<{
     pack: import("./weeklyPackSchema").WeeklyExperiencePack | null;
+    preparing: boolean;
     timezone: string;
     homeCity: string;
   }>({ action: "getMyWeeklyPack", timezone }, accessToken);
@@ -249,6 +250,7 @@ export type WeeklyPackPreparation = {
   researchRuns?: unknown;
   generationRequestId?: string;
   attemptCount: number;
+  updatedAt: number;
 };
 
 export function listWeeklyPackCandidates(limit = 25) {
@@ -284,6 +286,36 @@ export function claimWeeklyPackPreparation(args: {
     internalSecret: internalSecret(),
     ...args,
   });
+}
+
+export function claimMyWeeklyPackCreatorPreparation(
+  args: {
+    weekKey: string;
+    timezone: string;
+    releaseAt: number;
+    expiresAt: number;
+    generationRequestId: string;
+  },
+  accessToken: string,
+) {
+  return invokeSidequestData<{
+    claimed: boolean;
+    preparation: WeeklyPackPreparation;
+    source?: WeeklyPackGenerationSource;
+  }>({
+    action: "claimMyWeeklyPackCreatorPreparation",
+    internalSecret: internalSecret(),
+    ...args,
+  }, accessToken);
+}
+
+export function fetchMyWeeklyPackCreatorPreparation(accessToken: string) {
+  return invokeSidequestData<{
+    preparation: WeeklyPackPreparation | null;
+  }>({
+    action: "getMyWeeklyPackCreatorPreparation",
+    internalSecret: internalSecret(),
+  }, accessToken);
 }
 
 export function setWeeklyPackResearch(args: {

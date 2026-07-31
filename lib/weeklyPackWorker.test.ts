@@ -29,6 +29,7 @@ function preparation(
     expiresAt: Date.parse("2026-08-22T00:00:00.000Z"),
     status: "preparing",
     attemptCount: 1,
+    updatedAt: Date.parse("2026-07-29T02:00:00.000Z"),
     ...overrides,
   };
 }

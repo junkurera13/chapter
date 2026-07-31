@@ -19,7 +19,9 @@ import {
   type WeeklyExperiencePack,
 } from "@/lib/weeklyPackSchema";
 import {
+  advanceWeeklyPackGeneration,
   chooseWeeklyCard,
+  createWeeklyPackExperiences,
   dismissWeeklyPack,
   loadWeeklyPack,
   markWeeklyCardLived,
@@ -41,6 +43,10 @@ type PackState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "ready"; pack: WeeklyExperiencePack | null };
+
+type GenerationState = "idle" | "starting" | "preparing" | "error";
+
+const GENERATION_POLL_MS = 5_000;
 
 const BUBBLEGUM_TONES: BubblegumTone[] = ["blue", "pink", "green"];
 const REVIEW_CARD_IMAGES: Record<WeeklyPackScale, StaticImageData> = {
@@ -292,6 +298,10 @@ function LockedPackState({
   reduceMotion,
   needsLocation = false,
   onHomeCitySaved,
+  canCreateExperiences = false,
+  generationState = "idle",
+  generationError = "",
+  onCreateExperiences,
 }: {
   releaseAt: number;
   reduceMotion: boolean;
@@ -303,27 +313,55 @@ function LockedPackState({
   */
   needsLocation?: boolean;
   onHomeCitySaved?: (homeCity: string) => void;
+  canCreateExperiences?: boolean;
+  generationState?: GenerationState;
+  generationError?: string;
+  onCreateExperiences?: () => void;
 }) {
+  const generating =
+    generationState === "starting" || generationState === "preparing";
+  const creatorMode = canCreateExperiences && !needsLocation;
   return (
     <section className={styles.statePage}>
-      <motion.div
-        className={styles.lockedLoader}
-        initial={reduceMotion ? false : { opacity: 0, scale: 0.975 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: reduceMotion ? 0 : 0.55 }}
-        aria-hidden="true"
-      >
-        <Image
-          className={styles.lockedLoaderMark}
-          src="/chapter-mark.svg"
-          alt=""
-          width={112}
-          height={112}
-        />
-      </motion.div>
+      {creatorMode ? (
+        <motion.button
+          type="button"
+          className={`${styles.lockedLoader} ${styles.lockedCreator}`}
+          initial={false}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: reduceMotion ? 0 : 0.55 }}
+          onClick={onCreateExperiences}
+          disabled={generating}
+          aria-label={
+            generating
+              ? "Creating three new experiences"
+              : "Create three new experiences"
+          }
+        >
+          <span className={styles.lockedCreatorOrb} aria-hidden="true">
+            <AgentOrbVideo playWhileMounted preload="auto" />
+          </span>
+        </motion.button>
+      ) : (
+        <motion.div
+          className={styles.lockedLoader}
+          initial={reduceMotion ? false : { opacity: 0, scale: 0.975 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: reduceMotion ? 0 : 0.55 }}
+          aria-hidden="true"
+        >
+          <Image
+            className={styles.lockedLoaderMark}
+            src="/chapter-mark.svg"
+            alt=""
+            width={112}
+            height={112}
+          />
+        </motion.div>
+      )}
       <motion.div
         className={styles.stateCopy}
-        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+        initial={creatorMode || reduceMotion ? false : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.14 }}
       >
@@ -335,6 +373,23 @@ function LockedPackState({
               onSaved={onHomeCitySaved}
             />
           </>
+        ) : creatorMode ? (
+          generationState === "error" ? (
+            <>
+              <h1>That set didn&apos;t come together.</h1>
+              <p>{generationError || "Tap the orb to try again."}</p>
+            </>
+          ) : generating ? (
+            <>
+              <h1>Your experiences are taking shape.</h1>
+              <p>Chapter is researching three real options.</p>
+            </>
+          ) : (
+            <>
+              <h1>Create three new experiences.</h1>
+              <p>Tap the orb.</p>
+            </>
+          )
         ) : (
           <>
             <h1>Your experiences are taking shape.</h1>
@@ -351,14 +406,37 @@ function LockedPackState({
   );
 }
 
+function CreatorOrb({
+  onCreate,
+}: {
+  onCreate: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      className={styles.creatorOrb}
+      aria-label="Create another set of three experiences"
+      onClick={onCreate}
+      initial={false}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.97 }}
+    >
+      <AgentOrbVideo playWhileMounted preload="auto" />
+    </motion.button>
+  );
+}
+
 export default function WeeklyPackView({
   reviewState,
   onReviewStateChange,
   reviewPack,
+  canCreateExperiences = false,
 }: {
   reviewState?: WeeklyPackReviewState;
   onReviewStateChange?: (state: WeeklyPackReviewState) => void;
   reviewPack?: WeeklyExperiencePack;
+  canCreateExperiences?: boolean;
 }) {
   const reduceMotion = useReducedMotion();
   const initialReview = reviewPack
@@ -383,6 +461,10 @@ export default function WeeklyPackView({
     reviewState === "sealed" ? (initialReviewPack?.id ?? null) : null,
   );
   const [actionError, setActionError] = useState("");
+  const [generationState, setGenerationState] =
+    useState<GenerationState>("idle");
+  const [generationError, setGenerationError] = useState("");
+  const generationPollFailures = useRef(0);
   const [showDatePicker, setShowDatePicker] = useState(
     initialReview?.showDatePicker ?? false,
   );
@@ -399,10 +481,13 @@ export default function WeeklyPackView({
 
     let active = true;
     void loadWeeklyPack()
-      .then(({ pack, homeCity: savedHomeCity }) => {
+      .then(({ pack, homeCity: savedHomeCity, preparing }) => {
         if (!active) return;
         setState({ status: "ready", pack });
         setHomeCity(savedHomeCity || "");
+        if (canCreateExperiences && preparing) {
+          setGenerationState("preparing");
+        }
       })
       .catch((error) => {
         if (active) {
@@ -418,7 +503,61 @@ export default function WeeklyPackView({
     return () => {
       active = false;
     };
-  }, [reviewState]);
+  }, [canCreateExperiences, reviewState]);
+
+  useEffect(() => {
+    if (
+      reviewState ||
+      !canCreateExperiences ||
+      generationState !== "preparing"
+    ) {
+      return;
+    }
+
+    let active = true;
+    let timer: number | undefined;
+    const poll = async () => {
+      try {
+        const result = await advanceWeeklyPackGeneration();
+        if (!active) return;
+        generationPollFailures.current = 0;
+        if (result.generationStatus === "preparing") {
+          timer = window.setTimeout(poll, GENERATION_POLL_MS);
+          return;
+        }
+        if (!result.pack || result.pack.status === "failed") {
+          setState({ status: "ready", pack: null });
+          setGenerationState("error");
+          setGenerationError("Tap the orb to try another set.");
+          return;
+        }
+        setState({ status: "ready", pack: result.pack });
+        setOpenedPackId(null);
+        setPendingChoice(null);
+        setGenerationState("idle");
+        setGenerationError("");
+      } catch (error) {
+        if (!active) return;
+        generationPollFailures.current += 1;
+        if (generationPollFailures.current <= 3) {
+          timer = window.setTimeout(poll, GENERATION_POLL_MS);
+          return;
+        }
+        setGenerationState("error");
+        setGenerationError(
+          error instanceof Error
+            ? error.message
+            : "Tap the orb to try another set.",
+        );
+      }
+    };
+
+    timer = window.setTimeout(poll, GENERATION_POLL_MS);
+    return () => {
+      active = false;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [canCreateExperiences, generationState, reviewState]);
 
   const pack = state.status === "ready" ? state.pack : null;
 
@@ -443,6 +582,60 @@ export default function WeeklyPackView({
     [pack?.cards, pack?.weekKey],
   );
   const pendingCard = orderedCards.find((card) => card.id === pendingChoice);
+
+  async function createExperiences() {
+    if (
+      !canCreateExperiences ||
+      (homeCity === "" && !reviewState) ||
+      generationState === "starting" ||
+      generationState === "preparing"
+    ) {
+      return;
+    }
+    setGenerationState("starting");
+    generationPollFailures.current = 0;
+    setGenerationError("");
+    setActionError("");
+    setPendingChoice(null);
+    setShowDatePicker(false);
+    setOpenedPackId(null);
+    setState({ status: "ready", pack: null });
+    if (reviewState) {
+      setGenerationState("preparing");
+      return;
+    }
+    try {
+      const result = await createWeeklyPackExperiences();
+      if (result.generationStatus === "preparing") {
+        setGenerationState("preparing");
+        return;
+      }
+      if (result.pack && result.pack.status !== "failed") {
+        setState({ status: "ready", pack: result.pack });
+        setGenerationState("idle");
+        return;
+      }
+      setGenerationState("error");
+      setGenerationError("Tap the orb to try another set.");
+    } catch (error) {
+      try {
+        const latest = await loadWeeklyPack();
+        if (latest.preparing) {
+          setState({ status: "ready", pack: latest.pack });
+          setGenerationState("preparing");
+          return;
+        }
+      } catch {
+        // The original request error is the useful one to show.
+      }
+      setGenerationState("error");
+      setGenerationError(
+        error instanceof Error
+          ? error.message
+          : "Tap the orb to try another set.",
+      );
+    }
+  }
 
   async function reveal(cardId: WeeklyPackScale) {
     if (!pack || busy || pack.revealedCardIds.includes(cardId)) return;
@@ -663,6 +856,10 @@ export default function WeeklyPackView({
         // answered with nothing, null means not asked yet.
         needsLocation={homeCity === ""}
         onHomeCitySaved={setHomeCity}
+        canCreateExperiences={canCreateExperiences}
+        generationState={generationState}
+        generationError={generationError}
+        onCreateExperiences={() => void createExperiences()}
       />
     );
   }
@@ -672,9 +869,18 @@ export default function WeeklyPackView({
       <LockedPackState
         releaseAt={pack.releaseAt}
         reduceMotion={Boolean(reduceMotion)}
+        canCreateExperiences={canCreateExperiences}
+        generationState={generationState}
+        generationError={generationError}
+        onCreateExperiences={() => void createExperiences()}
       />
     );
   }
+
+  const creatorControl =
+    canCreateExperiences && generationState !== "preparing" ? (
+      <CreatorOrb onCreate={() => void createExperiences()} />
+    ) : null;
 
   if (phase === "dismissed" || phase === "expired" || phase === "failed") {
     const title =
@@ -690,24 +896,27 @@ export default function WeeklyPackView({
           ? "A new set arrives on Saturday."
           : "Chapter will try again before the next Saturday.";
     return (
-      <section className={styles.statePage}>
-        <div className={styles.closedMark} aria-hidden="true">
-          <Image src="/chapter-mark.svg" alt="" width={56} height={56} />
-        </div>
-        <div className={styles.stateCopy}>
-          <h1>{title}</h1>
-          <p>{body}</p>
-          {reviewState ? (
-            <button
-              type="button"
-              className={styles.textAction}
-              onClick={replayPreview}
-            >
-              Replay preview
-            </button>
-          ) : null}
-        </div>
-      </section>
+      <>
+        <section className={styles.statePage}>
+          <div className={styles.closedMark} aria-hidden="true">
+            <Image src="/chapter-mark.svg" alt="" width={56} height={56} />
+          </div>
+          <div className={styles.stateCopy}>
+            <h1>{title}</h1>
+            <p>{body}</p>
+            {reviewState ? (
+              <button
+                type="button"
+                className={styles.textAction}
+                onClick={replayPreview}
+              >
+                Replay preview
+              </button>
+            ) : null}
+          </div>
+        </section>
+        {creatorControl}
+      </>
     );
   }
 
@@ -729,41 +938,48 @@ export default function WeeklyPackView({
       );
     }
     return (
-      <ChosenExperience
-        card={card}
-        pack={pack}
-        busy={busy}
-        actionError={actionError}
-        showDatePicker={showDatePicker}
-        scheduledFor={scheduledFor}
-        reduceMotion={Boolean(reduceMotion)}
-        preview={Boolean(reviewState)}
-        onShowDatePicker={() => {
-          setScheduledFor(pack.scheduledFor ?? localIsoDay());
-          setShowDatePicker(true);
-        }}
-        onDateChange={setScheduledFor}
-        onSchedule={(day) => void schedule(day)}
-        onCancelDate={() => setShowDatePicker(false)}
-        onDismiss={() => void dismiss()}
-        onLived={() => void markLived()}
-        onReplay={replayPreview}
-      />
+      <>
+        <ChosenExperience
+          card={card}
+          pack={pack}
+          busy={busy}
+          actionError={actionError}
+          showDatePicker={showDatePicker}
+          scheduledFor={scheduledFor}
+          reduceMotion={Boolean(reduceMotion)}
+          preview={Boolean(reviewState)}
+          onShowDatePicker={() => {
+            setScheduledFor(pack.scheduledFor ?? localIsoDay());
+            setShowDatePicker(true);
+          }}
+          onDateChange={setScheduledFor}
+          onSchedule={(day) => void schedule(day)}
+          onCancelDate={() => setShowDatePicker(false)}
+          onDismiss={() => void dismiss()}
+          onLived={() => void markLived()}
+          onReplay={replayPreview}
+        />
+        {creatorControl}
+      </>
     );
   }
 
   if (phase === "opener") {
     return (
-      <PackOpener
-        busy={busy}
-        reduceMotion={Boolean(reduceMotion)}
-        onOpen={openPack}
-      />
+      <>
+        <PackOpener
+          busy={busy}
+          reduceMotion={Boolean(reduceMotion)}
+          onOpen={openPack}
+        />
+        {creatorControl}
+      </>
     );
   }
 
   return (
-    <section className={styles.packPage}>
+    <>
+      <section className={styles.packPage}>
       <motion.header
         className={styles.packHeader}
         initial={
@@ -974,7 +1190,9 @@ export default function WeeklyPackView({
           </p>
         </div>
       ) : null}
-    </section>
+      </section>
+      {creatorControl}
+    </>
   );
 }
 
@@ -1102,13 +1320,17 @@ function ChosenExperience({
     <section className={styles.chosenPage}>
       <motion.div
         className={styles.chosenLayout}
-        initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.985 }}
+        initial={
+          preview || reduceMotion
+            ? false
+            : { opacity: 0, y: 18, scale: 0.985 }
+        }
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
       >
         <motion.article
           className={styles.chosenExperienceCard}
-          initial={reduceMotion ? false : { rotate: -0.7 }}
+          initial={preview || reduceMotion ? false : { rotate: -0.7 }}
           animate={{ rotate: 0 }}
           transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
         >

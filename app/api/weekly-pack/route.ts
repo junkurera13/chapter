@@ -1,16 +1,28 @@
 import {
   Base44FunctionError,
+  claimMyWeeklyPackCreatorPreparation,
+  failWeeklyPackPreparation,
   fetchMyNow,
+  fetchMySession,
   fetchMyWeeklyPack,
+  fetchMyWeeklyPackCreatorPreparation,
   updateMyWeeklyPack,
 } from "@/lib/base44Functions";
+import { canCreateWeeklyPacks } from "@/base44/shared/weekly-pack-creator";
 import {
   WEEKLY_PACK_SCALES,
   type WeeklyPackScale,
 } from "@/lib/weeklyPackDesign";
 import { weeklyExperiencePackSchema } from "@/lib/weeklyPackSchema";
+import { weeklyPackWindow } from "@/lib/weeklyPackSchedule";
+import {
+  advanceWeeklyPackPreparation,
+  startClaimedWeeklyPack,
+} from "@/lib/weeklyPackWorker";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 function accessTokenFrom(request: Request) {
   const authorization = request.headers.get("authorization");
@@ -27,6 +39,23 @@ function unauthenticated() {
     },
     { status: 401 },
   );
+}
+
+function creatorNotFound() {
+  return Response.json({ error: "Not found." }, { status: 404 });
+}
+
+async function creatorSession(accessToken: string) {
+  const session = await fetchMySession(accessToken);
+  return canCreateWeeklyPacks(session.viewer.email) ? session : null;
+}
+
+async function publicPackValue(timezone: string, accessToken: string) {
+  const value = await fetchMyWeeklyPack(timezone, accessToken);
+  return {
+    pack: value.pack ? weeklyExperiencePackSchema.parse(value.pack) : null,
+    generationStatus: value.preparing ? "preparing" as const : "idle" as const,
+  };
 }
 
 function failure(error: unknown) {
@@ -67,6 +96,7 @@ export async function GET(request: Request) {
       value: {
         ...value,
         homeCity,
+        preparing: value.preparing === true,
         pack: value.pack
           ? weeklyExperiencePackSchema.parse(value.pack)
           : null,
@@ -86,8 +116,123 @@ export async function POST(request: Request) {
       string,
       unknown
     >;
-    const packId = typeof body.packId === "string" ? body.packId : "";
     const action = typeof body.action === "string" ? body.action : "";
+    if (action === "create") {
+      if (!await creatorSession(accessToken)) return creatorNotFound();
+
+      const timezone =
+        typeof body.timezone === "string" ? body.timezone.slice(0, 80) : "UTC";
+      const requestId = crypto.randomUUID();
+      const now = Date.now();
+      const window = weeklyPackWindow({ timezone, now });
+      const claim = await claimMyWeeklyPackCreatorPreparation(
+        {
+          weekKey: window.weekKey,
+          timezone,
+          releaseAt: now - 1_000,
+          expiresAt: window.expiresAt,
+          generationRequestId: requestId,
+        },
+        accessToken,
+      );
+      if (!claim.claimed) {
+        return Response.json({
+          value: {
+            pack: null,
+            generationStatus: "preparing",
+          },
+        });
+      }
+      if (!claim.source) {
+        throw new Error("Base44 returned an incomplete creator claim.");
+      }
+
+      try {
+        await startClaimedWeeklyPack({
+          source: claim.source,
+          preparation: claim.preparation,
+          requestId,
+          weekKey: window.weekKey,
+        });
+      } catch (error) {
+        const current = await publicPackValue(timezone, accessToken).catch(
+          () => null,
+        );
+        if (
+          current?.generationStatus === "idle" &&
+          current.pack &&
+          current.pack.status !== "failed"
+        ) {
+          return Response.json({ value: current });
+        }
+        await failWeeklyPackPreparation({
+          packId: claim.preparation.id,
+          error: `creator start failed (${error instanceof Error ? error.name : "UnknownError"})`,
+        }).catch(() => undefined);
+        throw error;
+      }
+
+      return Response.json({
+        value: await publicPackValue(timezone, accessToken),
+      });
+    }
+
+    if (action === "advance") {
+      if (!await creatorSession(accessToken)) return creatorNotFound();
+      const timezone =
+        typeof body.timezone === "string" ? body.timezone.slice(0, 80) : "UTC";
+      const { preparation } =
+        await fetchMyWeeklyPackCreatorPreparation(accessToken);
+      if (preparation && (!preparation.design || !preparation.researchRuns)) {
+        if (Date.now() - preparation.updatedAt > 10 * 60 * 1_000) {
+          await failWeeklyPackPreparation({
+            packId: preparation.id,
+            error: "creator start did not finish",
+          }).catch(() => undefined);
+        }
+        return Response.json({
+          value: await publicPackValue(timezone, accessToken),
+        });
+      }
+      if (!preparation) {
+        return Response.json({
+          value: await publicPackValue(timezone, accessToken),
+        });
+      }
+
+      try {
+        const result = await advanceWeeklyPackPreparation(preparation);
+        if (result.status === "ready") {
+          return Response.json({
+            value: {
+              pack: weeklyExperiencePackSchema.parse(result.pack),
+              generationStatus: "idle",
+            },
+          });
+        }
+      } catch (error) {
+        const current = await publicPackValue(timezone, accessToken).catch(
+          () => null,
+        );
+        if (
+          current?.generationStatus === "idle" &&
+          current.pack &&
+          current.pack.status !== "failed"
+        ) {
+          return Response.json({ value: current });
+        }
+        await failWeeklyPackPreparation({
+          packId: preparation.id,
+          error: `creator advance failed (${error instanceof Error ? error.name : "UnknownError"})`,
+        }).catch(() => undefined);
+        throw error;
+      }
+      return Response.json({
+        value: await publicPackValue(timezone, accessToken),
+      });
+    }
+
+    const packId = typeof body.packId === "string" ? body.packId : "";
     if (!packId) {
       return Response.json(
         { error: "Pack required.", code: "INVALID_WEEKLY_PACK_ACTION" },

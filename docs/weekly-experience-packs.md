@@ -16,6 +16,12 @@
 > pending.** Weekly packs contain two world-led cards and one anchored card.
 > The separate instant first-experience path has been removed: a new person
 > enters the same Saturday ritual as everyone else.
+>
+> **Owner evaluation affordance: implemented locally, July 31 2026; deployment
+> pending.** One allowlisted owner account may tap the Now orb to create a
+> fresh stored pack immediately. Both Next.js and Base44 enforce the account
+> boundary. This reuses the production pack and UI lifecycle; it is not a
+> general on-demand mode.
 
 ## Why Chapter exists
 
@@ -230,9 +236,8 @@ The current executable launch weights are:
 A splurge is ineligible for 28 days after one is offered. “Too expensive right
 now” increases the affordable weight on the next draw; “save for later” keeps
 the expensive idea aspirational rather than misreading it as a disliked
-activity. Adventure Lab implements this cadence now. The production weekly
-worker must persist recent budget history and use the same draw before these
-odds are considered shipped in Now.
+activity. The production weekly worker must persist recent budget history and
+use the same draw before these odds are considered shipped in Now.
 
 ### Social composition
 
@@ -399,6 +404,8 @@ The shipped product includes:
   timezone; Friday claims are retries only, and later cycles continue polling
   research before release;
 - `app/api/weekly-pack/route.ts` and `lib/weeklyPackClient.ts`;
+- one owner-only, server-enforced Now orb that may start and poll a fresh
+  immediately released pack through the same production pipeline;
 - `WeeklyPackView`, covering waiting, sealed choice, card reveal, confirmation,
   chosen experience, scheduling, dismissal, and lived states;
 - a development-only `/weekly-pack-preview` route. `state=locked` and

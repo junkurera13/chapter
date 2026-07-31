@@ -13,9 +13,9 @@ experience surface:
 - production weekly design and grounded final copy now default to one model,
   `openai/gpt-5.6-terra`, with deterministic repair attempts rather than an
   independent reviewer, Kimi fallback, and Luna composition pass;
-- the production design and research contracts now carry the Adventure Lab's
-  anti-roleplay, anti-staged-consumption, provider-level design, exact-place,
-  and practical-arrival rules; and
+- the production design and research contracts now carry the anti-roleplay,
+  anti-staged-consumption, provider-level design, exact-place, and
+  practical-arrival rules proven during evaluation; and
 - the executable audit rejects the restaurant ordering exercise that exposed
   the original quality failure.
 
@@ -23,6 +23,23 @@ Verification passes with 395 tests across 52 files, ESLint, TypeScript,
 `npm run build:safe`, and local browser checks of the locked and sealed weekly
 states. The removed first-experience preview returns 404. These changes are
 local source only; no Base44 or Vercel deployment was performed.
+
+## July 31, 2026 — the crafting loop moves into Now
+
+The standalone Adventure Lab and its isolated budget, feedback, API, and test
+code have been removed. The product owner's account now gets a clickable orb
+inside the real **Now** surface. A click creates a new stored pack immediately,
+uses the production Terra design and three-run research pipeline, then opens the
+ordinary sealed-card interaction. A small owner-only orb remains available
+after choosing, so another full set can be made without leaving the product.
+
+Both the Next.js route and the Base44 function enforce the account allowlist.
+The Base44 function also requires the server-only internal secret before it can
+return private generation material. Other accounts keep the normal Saturday
+ritual and receive neither the control nor the on-demand action.
+
+These changes are local source only; no Base44 or Vercel deployment was
+performed.
 
 ## July 22, 2026 — memory-first foundation
 
