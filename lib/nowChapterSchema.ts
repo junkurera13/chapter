@@ -132,7 +132,7 @@ export const nowResearchFindingSchema = z.object({
   address: z.string().trim().min(3).max(300),
   why_uncommon: z.string().min(1).max(1200),
   still_operating_evidence: z.string().trim().min(5).max(600),
-  best_time: z.string().min(1).max(300),
+  best_time: z.string().min(1).max(600),
   price_note: z.string().max(300).optional().nullable(),
 });
 

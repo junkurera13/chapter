@@ -82,10 +82,16 @@ function makeFeedback(
   tags: readonly AdventureLabFeedbackTag[],
   note: string,
 ) {
+  const place = experience.place;
   return adventureLabFeedbackSchema.parse({
     batchId: batch.id,
     experienceId: experience.id,
-    experienceSummary: experience.experiencePromise,
+    experienceSummary: place
+      ? `${experience.experiencePromise} Place: ${place.name}, ${place.address}.`.slice(
+          0,
+          800,
+        )
+      : experience.experiencePromise,
     tags,
     note,
     createdAt: Date.now(),
@@ -156,7 +162,9 @@ export default function AdventureLab() {
   const [copied, setCopied] = useState(false);
   const experience = batch?.experiences[experienceIndex];
   const hasResponse = selectedTags.length > 0 || note.trim().length > 0;
-  const isLast = experienceIndex === 2;
+  const isLast = batch
+    ? experienceIndex === batch.experiences.length - 1
+    : false;
   const metadata = useMemo(
     () =>
       experience
@@ -247,24 +255,21 @@ export default function AdventureLab() {
           />
           <h1>
             {phase === "error"
-              ? "That set didn’t come together."
+              ? "That adventure didn’t come together."
               : "Adventure lab"}
           </h1>
           <p>
             {phase === "error"
               ? message
-              : "Craft three ideas from your real world, judge them one by one, then let your feedback shape the next set."}
+              : "Craft an adventure from your real world, react honestly, then let that feedback shape the next one."}
           </p>
           <button
             className={styles.primaryAction}
             type="button"
             onClick={() => void craft()}
           >
-            {phase === "error" ? "Try another set" : "Craft adventures"}
+            {phase === "error" ? "Try again" : "Craft an adventure"}
           </button>
-          <span className={styles.truthLine}>
-            Concepts only. No invented venues. No web research.
-          </span>
         </section>
       </main>
     );
@@ -274,11 +279,11 @@ export default function AdventureLab() {
     return (
       <main className={styles.page}>
         <section className={styles.loading} aria-live="polite">
-          <ChapterLoadingMark label="Crafting adventures" size={104} />
-          <h1>Crafting three directions.</h1>
+          <ChapterLoadingMark label="Crafting an adventure" size={104} />
+          <h1>Crafting an adventure.</h1>
           <p>
-            Chapter is designing the action first, then checking every idea
-            against the equation.
+            Chapter is designing the experience, checking it, then researching
+            the exact place and address. This may take a few minutes.
           </p>
         </section>
       </main>
@@ -302,7 +307,7 @@ export default function AdventureLab() {
             {copied ? "Copied" : "Copy notes for chat"}
           </button>
           <button type="button" onClick={() => void craft()}>
-            Craft another set
+            Craft another
           </button>
         </div>
       </header>
@@ -311,16 +316,6 @@ export default function AdventureLab() {
         className={styles.experienceStage}
         key={`${batch.id}:${experience.id}`}
       >
-        <div className={styles.progress} aria-label={`${experienceIndex + 1} of 3`}>
-          {batch.experiences.map((item, index) => (
-            <span
-              key={item.id}
-              data-active={index === experienceIndex}
-              data-past={index < experienceIndex}
-            />
-          ))}
-        </div>
-
         <article className={styles.experience}>
           <div className={styles.experienceMeta}>
             <strong>{SCALE_NAMES[experience.id]}</strong>
@@ -329,6 +324,19 @@ export default function AdventureLab() {
             ))}
           </div>
           <h1>{experience.experiencePromise}</h1>
+          {experience.place ? (
+            <section className={styles.place}>
+              <div>
+                <strong>{experience.place.name}</strong>
+                <span>{experience.place.area}</span>
+              </div>
+              <address>{experience.place.address}</address>
+              <p>{experience.place.bestTime}</p>
+              {experience.place.priceNote ? (
+                <p>{experience.place.priceNote}</p>
+              ) : null}
+            </section>
+          ) : null}
 
           <div className={styles.explanation}>
             <section>
@@ -348,10 +356,20 @@ export default function AdventureLab() {
             </section>
           </div>
 
-          <details className={styles.realityCheck}>
-            <summary>What still needs proving</summary>
-            <p>{experience.researchObjective}</p>
-          </details>
+          {experience.evidence?.length ? (
+            <details className={styles.realityCheck}>
+              <summary>Research sources</summary>
+              <ul>
+                {experience.evidence.map((source) => (
+                  <li key={source.url}>
+                    <a href={source.url} target="_blank" rel="noreferrer">
+                      {source.title || new URL(source.url).hostname}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </article>
 
         <section className={styles.feedback} aria-label="Your feedback">
@@ -391,7 +409,7 @@ export default function AdventureLab() {
               disabled={!hasResponse}
               onClick={() => continueFromExperience(true)}
             >
-              {isLast ? "Save & craft the next set" : "Save & show the next one"}
+              {isLast ? "Save & craft another" : "Save & show the next one"}
             </button>
           </div>
         </section>

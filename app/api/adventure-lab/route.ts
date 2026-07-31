@@ -1,22 +1,15 @@
 import {
-  adventureLabBatchFrom,
   adventureLabRequestSchema,
-  buildAdventureLabGenerationNotes,
 } from "@/lib/adventureLab";
+import {
+  AdventureLabGenerationError,
+  craftAdventureLabExperience,
+} from "@/lib/adventureLabGeneration";
 import {
   Base44FunctionError,
   fetchMyGraph,
   fetchMyNow,
 } from "@/lib/base44Functions";
-import { seededChapterRandom } from "@/lib/chapterEquation";
-import {
-  chooseWeeklyPackShapeContracts,
-  type WeeklyPackContext,
-} from "@/lib/weeklyPackDesign";
-import {
-  designWeeklyPack,
-  WeeklyPackGenerationError,
-} from "@/lib/weeklyPackGeneration";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +26,7 @@ function failure(error: unknown, requestId: string) {
   console.error("[adventure-lab] generation failed", {
     requestId,
     errorName: error instanceof Error ? error.name : "UnknownError",
+    errorMessage: error instanceof Error ? error.message : String(error),
   });
   if (error instanceof Base44FunctionError) {
     return Response.json(
@@ -49,12 +43,21 @@ function failure(error: unknown, requestId: string) {
       { status: error.status === 401 ? 401 : 502 },
     );
   }
-  if (error instanceof WeeklyPackGenerationError) {
+  if (error instanceof AdventureLabGenerationError) {
     return Response.json(
       {
         error:
-          "Those ideas didn’t pass Chapter’s quality check. Try another set.",
-        code: "ADVENTURE_LAB_QUALITY_FAILED",
+          error.kind === "provider"
+            ? "Chapter’s model couldn’t finish that adventure. Try again."
+            : error.kind === "research"
+              ? "Chapter couldn’t prove a real place for that adventure. Try another."
+              : "That adventure broke the Chapter equation, so it was rejected. Try again.",
+        code:
+          error.kind === "provider"
+            ? "ADVENTURE_LAB_MODEL_FAILED"
+            : error.kind === "research"
+              ? "ADVENTURE_LAB_RESEARCH_FAILED"
+              : "ADVENTURE_LAB_QUALITY_FAILED",
       },
       { status: 502 },
     );
@@ -129,28 +132,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const random = seededChapterRandom(requestId);
-    const context: WeeklyPackContext = {
+    const crafted = await craftAdventureLabExperience({
+      graph,
       homeCity: now.homeCity,
-      privacyMode: "personal",
-      availableCompanies: ["self"],
-      shapeContracts: chooseWeeklyPackShapeContracts({
-        graph,
-        random,
-      }),
-      maxMechanismOccurrences: { taste: 1 },
-      generationNotes: [
-        "Make the three choices genuinely different in action, rhythm, and commitment.",
-        ...buildAdventureLabGenerationNotes(payload.data.feedback),
-      ],
-    };
-    const designed = await designWeeklyPack({
-      source: { graph, context },
+      feedback: payload.data.feedback,
       requestId,
     });
-    const batch = adventureLabBatchFrom(requestId, designed.pack);
 
-    return Response.json({ value: batch });
+    return Response.json({ value: crafted.batch });
   } catch (error) {
     return failure(error, requestId);
   }

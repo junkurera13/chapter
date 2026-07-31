@@ -299,6 +299,28 @@ describe("now schemas", () => {
     expect(finding.success).toBe(true);
   });
 
+  it("keeps detailed verified arrival guidance instead of rejecting it on copy length", () => {
+    const detailedBestTime =
+      "Reserve the 14:00 or 16:00 session in advance. Arrive before the safety briefing, select the provided paddle, stay inside the marked operating boundary, and return the kayak to the same launch point after the session. The center operates Tuesday through Sunday from 10:00 to 19:00, closes Mondays, and asks solo paddlers not to pass the bridge or move beyond the safety staff's monitored area.";
+    const finding = parseGroundedNowResearch({
+      researchContent: {
+        venue_name: "Seoul Water Leports Center",
+        venue_area: "Nanji Hangang Park, Seoul",
+        why_uncommon:
+          "A public marina with separately bookable one-person kayak sessions.",
+        best_time: detailedBestTime,
+        address: "162 Hangangnanji-ro, Mapo-gu, Seoul",
+        price_note: "Adult one-person kayak: ₩13,000.",
+        still_operating_evidence:
+          "The current booking page lists one-person kayak sessions and operating hours.",
+      },
+      citations: [{ url: "https://example.com/current-booking" }],
+    });
+
+    expect(detailedBestTime.length).toBeGreaterThan(300);
+    expect(finding.venue_name).toBe("Seoul Water Leports Center");
+  });
+
   it("refuses plausible prose that does not identify a proven real place", () => {
     expect(() =>
       parseGroundedNowResearch({
@@ -313,6 +335,26 @@ describe("now schemas", () => {
         citations: [{ url: "https://example.com/unrelated" }],
       }),
     ).toThrow(/generic description/i);
+  });
+
+  it("refuses a real venue when research admits the promised activity was not verified", () => {
+    expect(() =>
+      parseGroundedNowResearch({
+        researchContent: {
+          venue_name:
+            "Gyeongdong Market — the best documented candidate, but no qualifying specialist stall was verified.",
+          venue_area: "Jegi-dong, Seoul",
+          address: "3 Gosanja-ro 36-gil, Dongdaemun-gu, Seoul",
+          why_uncommon: "A long-running traditional market.",
+          still_operating_evidence:
+            "The market itself appears in the city's current registry.",
+          best_time:
+            "This is the best available market window, not a verified tasting appointment.",
+          price_note: "No supporting evidence was found for the tasting.",
+        },
+        citations: [{ url: "https://example.com/current-market-listing" }],
+      }),
+    ).toThrow(/did not prove the promised activity/i);
   });
 });
 

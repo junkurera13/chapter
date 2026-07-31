@@ -440,6 +440,22 @@ export function parseGroundedNowResearch(args: {
       "Research returned a generic description instead of a real named place.",
     );
   }
+  const proof = [
+    finding.data.venue_name,
+    finding.data.address,
+    finding.data.still_operating_evidence,
+    finding.data.best_time,
+    finding.data.price_note ?? "",
+  ].join(" ");
+  if (
+    /\b(no qualifying|could not (?:be )?verified|could not verify|not (?:a )?verified|unable to verify|no (?:current |supporting )?(?:proof|evidence) (?:was )?found|best (?:available|documented) candidate,? but)\b/i.test(
+      proof,
+    )
+  ) {
+    throw new NowGenerationError(
+      "Research named a place but did not prove the promised activity there.",
+    );
+  }
   return finding.data;
 }
 
