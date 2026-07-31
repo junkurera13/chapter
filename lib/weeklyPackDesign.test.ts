@@ -319,6 +319,20 @@ describe("weekly pack design lab", () => {
     expect(prompt).toContain(
       "complete round trip must take at most 90 minutes",
     );
+    expect(prompt).toContain(
+      "researchCaveats is a blocking-issues field",
+    );
+    expect(prompt).toContain(
+      "exact checkout-only price when no budget ceiling exists",
+    );
+  });
+
+  it("designs a pack with evidence-stable lanes before paid research", () => {
+    const prompt = buildWeeklyPackDesignPrompt(fixture());
+    expect(prompt).toContain("Researchability is a design constraint");
+    expect(prompt).toContain("At least two cards must rely on stable public evidence");
+    expect(prompt).toContain("A small card should normally be walk-in");
+    expect(prompt).toContain("A proper card may earn its duration through one coherent verified journey");
   });
 
   it("accepts one small, mini, and proper card with separate mechanisms and stretches", () => {

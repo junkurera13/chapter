@@ -269,6 +269,49 @@ describe("weekly pack real-world grounding", () => {
     if (result.status !== "retry") throw new Error("expected retry");
     expect(result.failedCardIds).toEqual(["mini"]);
     expect(result.feedback).toContain("RESEARCH_UNPROVEN");
+    expect(result.feedbackByCard).toEqual({
+      mini: expect.stringContaining("RESEARCH_UNPROVEN"),
+    });
+  });
+
+  it("sends each failed card only its own audit feedback", async () => {
+    const runs = weeklyPackResearchRunsSchema.parse([
+      { cardId: "small", runId: "run-small" },
+      { cardId: "mini", runId: "run-mini" },
+      { cardId: "proper", runId: "run-proper" },
+    ]);
+    const startResearch = vi.fn(
+      async (args: { input: string; metadata?: Record<string, string> }) => ({
+        runId: `retry-${args.metadata?.card}`,
+      }),
+    );
+
+    await retryWeeklyPackResearch(
+      {
+        pack: researchPack,
+        runs,
+        homeCity: "Seoul",
+        weekKey: "2026-08-01",
+        failedCardIds: ["small", "proper"],
+        feedback: "small failed\nproper failed",
+        feedbackByCard: {
+          small: "small-only failure",
+          proper: "proper-only failure",
+        },
+      },
+      startResearch,
+    );
+
+    const smallPrompt = startResearch.mock.calls.find(
+      ([args]) => args.metadata?.card === "small",
+    )?.[0].input;
+    const properPrompt = startResearch.mock.calls.find(
+      ([args]) => args.metadata?.card === "proper",
+    )?.[0].input;
+    expect(smallPrompt).toContain("small-only failure");
+    expect(smallPrompt).not.toContain("proper-only failure");
+    expect(properPrompt).toContain("proper-only failure");
+    expect(properPrompt).not.toContain("small-only failure");
   });
 
   it("restarts only failed cards and keeps accepted research run ids", async () => {

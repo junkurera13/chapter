@@ -58,9 +58,15 @@ async function publicPackValue(timezone: string, accessToken: string) {
   };
 }
 
+function errorDetail(error: unknown) {
+  if (!(error instanceof Error)) return "Unknown error";
+  return `${error.name}: ${error.message}`.replace(/\s+/g, " ").slice(0, 500);
+}
+
 function failure(error: unknown) {
   console.error("[weekly-pack:route] request failed", {
     errorName: error instanceof Error ? error.name : "UnknownError",
+    errorMessage: errorDetail(error),
   });
   if (error instanceof Base44FunctionError) {
     return Response.json(
@@ -167,7 +173,7 @@ export async function POST(request: Request) {
         }
         await failWeeklyPackPreparation({
           packId: claim.preparation.id,
-          error: `creator start failed (${error instanceof Error ? error.name : "UnknownError"})`,
+          error: `creator start failed: ${errorDetail(error)}`,
         }).catch(() => undefined);
         throw error;
       }
@@ -223,7 +229,7 @@ export async function POST(request: Request) {
         }
         await failWeeklyPackPreparation({
           packId: preparation.id,
-          error: `creator advance failed (${error instanceof Error ? error.name : "UnknownError"})`,
+          error: `creator advance failed: ${errorDetail(error)}`,
         }).catch(() => undefined);
         throw error;
       }

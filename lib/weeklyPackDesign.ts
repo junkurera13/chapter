@@ -476,6 +476,9 @@ export function buildWeeklyPackDesignPrompt(args: {
     "- Do not invent homework: counting, logging, documenting, rating, photographing evidence, or collecting observations is invalid unless it is inherent to an established activity being joined.",
     "- Do not ask the person to cosplay an investigator, critic, artist, anthropologist, or documentarian.",
     "- Prefer established public formats that research can genuinely prove: a scheduled workshop, volunteer shift, guided route, public session, performance, open studio, training, or advertised access programme.",
+    "- Researchability is a design constraint, not a problem to leave for the researcher. At least two cards must rely on stable public evidence such as current opening hours, walk-in access, a published timetable, or a documented route; they must not all depend on live capacity, host confirmation, application approval, or a date arranged only after an enquiry.",
+    "- A small card should normally be walk-in or supported by a fixed current public timetable. Do not make the spontaneous lane depend on an unpublished session, team formation, or a scarce place that research cannot verify.",
+    "- A proper card may earn its duration through one coherent verified journey or short sequence. The provider does not need to advertise one continuous half-day programme, but every essential component must be real, compatible, and substantive; never pad ordinary venue time to reach the scale.",
     "- Design only at the level a provider would advertise. Do not invent lesson stages, correction rounds, item counts, material variants, finishing outcomes, take-home promises, special access, or staff cooperation.",
     "- A restaurant, cafe, shop, market, museum, park, or class is infrastructure, never the experience by itself.",
     "- Passive attention is not participation. Telling someone to notice, compare, study, appreciate, or focus on an ordinary visit or purchase does not transform it.",
@@ -530,8 +533,9 @@ export function buildWeeklyPackDesignPrompt(args: {
     "",
     "RESEARCH BRIEFS",
     "- Write a separate objective for each card that proves what the designed experience needs.",
-    "- Ask research to prove current availability, cost, travel, booking, safety, accessibility, weather, equipment, route, or capacity when relevant.",
+    "- Ask research to prove current availability, cost, travel, booking, safety, accessibility, weather, equipment, route, or capacity only when that fact can prevent this particular action.",
     "- Require the exact venue, event, route, or provider name; a practical arrival point; current operating evidence; relevant hours or event date; booking method only when needed; price when available; and sources.",
+    "- Do not demand live seat inventory, a confirmed reservation, an exact checkout-only price, or special accessibility evidence unless the designed action actually depends on it. An open official booking flow may prove access when it exposes the final price before commitment and no cost ceiling was supplied.",
     "- Research must preserve the designed participant action. If no real current place supports it, the card must fail rather than becoming a plausible substitute.",
     "- Do not reduce every objective to finding an unusual venue.",
     "- Do not let research redesign the experience or add another unfamiliar dimension.",
@@ -1461,7 +1465,12 @@ export const weeklyPackResearchFindingSchema = z.object({
     )
     .min(2)
     .max(16),
-  researchCaveats: z.array(z.string().trim().min(3).max(500)).max(10),
+  researchCaveats: z
+    .array(z.string().trim().min(3).max(500))
+    .max(10)
+    .describe(
+      "Only unresolved blockers that make the designed action unavailable, unsafe, geographically invalid, or impossible within its scale. This is not a field for optional details or ordinary uncertainty; every entry fails the card.",
+    ),
 });
 
 export type WeeklyPackResearchFinding = z.infer<
@@ -1512,10 +1521,13 @@ export function buildWeeklyPackResearchPrompt(args: {
     "- A restaurant meal, purchase, or passive observation task is not a substitute for participation.",
     "- Do not pad the action, route, or duration to satisfy the scale. If the honest real format cannot fit this card, report that in researchCaveats.",
     "- Judge only dependencies the designed action genuinely needs. Do not demand proof of irrelevant negatives when official information already proves ordinary public access.",
+    "- researchCaveats is a blocking-issues field, not a place for general notes. Every entry will deterministically fail the card. Leave it empty when the action is currently executable from the proved official facts.",
+    "- Do not add a researchCaveat merely because an ordinary optional detail is unpublished: exact checkout-only price when no budget ceiling exists, live seat count while an official booking flow is open, a live transit estimate when the place and practical arrival point are proved, accessibility when no accessibility need was supplied, or venue policies that are not required for entry.",
+    "- Do add a researchCaveat when the exact action itself is unproved: no named operating place, no usable current date or public access, required booking is unavailable, the advertised format does not support solo participation, the honest duration misses the card scale, a required safety dependency is unknown, or the trip violates geography or travel limits.",
     "- If no candidate satisfies the home-city, travel-time, geography, and no-flight constraints, report that in researchCaveats. Never escape to another country to satisfy the topic.",
     "- Reject generic top-listicle choices, closed or weakly evidenced candidates, and logistics that violate the format.",
     "- Never state or infer anything about the person's biography, feelings, relationships, compatibility, or private memories.",
-    "- If a requirement cannot be proved, say so in researchCaveats instead of guessing.",
+    "- If a critical requirement cannot be proved, say so in researchCaveats instead of guessing. State non-blocking unknowns plainly in the relevant logistics field without adding a caveat.",
     "",
     `HOME CITY: ${args.context.homeCity}`,
     `RESEARCH-SAFE DESIGN RECORD: ${JSON.stringify(researchSafeDesign)}`,

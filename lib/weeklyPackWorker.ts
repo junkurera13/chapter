@@ -98,6 +98,11 @@ function errorName(error: unknown) {
   return error instanceof Error ? error.name : "UnknownError";
 }
 
+function errorDetail(error: unknown) {
+  if (!(error instanceof Error)) return "Unknown error";
+  return `${error.name}: ${error.message}`.replace(/\s+/g, " ").slice(0, 500);
+}
+
 export function weeklyPackContextFrom(
   source: WeeklyPackGenerationSource,
   requestId: string,
@@ -236,7 +241,10 @@ export async function advanceWeeklyPackPreparation(
           experiencePromise: card.experiencePromise,
           mechanismKind: card.mechanism.kind,
           mechanismDescription: card.mechanism.description,
-          failure: research.feedback.slice(0, 500),
+          failure: (research.feedbackByCard[card.id] ?? research.feedback).slice(
+            0,
+            500,
+          ),
         }));
       const abandonedDirections = [
         ...(artifact.abandonedResearchDirections ?? []),
@@ -301,6 +309,7 @@ export async function advanceWeeklyPackPreparation(
       weekKey: preparation.weekKey,
       failedCardIds: research.failedCardIds,
       feedback: research.feedback,
+      feedbackByCard: research.feedbackByCard,
     });
     await dependencies.setResearch({
       packId: preparation.id,
@@ -337,11 +346,12 @@ async function safelyFail(
     packId,
     phase,
     errorName: errorName(error),
+    errorDetail: errorDetail(error),
   });
   try {
     await dependencies.failPreparation({
       packId,
-      error: `${phase} failed (${errorName(error)})`,
+      error: `${phase} failed: ${errorDetail(error)}`,
     });
   } catch (persistError) {
     console.error("[weekly-pack:worker] failure state could not be saved", {

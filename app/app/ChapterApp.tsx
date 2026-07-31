@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { canCreateWeeklyPacks } from "@/base44/shared/weekly-pack-creator";
 import BottomNavigation, {
   type ChapterTabIndex,
 } from "./BottomNavigation";
@@ -46,9 +47,10 @@ export default function ChapterApp({
   justConnected?: boolean;
   initialWeeklyPackReview?: WeeklyPackReviewState;
 }) {
+  const canCreateExperiences = canCreateWeeklyPacks(viewer.email);
   const canReviewNow =
     process.env.NODE_ENV === "development" &&
-    viewer.canCreateExperiences === true;
+    canCreateExperiences;
   const [activeIndex, setActiveIndex] = useState<ChapterTabIndex>(initialTab);
   const [weeklyPackReview, setWeeklyPackReview] = useState<
     WeeklyPackReviewState | undefined
@@ -288,7 +290,7 @@ export default function ChapterApp({
           key={weeklyPackReview ?? "live"}
           reviewState={weeklyPackReview}
           onReviewStateChange={changeWeeklyPackReview}
-          canCreateExperiences={viewer.canCreateExperiences === true}
+          canCreateExperiences={canCreateExperiences}
         />
         <NowLocationNode />
       </>

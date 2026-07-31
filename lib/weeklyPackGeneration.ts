@@ -47,8 +47,8 @@ const PACK_PROCESSOR =
 
 const BASELINE_REQUIREMENTS = {
   availability:
-    "Verify that the experience and every critical dependency are currently available within the intended validity window.",
-  cost: "Verify the complete expected cost, including booking, materials, admission, and transport.",
+    "Verify that the experience and every critical dependency are currently accessible within the intended validity window. A current official walk-in policy, timetable, or open booking flow is sufficient unless the action depends on scarce live capacity.",
+  cost: "Verify the complete expected cost when it can prevent the action. If no cost ceiling is supplied, an official no-commitment flow that reveals the final price before purchase is sufficient when the exact amount is not published.",
   travel:
     "Verify a practical outward and return journey, including the final arrival point and cutoff times.",
 } as const;
@@ -87,6 +87,7 @@ export type WeeklyPackResearchPoll =
       status: "retry";
       failedCardIds: WeeklyPackScale[];
       feedback: string;
+      feedbackByCard: Partial<Record<WeeklyPackScale, string>>;
     }
   | {
       status: "completed";
@@ -530,6 +531,7 @@ export async function retryWeeklyPackResearch(args: {
   weekKey: string;
   failedCardIds: readonly WeeklyPackScale[];
   feedback: string;
+  feedbackByCard?: Partial<Record<WeeklyPackScale, string>>;
 }, startResearch = startParallelResearch) {
   const failedCardIds = new Set(args.failedCardIds);
   if (failedCardIds.size === 0) {
@@ -587,7 +589,7 @@ export async function retryWeeklyPackResearch(args: {
           "",
           "RESEARCH RETRY",
           "The previous finding failed Chapter's deterministic truth gates. Search different candidates when necessary; do not defend or lightly rewrite the failed finding.",
-          `EXACT FAILURE: ${args.feedback.slice(0, 6_000)}`,
+          `EXACT FAILURE: ${(args.feedbackByCard?.[run.cardId] ?? args.feedback).slice(0, 6_000)}`,
           "Return researchCaveats only when a critical dependency remains unproved. An unresolved critical dependency must remain explicit and will fail this card again.",
         ].join("\n"),
         outputSchema: z.toJSONSchema(
@@ -623,10 +625,17 @@ export async function pollWeeklyPackResearch(args: {
     .filter(({ result }) => result.status === "failed")
     .map(({ run }) => run.cardId);
   if (providerFailures.length > 0) {
+    const feedbackByCard = Object.fromEntries(
+      providerFailures.map((cardId) => [
+        cardId,
+        `Parallel failed research for ${cardId}.`,
+      ]),
+    );
     return {
       status: "retry",
       failedCardIds: providerFailures,
       feedback: `Parallel failed research for ${providerFailures.join(", ")}.`,
+      feedbackByCard,
     };
   }
   if (results.some(({ result }) => result.status === "pending")) {
@@ -669,6 +678,9 @@ export async function pollWeeklyPackResearch(args: {
       status: "retry",
       failedCardIds: invalidCards,
       feedback: invalidMessages.join("\n"),
+      feedbackByCard: Object.fromEntries(
+        invalidCards.map((cardId, index) => [cardId, invalidMessages[index]]),
+      ),
     };
   }
   const audit = auditWeeklyPackResearch({
@@ -696,18 +708,39 @@ export async function pollWeeklyPackResearch(args: {
         failedCardIds.add(cardId);
       }
     }
+    const orderedFailedCardIds =
+      failedCardIds.size > 0
+        ? [...failedCardIds]
+        : args.pack.cards.map(({ id }) => id);
+    const feedbackByCard = Object.fromEntries(
+      orderedFailedCardIds.map((cardId) => {
+        const cardIssues = audit.errors.filter(
+          (issue) =>
+            issue.cardId === cardId ||
+            (!issue.cardId && audit.collidingCardIds.includes(cardId)),
+        );
+        const messages = cardIssues.length > 0 ? cardIssues : audit.errors;
+        return [
+          cardId,
+          messages
+            .map(
+              (issue) =>
+                `${issue.cardId ? `${issue.cardId} ` : ""}${issue.code}: ${issue.message}`,
+            )
+            .join("\n"),
+        ];
+      }),
+    );
     return {
       status: "retry",
-      failedCardIds:
-        failedCardIds.size > 0
-          ? [...failedCardIds]
-          : args.pack.cards.map(({ id }) => id),
+      failedCardIds: orderedFailedCardIds,
       feedback: audit.errors
         .map(
           (issue) =>
             `${issue.cardId ? `${issue.cardId} ` : ""}${issue.code}: ${issue.message}`,
         )
         .join("\n"),
+      feedbackByCard,
     };
   }
   console.info(
