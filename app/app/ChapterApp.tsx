@@ -25,6 +25,7 @@ import WelcomeDialog from "../../components/welcome-dialog";
 import YouOnboarding from "./YouOnboarding";
 import YouView from "./YouView";
 import styles from "./page.module.css";
+import { showsDemoWeeklyPack } from "../../lib/weeklyPackDemoAccess";
 import type { WeeklyPackReviewState } from "../../lib/weeklyPackPreview";
 
 type GraphState =
@@ -340,13 +341,22 @@ export default function ChapterApp({
     );
   }
 
+  /*
+    A demo pack stands in for this account's own, so the Saturday flow can be
+    shown on a day that is not Saturday. It is three sealed sample cards and
+    nothing else: the flip, the choice, and the day that follow are the real
+    interface doing its real work. Stepping through every state by hand is a
+    separate, development-only thing, and it wins if both are somehow on.
+  */
+  const demoPack = showsDemoWeeklyPack(viewer.email) && !weeklyPackReview;
+
   const activePanel =
     displayedIndex === 1 ? (
       <>
         <WeeklyPackView
-          key={weeklyPackReview ?? "live"}
-          reviewState={weeklyPackReview}
-          onReviewStateChange={changeWeeklyPackReview}
+          key={weeklyPackReview ?? (demoPack ? "demo" : "live")}
+          reviewState={weeklyPackReview ?? (demoPack ? "sealed" : undefined)}
+          onReviewStateChange={demoPack ? undefined : changeWeeklyPackReview}
           firstExperienceWatch={firstExperienceWatch}
           onFirstExperienceStarted={watchForFirstExperience}
           onFirstExperienceSettled={settleFirstExperience}

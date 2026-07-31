@@ -22,6 +22,29 @@ Do not deploy Base44 resources unless the user explicitly asks for a deployment.
 
 # Chapter product rules
 
+## The Chapter Equation decides what may be proposed
+
+`docs/chapter-equation.md` is the product contract for the shape of every
+chapter, on every surface. `lib/chapterEquation.ts` is its executable half.
+Read both before changing how any experience is designed, and check shapes
+against `auditChapterShape` rather than restating the rules in a prompt.
+
+A chapter is a familiar anchor, one unfamiliar twist, and at most one
+unfamiliar context, drawn from four dimensions: activity, place, people,
+interest. Exactly one dimension is new. Time is not a dimension and must not
+be reintroduced as one; a chapter that appears to stretch on time is
+stretching on the activity the hour makes possible.
+
+Company (`self`, `known-person`, `new-person`, `small-group`) sits above the
+equation and decides what the people dimension does. "Familiar people cannot
+be the anchor" is a rule of solo chapters only. Together anchors on a known
+person by design.
+
+Three shipping files still declare `time` as a stretch dimension and omit
+`interest`: `lib/nowChapterSchema.ts`, `lib/togetherChapterSchema.ts`, and
+`lib/weeklyPackDesign.ts`. That migration is known and unfinished. Do not
+"fix" the equation to match them.
+
 ## Experiences are the medium for human connection
 
 Chapter is not a recommendation engine with social features attached. It uses
