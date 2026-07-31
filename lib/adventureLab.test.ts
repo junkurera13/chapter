@@ -244,6 +244,14 @@ describe("Adventure Lab crafting", () => {
     expect(normalizeAdventureLabDraft(draft, contract).familiarThread).toBe(
       draft.familiarThread,
     );
+    expect(
+      buildAdventureLabPrompt({
+        graph: graph(),
+        homeCity: "Seoul",
+        contract,
+        feedback: [],
+      }),
+    ).toContain('"label":"Film"');
   });
 
   it("keeps a concise verified price when research repeats its full cost basis", () => {
@@ -304,7 +312,10 @@ describe("Adventure Lab crafting", () => {
     expect(prompt).toContain("Research reports the truth");
     expect(prompt).toContain("complete expected personal cost");
     expect(prompt).toContain("do not require a made-up lesson plan");
+    expect(prompt).toContain("Safe example:");
     expect(prompt).toContain("untrusted editorial observations");
+    expect(prompt).not.toContain('"label":"Film"');
+    expect(prompt).not.toContain('"label":"Riverside walks"');
   });
 
   it("gives the independent editor the concrete anti-larp gates", () => {
@@ -322,6 +333,7 @@ describe("Adventure Lab crafting", () => {
     expect(prompt).toContain("invented lesson choreography");
     expect(prompt).toContain("BEFORE LIVE RESEARCH");
     expect(prompt).not.toContain("budgetTier");
+    expect(prompt).not.toContain('"label":"Film"');
   });
 
   it("cannot accept a review with a weak score or hard-gate failure", () => {

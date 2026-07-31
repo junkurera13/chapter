@@ -390,28 +390,31 @@ export function buildAdventureLabPrompt(args: {
   feedback: readonly AdventureLabFeedback[];
   correction?: string;
 }) {
-  const nodes = [...args.graph.nodes]
-    .filter(
-      (node) =>
-        node.category === "place" ||
-        node.category === "activity" ||
-        node.category === "interest",
-    )
-    .sort(
-      (first, second) =>
-        second.salience * second.confidence -
-        first.salience * first.confidence,
-    )
-    .slice(0, 60)
-    .map((node) => ({
-      id: node.id,
-      category: node.category,
-      label: node.label,
-      description: node.description,
-      certainty: node.certainty,
-      confidence: Math.round(node.confidence * 100) / 100,
-      salience: Math.round(node.salience * 100) / 100,
-    }));
+  const nodes =
+    args.contract.basis === "graph"
+      ? [...args.graph.nodes]
+          .filter(
+            (node) =>
+              node.category === "place" ||
+              node.category === "activity" ||
+              node.category === "interest",
+          )
+          .sort(
+            (first, second) =>
+              second.salience * second.confidence -
+              first.salience * first.confidence,
+          )
+          .slice(0, 60)
+          .map((node) => ({
+            id: node.id,
+            category: node.category,
+            label: node.label,
+            description: node.description,
+            certainty: node.certainty,
+            confidence: Math.round(node.confidence * 100) / 100,
+            salience: Math.round(node.salience * 100) / 100,
+          }))
+      : [];
   const format =
     args.contract.scale === "small"
       ? "30-90 minutes; one spontaneous action; neighbourhood or nearby city"
@@ -463,6 +466,7 @@ export function buildAdventureLabPrompt(args: {
     "- Do not ask the person to cosplay an investigator, critic, artist, anthropologist, or documentarian. Prefer activities with real-world stakes and structure: learn from someone, make a real object, help with real work, enter a real event, complete a meaningful route, practise a real skill, or gain access they would not ordinarily have.",
     "- Prefer an established public format that can realistically be found and booked: a scheduled workshop, volunteer shift, guided route, public session, performance, open studio, training, or advertised access programme.",
     "- Design at the level that a provider publicly advertises. Name the core participant action, but do not require a made-up lesson plan: exact teaching stages, correction rounds, item counts, material variants, finishing or firing outcomes, take-home promises, or a combination of two separate formats.",
+    "- Safe example: join a publicly advertised hands-on bookbinding workshop and bind a simple book. Unsafe example: assume the teacher uses a particular stitch, gives three correction rounds, and lets the person take home a finished book.",
     "- For a proper adventure, the required journey or sequence must be a coherent participant-led arc that reality can support; it cannot be manufactured by chaining unrelated bookings or padding one short class.",
     "- Do not make the adventure depend on a chef, vendor, owner, craftsperson, or staff member agreeing to an unadvertised interview, tasting, demonstration, lesson, special access, or extended conversation.",
     "- A restaurant, cafe, shop, market, museum, park, or class is infrastructure, never the experience by itself.",
@@ -675,19 +679,22 @@ export function buildAdventureLabReviewPrompt(args: {
   graph: ExperienceGraphRecord;
   homeCity: string;
 }) {
-  const graphNodes = args.graph.nodes
-    .filter(
-      (node) =>
-        node.category === "place" ||
-        node.category === "activity" ||
-        node.category === "interest",
-    )
-    .map((node) => ({
-      id: node.id,
-      category: node.category,
-      label: node.label,
-      description: node.description,
-    }));
+  const graphNodes =
+    args.contract.basis === "graph"
+      ? args.graph.nodes
+          .filter(
+            (node) =>
+              node.category === "place" ||
+              node.category === "activity" ||
+              node.category === "interest",
+          )
+          .map((node) => ({
+            id: node.id,
+            category: node.category,
+            label: node.label,
+            description: node.description,
+          }))
+      : [];
   const experienceContract = {
     scale: args.contract.scale,
     basis: args.contract.basis,
