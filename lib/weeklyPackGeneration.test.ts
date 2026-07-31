@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildWeeklyPackCompositionPrompt,
   pollWeeklyPackResearch,
   retryWeeklyPackResearch,
   runWeeklyPackModelAttempts,
@@ -200,6 +201,16 @@ describe("weekly pack model attempts", () => {
 });
 
 describe("weekly pack real-world grounding", () => {
+  it("tells composition not to invent artificial tasks", () => {
+    const prompt = buildWeeklyPackCompositionPrompt({
+      pack: researchPack,
+      research: [],
+    });
+
+    expect(prompt).toContain("Do not add arbitrary quotas");
+    expect(prompt).toContain("Avoid the words exactly");
+  });
+
   it("does not let vague design prose replace the researched place", () => {
     expect(() =>
       validateWeeklyPackGroundedCopy({
@@ -272,6 +283,33 @@ describe("weekly pack real-world grounding", () => {
     expect(result.feedbackByCard).toEqual({
       mini: expect.stringContaining("RESEARCH_UNPROVEN"),
     });
+  });
+
+  it("polls one pack's research runs serially", async () => {
+    const runs = weeklyPackResearchRunsSchema.parse([
+      { cardId: "small", runId: "run-small" },
+      { cardId: "mini", runId: "run-mini" },
+      { cardId: "proper", runId: "run-proper" },
+    ]);
+    let activeRequests = 0;
+    let peakActiveRequests = 0;
+    const fetchResearch = vi.fn(async () => {
+      activeRequests += 1;
+      peakActiveRequests = Math.max(peakActiveRequests, activeRequests);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      activeRequests -= 1;
+      return { status: "pending" as const };
+    });
+
+    await expect(
+      pollWeeklyPackResearch(
+        { pack: researchPack, runs, homeCity: "Seoul" },
+        fetchResearch,
+      ),
+    ).resolves.toEqual({ status: "pending" });
+
+    expect(fetchResearch).toHaveBeenCalledTimes(3);
+    expect(peakActiveRequests).toBe(1);
   });
 
   it("sends each failed card only its own audit feedback", async () => {

@@ -8,7 +8,10 @@ import {
   weeklyPackDesignArtifactSchema,
   type WeeklyPackDesignArtifact,
 } from "./weeklyPackDesign";
-import { weeklyPackResearchRunsSchema } from "./weeklyPackGeneration";
+import {
+  WeeklyPackGenerationError,
+  weeklyPackResearchRunsSchema,
+} from "./weeklyPackGeneration";
 import {
   runWeeklyPackCycle,
   weeklyPackContextFrom,
@@ -684,5 +687,47 @@ describe("weekly pack worker", () => {
     );
     expect(current.designPack).toHaveBeenCalledTimes(1);
     expect(current.startResearch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps accepted research when only visible copy needs another attempt", async () => {
+    const current = dependencies();
+    current.listPreparations.mockResolvedValue({
+      preparations: [
+        preparation({
+          design: { stored: "artifact" },
+          researchRuns: { stored: "runs" },
+        }),
+      ],
+    });
+    vi.spyOn(weeklyPackDesignArtifactSchema, "parse").mockReturnValue({
+      pack: { cards: [] },
+      homeCity: "Seoul",
+      revisionReviews: [],
+    } as unknown as WeeklyPackDesignArtifact);
+    vi.spyOn(weeklyPackResearchRunsSchema, "parse").mockReturnValue([
+      { cardId: "small", runId: "run-small", attempt: 1 },
+      { cardId: "mini", runId: "run-mini", attempt: 1 },
+      { cardId: "proper", runId: "run-proper", attempt: 1 },
+    ]);
+    current.pollResearch.mockResolvedValue({
+      status: "completed",
+      results: [],
+      audit: { valid: true, errors: [] },
+    } as never);
+    current.composeCards.mockRejectedValue(
+      new WeeklyPackGenerationError(
+        "No model produced truthful grounded copy. proper copy introduced an artificial task.",
+      ),
+    );
+
+    const summary = await runWeeklyPackCycle(
+      { now: WEDNESDAY_IN_SEOUL, maxNewPacks: 0 },
+      current as unknown as WeeklyPackWorkerDependencies,
+    );
+
+    expect(summary.researchPending).toBe(1);
+    expect(summary.preparationFailures).toBe(0);
+    expect(current.failPreparation).not.toHaveBeenCalled();
+    expect(current.completePreparation).not.toHaveBeenCalled();
   });
 });

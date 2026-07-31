@@ -208,11 +208,52 @@ describe("fetchParallelResearchResult", () => {
   });
 
   it("treats Parallel's blocking timeout as pending", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(408, {}));
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(408, {}))
+      .mockResolvedValueOnce(jsonResponse(408, {}));
 
-    await expect(fetchParallelResearchResult("trun_1")).resolves.toEqual({
+    await expect(fetchParallelResearchResult("trun_1", 2)).resolves.toEqual({
       status: "pending",
     });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a transient short-poll timeout", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(408, {}))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          run: { run_id: "trun_1", status: "completed" },
+          output: { type: "json", content: { ready: true } },
+        }),
+      );
+
+    await expect(fetchParallelResearchResult("trun_1", 2)).resolves.toEqual({
+      status: "completed",
+      content: { ready: true },
+      citations: [],
+    });
+  });
+
+  it("serializes concurrent result reads", async () => {
+    let activeRequests = 0;
+    let peakActiveRequests = 0;
+    fetchMock.mockImplementation(async () => {
+      activeRequests += 1;
+      peakActiveRequests = Math.max(peakActiveRequests, activeRequests);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      activeRequests -= 1;
+      return jsonResponse(200, {
+        run: { run_id: "trun_1", status: "running" },
+      });
+    });
+
+    await Promise.all([
+      fetchParallelResearchResult("trun_1", 2),
+      fetchParallelResearchResult("trun_2", 2),
+    ]);
+
+    expect(peakActiveRequests).toBe(1);
   });
 
   it("returns content and deduplicated citations when completed", async () => {

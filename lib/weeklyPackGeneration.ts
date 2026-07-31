@@ -8,6 +8,7 @@ import type { ExperienceGraphRecord } from "./backendTypes";
 import {
   fetchParallelResearchResult,
   startParallelResearch,
+  type ParallelResearchResult,
 } from "./parallelResearch";
 import { findVenuePhoto } from "./venuePhoto";
 import {
@@ -615,12 +616,20 @@ export async function pollWeeklyPackResearch(args: {
   homeCity?: string;
   requestId?: string;
 }, fetchResearch = fetchParallelResearchResult): Promise<WeeklyPackResearchPoll> {
-  const results = await Promise.all(
-    args.runs.map(async (run) => ({
+  const results: Array<{
+    run: WeeklyPackResearchRun;
+    result: ParallelResearchResult;
+  }> = [];
+  for (const run of args.runs) {
+    results.push({
       run,
+      // Parallel can answer otherwise-complete result reads with 408 when a
+      // pack polls all three runs in a burst. One transient 408 keeps the
+      // entire pack pending, so read a pack's results serially while the
+      // worker still advances different users concurrently.
       result: await fetchResearch(run.runId, 2),
-    })),
-  );
+    });
+  }
   const providerFailures = results
     .filter(({ result }) => result.status === "failed")
     .map(({ run }) => run.cardId);
@@ -768,7 +777,7 @@ export function buildWeeklyPackCompositionPrompt(args: {
 }) {
   return [
     "Write the visible copy for three already-designed, already-researched Chapter cards.",
-    "Return exactly one small, one mini, and one proper card.",
+    "Return one small, one mini, and one proper card.",
     "",
     "COPY CONTRACT",
     "- Preserve the researched action, place, route, company, scale, and logistics. Do not redesign anything.",
@@ -780,6 +789,7 @@ export function buildWeeklyPackCompositionPrompt(args: {
     "- Promise: one concrete sentence stating what the person will actually do.",
     "- Opening: 1-2 unhurried sentences that make the action legible without explaining personalization.",
     "- Steps: 2-5 concise actions forming the researched rhythm or route. Do not pad a small activity into an itinerary.",
+    "- Do not add arbitrary quotas, counting exercises, audits, documentation tasks, ratings, cataloguing, pretending, or role-play. Avoid the words exactly, audit, document, log, rate, catalogue, pretend, role-play, and roleplay, plus phrases such as at least two, at least three, or at least four, anywhere in visible copy.",
     "- No marketing language, destiny, exclamation marks, compatibility claims, or mention of Chapter's machinery.",
     args.companion
       ? [
@@ -989,7 +999,7 @@ export async function composeWeeklyExperienceCards(args: {
 }) {
   const copyAttempts = await runWeeklyPackModelAttempts({
     modelIds: [PACK_COMPOSITION_MODEL_ID],
-    attemptsPerModel: 2,
+    attemptsPerModel: 4,
     attempt: async ({ modelId, correction }) => {
       try {
         const output = await generateObject({

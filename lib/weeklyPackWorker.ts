@@ -30,6 +30,7 @@ import {
   retryWeeklyPackResearch,
   startWeeklyPackResearch,
   startWeeklyPackResearchForCards,
+  WeeklyPackGenerationError,
   weeklyPackResearchRunsSchema,
 } from "./weeklyPackGeneration";
 import {
@@ -100,6 +101,13 @@ export type WeeklyPackWorkerSummary = {
 };
 
 const WEEKLY_PACK_WORKER_CONCURRENCY = 2;
+
+function isRetryableCopyFailure(error: unknown) {
+  return (
+    error instanceof WeeklyPackGenerationError &&
+    error.message.startsWith("No model produced truthful grounded copy.")
+  );
+}
 
 async function mapWithLimit<Item>(
   items: readonly Item[],
@@ -489,6 +497,15 @@ export async function runWeeklyPackCycle(
         }
         summary.packsReady += 1;
       } catch (error) {
+        if (isRetryableCopyFailure(error)) {
+          console.warn("[weekly-pack:worker] copy will retry", {
+            packId: preparation.id,
+            errorName: errorName(error),
+            errorDetail: errorDetail(error),
+          });
+          summary.researchPending += 1;
+          return;
+        }
         summary.preparationFailures += 1;
         await safelyFail(
           dependencies,

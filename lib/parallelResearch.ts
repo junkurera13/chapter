@@ -191,6 +191,22 @@ function wait(milliseconds: number) {
   });
 }
 
+let parallelResultReadTail: Promise<void> = Promise.resolve();
+
+async function withParallelResultRead<T>(operation: () => Promise<T>) {
+  const previous = parallelResultReadTail;
+  let release!: () => void;
+  parallelResultReadTail = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+  }
+}
+
 /**
  * Starts a Parallel deep-research task run and returns its run id. The run
  * proceeds asynchronously on Parallel's side; poll with
@@ -287,58 +303,76 @@ export async function fetchParallelResearchResult(
   runId: string,
   timeoutSeconds = 20,
 ): Promise<ParallelResearchResult> {
-  let response: Response;
-  try {
-    response = await fetch(
-      `${PARALLEL_ORIGIN}/v1/tasks/runs/${encodeURIComponent(runId)}/result?timeout=${timeoutSeconds}`,
-      {
-        headers: { "x-api-key": apiKey() },
-        cache: "no-store",
-        signal: AbortSignal.timeout((timeoutSeconds + 10) * 1000),
-      },
-    );
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      /timeout|abort/i.test(`${error.name} ${error.message}`)
-    ) {
-      return { status: "pending" };
+  return withParallelResultRead(async () => {
+    // The short weekly-worker poll may receive a transient 408 even after the
+    // result is available. Retry that bounded read once while holding the
+    // provider-wide slot; longer blocking callers keep their single request.
+    const attempts = timeoutSeconds <= 2 ? 2 : 1;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      let response: Response;
+      try {
+        response = await fetch(
+          `${PARALLEL_ORIGIN}/v1/tasks/runs/${encodeURIComponent(runId)}/result?timeout=${timeoutSeconds}`,
+          {
+            headers: { "x-api-key": apiKey() },
+            cache: "no-store",
+            signal: AbortSignal.timeout((timeoutSeconds + 10) * 1000),
+          },
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          /timeout|abort/i.test(`${error.name} ${error.message}`)
+        ) {
+          return { status: "pending" };
+        }
+        throw error;
+      }
+
+      // Parallel signals a still-running task with a timeout status. A short
+      // poll gets one serialized retry so concurrent packs cannot keep one
+      // another pending indefinitely through transient 408 responses.
+      if (response.status === 408) {
+        if (attempt < attempts) {
+          await wait(150);
+          continue;
+        }
+        return { status: "pending" };
+      }
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new ParallelResearchError(
+          "Parallel could not return the research result.",
+          response.status,
+        );
+      }
+
+      const parsed = resultResponseSchema.safeParse(payload);
+      if (!parsed.success) {
+        throw new ParallelResearchError(
+          "Parallel returned an unexpected result response.",
+          502,
+        );
+      }
+
+      const { run, output } = parsed.data;
+      if (run.status === "failed" || run.status === "cancelled") {
+        return { status: "failed" };
+      }
+      if (run.status !== "completed" || !output) return { status: "pending" };
+
+      const citations = (output.basis ?? [])
+        .flatMap((entry) => entry.citations ?? [])
+        .map((citation) => ({ url: citation.url, title: citation.title }))
+        .filter(
+          (citation, index, all) =>
+            all.findIndex((other) => other.url === citation.url) === index,
+        );
+
+      return { status: "completed", content: output.content, citations };
     }
-    throw error;
-  }
 
-  // Parallel signals a still-running task with a timeout status.
-  if (response.status === 408) return { status: "pending" };
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new ParallelResearchError(
-      "Parallel could not return the research result.",
-      response.status,
-    );
-  }
-
-  const parsed = resultResponseSchema.safeParse(payload);
-  if (!parsed.success) {
-    throw new ParallelResearchError(
-      "Parallel returned an unexpected result response.",
-      502,
-    );
-  }
-
-  const { run, output } = parsed.data;
-  if (run.status === "failed" || run.status === "cancelled") {
-    return { status: "failed" };
-  }
-  if (run.status !== "completed" || !output) return { status: "pending" };
-
-  const citations = (output.basis ?? [])
-    .flatMap((entry) => entry.citations ?? [])
-    .map((citation) => ({ url: citation.url, title: citation.title }))
-    .filter(
-      (citation, index, all) =>
-        all.findIndex((other) => other.url === citation.url) === index,
-    );
-
-  return { status: "completed", content: output.content, citations };
+    return { status: "pending" };
+  });
 }
