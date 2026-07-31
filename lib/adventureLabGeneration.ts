@@ -2,6 +2,7 @@ import "server-only";
 
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText, Output } from "ai";
+import { z } from "zod";
 
 import type { ExperienceGraphRecord } from "./backendTypes";
 import {
@@ -21,7 +22,13 @@ import {
   validateAdventureLabCopy,
   type AdventureLabDraftModel,
   type AdventureLabFeedback,
+  type AdventureLabBudgetHistoryEntry,
 } from "./adventureLab";
+import {
+  auditChapterBudgetCost,
+  CHAPTER_BUDGET_CONTRACTS,
+  classifyChapterCost,
+} from "./chapterBudget";
 import {
   NOW_RESEARCH_OUTPUT_SCHEMA,
   type NowResearchFinding,
@@ -49,6 +56,40 @@ const ADVENTURE_LAB_SECONDARY_FALLBACK_MODEL =
   "moonshotai/kimi-k2.6";
 const ADVENTURE_LAB_MODEL_TIMEOUT_MS = 180_000;
 const ADVENTURE_LAB_RESEARCH_TIMEOUT_MS = 12 * 60_000;
+
+const adventureLabResearchCostSchema = z.object({
+  price_note: z.string().trim().min(1).max(300),
+  estimated_total_cost_usd: z.number().min(0).max(10_000),
+  cost_basis: z.string().trim().min(10).max(600),
+});
+
+const ADVENTURE_LAB_RESEARCH_OUTPUT_SCHEMA = {
+  ...NOW_RESEARCH_OUTPUT_SCHEMA,
+  properties: {
+    ...NOW_RESEARCH_OUTPUT_SCHEMA.properties,
+    price_note: {
+      type: "string",
+      description:
+        "Complete expected personal cost in the venue's local currency. Include booking, admission, required materials or rentals, and necessary non-local travel. Write 'Free' only when sources prove zero cost.",
+    },
+    estimated_total_cost_usd: {
+      type: "number",
+      description:
+        "Conservative current USD equivalent of the complete expected personal cost. Use the normal expected price, not a promotional minimum.",
+    },
+    cost_basis: {
+      type: "string",
+      description:
+        "Explain the sourced local prices, conversion used, and which required costs are included in the USD estimate.",
+    },
+  },
+  required: [
+    ...NOW_RESEARCH_OUTPUT_SCHEMA.required,
+    "price_note",
+    "estimated_total_cost_usd",
+    "cost_basis",
+  ],
+} as const;
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -313,7 +354,7 @@ async function composeDraft(args: {
           `elapsedMs=${Date.now() - startedAt}`,
         ].join(" "),
       );
-      return { draft: composedDraft, modelId };
+      return { draft: composedDraft, copy, modelId };
     } catch (error) {
       const message =
         error instanceof Error ? `${error.name}: ${error.message}` : String(error);
@@ -343,10 +384,13 @@ async function composeDraft(args: {
 async function researchDraft(args: {
   draft: AdventureLabDraftModel;
   homeCity: string;
+  requestedBudgetTier: keyof typeof CHAPTER_BUDGET_CONTRACTS;
   requestId: string;
 }): Promise<{
   finding: NowResearchFinding;
   evidence: { url: string; title?: string }[];
+  estimatedTotalUsd: number;
+  costBasis: string;
 }> {
   if (!process.env.PARALLEL_API_KEY) {
     throw new AdventureLabGenerationError(
@@ -360,6 +404,8 @@ async function researchDraft(args: {
     "Do not redesign the adventure, soften it into an ordinary recommendation, or substitute a plausible-sounding place.",
     "The place must support the actual action. A restaurant meal, purchase, or passive observation task is not a substitute for participation.",
     `Start from ${args.homeCity} and respect the experience's stated geography and duration.`,
+    `The pre-drawn budget lane is ${args.requestedBudgetTier}: ${CHAPTER_BUDGET_CONTRACTS[args.requestedBudgetTier].designInstruction}`,
+    "Calculate the complete expected personal cost, including booking, admission, required materials or rentals, and necessary non-local travel. Use a conservative normal price rather than a temporary promotional minimum.",
     "Prove the exact name, arrival address, current operation, relevant hours or event date, booking method when needed, and price when a source states it.",
     "If no real current place supports the designed action, the research has failed.",
     "",
@@ -375,7 +421,7 @@ async function researchDraft(args: {
   const startedAt = Date.now();
   const { runId } = await startParallelResearch({
     input,
-    outputSchema: NOW_RESEARCH_OUTPUT_SCHEMA as unknown as Record<
+    outputSchema: ADVENTURE_LAB_RESEARCH_OUTPUT_SCHEMA as unknown as Record<
       string,
       unknown
     >,
@@ -402,6 +448,14 @@ async function researchDraft(args: {
       researchContent: result.content,
       citations: result.citations,
     });
+    const cost = adventureLabResearchCostSchema.parse(result.content);
+    const budgetAudit = auditChapterBudgetCost({
+      requestedTier: args.requestedBudgetTier,
+      estimatedTotalUsd: cost.estimated_total_cost_usd,
+    });
+    if (!budgetAudit.valid) {
+      throw new AdventureLabGenerationError(budgetAudit.message, "research");
+    }
     console.info(
       [
         "[adventure-lab:research] completed",
@@ -414,6 +468,8 @@ async function researchDraft(args: {
     return {
       finding,
       evidence: result.citations.slice(0, 4),
+      estimatedTotalUsd: cost.estimated_total_cost_usd,
+      costBasis: cost.cost_basis,
     };
   }
 
@@ -427,6 +483,7 @@ export async function craftAdventureLabExperience(args: {
   graph: ExperienceGraphRecord;
   homeCity: string;
   feedback: readonly AdventureLabFeedback[];
+  recentBudgets: readonly AdventureLabBudgetHistoryEntry[];
   requestId: string;
 }) {
   if (!process.env.OPENROUTER_API_KEY) {
@@ -436,7 +493,10 @@ export async function craftAdventureLabExperience(args: {
     );
   }
 
-  const contract = drawAdventureLabContract(args.graph, args.requestId);
+  const contract = drawAdventureLabContract(args.graph, args.requestId, {
+    feedback: args.feedback,
+    recentBudgets: args.recentBudgets,
+  });
   const models = [
     ADVENTURE_LAB_MODEL,
     ADVENTURE_LAB_MODEL,
@@ -499,6 +559,7 @@ export async function craftAdventureLabExperience(args: {
           researched = await researchDraft({
             draft: normalizedDraft,
             homeCity: args.homeCity,
+            requestedBudgetTier: contract.budgetTier,
             requestId: args.requestId,
           });
         } catch (error) {
@@ -535,8 +596,14 @@ export async function craftAdventureLabExperience(args: {
             contract,
             composed.draft,
             {
+              title: composed.copy.title,
               place,
               evidence: researched.evidence,
+              budget: {
+                tier: classifyChapterCost(researched.estimatedTotalUsd),
+                estimatedTotalUsd: researched.estimatedTotalUsd,
+                costBasis: researched.costBasis,
+              },
             },
           ),
           modelId,

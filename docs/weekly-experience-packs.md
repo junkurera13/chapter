@@ -217,6 +217,28 @@ Promise: "This deserves a day."
 The launch baseline is one card at each scale. This creates a commitment ladder:
 approachable, meaningful, ambitious.
 
+### Cost cadence
+
+Cost is a separate commitment lane, not a fifth equation dimension and not a
+property the writing model may improvise. The design system draws one of
+`accessible`, `planned`, or `splurge` before an experience is written, and live
+research must prove that the complete personal cost fits the drawn ceiling.
+
+The current executable launch weights are:
+
+| Scale | Accessible | Planned | Splurge |
+| --- | ---: | ---: | ---: |
+| Small | 100% | 0% | 0% |
+| Mini | 70% | 25% | 5% |
+| Proper | 40% | 35% | 25% |
+
+A splurge is ineligible for 28 days after one is offered. “Too expensive right
+now” increases the affordable weight on the next draw; “save for later” keeps
+the expensive idea aspirational rather than misreading it as a disliked
+activity. Adventure Lab implements this cadence now. The production weekly
+worker must persist recent budget history and use the same draw before these
+odds are considered shipped in Now.
+
 ### Social composition
 
 - `self`

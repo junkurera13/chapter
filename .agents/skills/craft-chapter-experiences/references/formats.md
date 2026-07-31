@@ -92,6 +92,19 @@ Use one card at each launch scale until evidence supports a wider deck:
 2. one mini adventure;
 3. one proper adventure.
 
+## Cost cadence
+
+Cost is a commitment lane above the format, not a Chapter novelty dimension.
+Draw `accessible`, `planned`, or `splurge` before design, then require research
+to prove the all-in cost for one person fits that lane. Do not ask the model to
+choose how expensive its own idea may be.
+
+Small experiences are always accessible. Mini and proper experiences may draw
+planned or splurge lanes, but splurges must remain rare and are ineligible for
+28 days after one is offered. Treat “too expensive right now” as evidence to
+raise affordable odds, not as dislike of the underlying activity. “Save for
+later” preserves the activity as an aspirational possibility.
+
 Choose an internal basis independently:
 
 - `world`: current local reality and Chapter's editorial taste, with no graph

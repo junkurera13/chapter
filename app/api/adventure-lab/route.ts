@@ -136,6 +136,7 @@ export async function POST(request: Request) {
       graph,
       homeCity: now.homeCity,
       feedback: payload.data.feedback,
+      recentBudgets: payload.data.recentBudgets,
       requestId,
     });
 

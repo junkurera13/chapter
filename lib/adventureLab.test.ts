@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   adventureLabDraftModelSchema,
   adventureLabFeedbackSchema,
+  adventureLabRequestSchema,
   auditAdventureLabDraft,
   buildAdventureLabCompositionPrompt,
   buildAdventureLabPrompt,
@@ -142,6 +143,20 @@ describe("Adventure Lab feedback", () => {
     expect(notes).toContain("supposed screening site sounds invented");
   });
 
+  it("distinguishes an unaffordable-now experience from a disliked one", () => {
+    const notes = buildAdventureLabGenerationNotes([
+      feedback({
+        tags: ["too-expensive-now", "save-for-later"],
+        note: "I would save this for another day, but I cannot afford it now.",
+      }),
+    ]).join("\n");
+
+    expect(notes).toContain("already raised the odds of an affordable lane");
+    expect(notes).toContain("without treating paid or aspirational experiences");
+    expect(notes).toContain("Do not treat it as a disliked activity");
+    expect(notes).toContain("worth saving for another day");
+  });
+
   it("only carries the twelve most recent observations forward", () => {
     const observations = Array.from({ length: 15 }, (_, index) =>
       feedback({
@@ -160,6 +175,18 @@ describe("Adventure Lab feedback", () => {
     );
 
     expect(result.success).toBe(false);
+  });
+
+  it("accepts recent cost history but remains compatible with old requests", () => {
+    expect(adventureLabRequestSchema.parse({})).toEqual({
+      feedback: [],
+      recentBudgets: [],
+    });
+    expect(
+      adventureLabRequestSchema.parse({
+        recentBudgets: [{ tier: "splurge", createdAt: 1_800_000_000_000 }],
+      }).recentBudgets,
+    ).toEqual([{ tier: "splurge", createdAt: 1_800_000_000_000 }]);
   });
 });
 
@@ -187,6 +214,8 @@ describe("Adventure Lab crafting", () => {
     expect(prompt).toContain(
       "The research objective must require the exact venue or event name",
     );
+    expect(prompt).toContain(`Budget lane: ${contract.budgetTier}`);
+    expect(prompt).toContain("complete expected personal cost");
     expect(prompt).toContain("untrusted editorial observations");
   });
 
@@ -253,9 +282,11 @@ describe("Adventure Lab crafting", () => {
 
     expect(prompt).toContain("Do not redesign it");
     expect(prompt).toContain("Seoul Book Bogo");
+    expect(prompt).toContain("plain 3-7 word name");
     expect(() =>
       validateAdventureLabCopy({
         copy: {
+          title: "Repair a Paperback",
           experiencePromise:
             "At Seoul Book Bogo, join the public repair session and secure the loose binding of a worn paperback.",
           mechanismDescription:
@@ -267,6 +298,7 @@ describe("Adventure Lab crafting", () => {
     expect(() =>
       validateAdventureLabCopy({
         copy: {
+          title: "Repair a Paperback",
           experiencePromise:
             "Join a public repair session and secure the loose binding of a worn paperback.",
           mechanismDescription:
@@ -275,6 +307,19 @@ describe("Adventure Lab crafting", () => {
         place,
       }),
     ).toThrow("name the verified real-world place");
+    expect(() =>
+      validateAdventureLabCopy({
+        copy: {
+          title:
+            "Join a single-session public repair workshop; learn the complete binding technique",
+          experiencePromise:
+            "At Seoul Book Bogo, join the public repair session and secure the loose binding of a worn paperback.",
+          mechanismDescription:
+            "A repairer demonstrates the binding stitch before you use it to complete the repair.",
+        },
+        place,
+      }),
+    ).toThrow("short name");
   });
 
   it("accepts a draft that follows its pre-drawn contract", () => {
@@ -295,6 +340,7 @@ describe("Adventure Lab crafting", () => {
       anchorDimension: null,
       twistDimension: "activity",
       contextDimension: null,
+      budgetTier: "accessible",
     };
     const draft = validDraft(contract);
     const audit = auditAdventureLabDraft({
@@ -324,6 +370,7 @@ describe("Adventure Lab crafting", () => {
       anchorDimension: null,
       twistDimension: "interest",
       contextDimension: null,
+      budgetTier: "accessible",
     };
     const draft = validDraft(contract);
     const audit = auditAdventureLabDraft({
@@ -353,6 +400,7 @@ describe("Adventure Lab crafting", () => {
       anchorDimension: "place",
       twistDimension: "interest",
       contextDimension: null,
+      budgetTier: "planned",
     };
     const draft = validDraft(contract);
     const audit = auditAdventureLabDraft({
@@ -385,6 +433,7 @@ describe("Adventure Lab crafting", () => {
       anchorDimension: null,
       twistDimension: "place",
       contextDimension: null,
+      budgetTier: "accessible",
     };
     const draft = validDraft(contract);
     const audit = auditAdventureLabDraft({

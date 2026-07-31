@@ -6,19 +6,23 @@ import { useMemo, useState } from "react";
 
 import ChapterLoadingMark from "@/components/chapter-loading-mark";
 import {
+  adventureLabBudgetHistoryEntrySchema,
   adventureLabBatchSchema,
   adventureLabFeedbackSchema,
   type AdventureLabBatch,
+  type AdventureLabBudgetHistoryEntry,
   type AdventureLabFeedback,
   type AdventureLabFeedbackTag,
   type AdventureLabExperience,
 } from "@/lib/adventureLab";
+import { compactChapterBudgetHistory } from "@/lib/chapterBudget";
 
 import styles from "./page.module.css";
 
 type LabPhase = "idle" | "crafting" | "ready" | "error";
 
 const FEEDBACK_STORAGE_KEY = "chapter:adventure-lab:feedback:v1";
+const BUDGET_STORAGE_KEY = "chapter:adventure-lab:budget-history:v1";
 const MAX_STORED_FEEDBACK = 24;
 
 const FEEDBACK_OPTIONS: Array<{
@@ -29,9 +33,15 @@ const FEEDBACK_OPTIONS: Array<{
   { tag: "would-do", label: "I’d do this", tone: "positive" },
   { tag: "feels-real", label: "Feels real", tone: "positive" },
   { tag: "good-stretch", label: "Good stretch", tone: "positive" },
+  { tag: "save-for-later", label: "Save for later", tone: "positive" },
   { tag: "too-generic", label: "Too generic", tone: "negative" },
   { tag: "just-a-venue", label: "Just a venue", tone: "negative" },
   { tag: "feels-made-up", label: "Feels made up", tone: "negative" },
+  {
+    tag: "too-expensive-now",
+    label: "Too expensive right now",
+    tone: "negative",
+  },
   { tag: "too-much-effort", label: "Too much effort", tone: "negative" },
   { tag: "not-for-me", label: "Not for me", tone: "negative" },
 ];
@@ -40,6 +50,15 @@ const SCALE_NAMES: Record<AdventureLabExperience["id"], string> = {
   small: "Small",
   mini: "Mini",
   proper: "Proper",
+};
+
+const BUDGET_NAMES: Record<
+  AdventureLabExperience["budget"]["tier"],
+  string
+> = {
+  accessible: "Affordable",
+  planned: "Planned spend",
+  splurge: "Save for later",
 };
 
 function readFeedback() {
@@ -66,6 +85,31 @@ function storeFeedback(feedback: readonly AdventureLabFeedback[]) {
   );
 }
 
+function readBudgetHistory() {
+  try {
+    const raw = window.localStorage.getItem(BUDGET_STORAGE_KEY);
+    if (!raw) return [];
+    const value = JSON.parse(raw) as unknown;
+    const parsed = adventureLabBudgetHistoryEntrySchema
+      .array()
+      .safeParse(value);
+    if (parsed.success) return compactChapterBudgetHistory(parsed.data);
+  } catch {
+    // Invalid local history should never stop a new generation.
+  }
+  window.localStorage.removeItem(BUDGET_STORAGE_KEY);
+  return [];
+}
+
+function storeBudgetHistory(
+  history: readonly AdventureLabBudgetHistoryEntry[],
+) {
+  window.localStorage.setItem(
+    BUDGET_STORAGE_KEY,
+    JSON.stringify(compactChapterBudgetHistory(history)),
+  );
+}
+
 function durationLabel(experience: AdventureLabExperience) {
   const { min, max } = experience.format.durationMinutes;
   const render = (minutes: number) => {
@@ -87,7 +131,7 @@ function makeFeedback(
     batchId: batch.id,
     experienceId: experience.id,
     experienceSummary: place
-      ? `${experience.experiencePromise} Place: ${place.name}, ${place.address}.`.slice(
+      ? `${experience.title || experience.experiencePromise}: ${experience.experiencePromise} Place: ${place.name}, ${place.address}. Price: ${place.priceNote || "not stated"}.`.slice(
           0,
           800,
         )
@@ -124,7 +168,10 @@ function feedbackForChat(feedback: readonly AdventureLabFeedback[]) {
   ].join("\n");
 }
 
-async function requestBatch(feedback: readonly AdventureLabFeedback[]) {
+async function requestBatch(
+  feedback: readonly AdventureLabFeedback[],
+  recentBudgets: readonly AdventureLabBudgetHistoryEntry[],
+) {
   const accessToken = await getAccessToken();
   if (!accessToken) throw new Error("Open Chapter and sign in first.");
 
@@ -135,7 +182,7 @@ async function requestBatch(feedback: readonly AdventureLabFeedback[]) {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ feedback }),
+    body: JSON.stringify({ feedback, recentBudgets }),
   });
   const payload = (await response.json().catch(() => ({}))) as {
     value?: unknown;
@@ -172,6 +219,9 @@ export default function AdventureLab() {
             durationLabel(experience),
             experience.format.effort.replace("-", " "),
             experience.format.geography.replace("-", " "),
+            ...(experience.budget
+              ? [BUDGET_NAMES[experience.budget.tier]]
+              : []),
           ]
         : [],
     [experience],
@@ -187,7 +237,15 @@ export default function AdventureLab() {
     setMessage("");
     setCopied(false);
     try {
-      const nextBatch = await requestBatch(feedback);
+      const budgetHistory = readBudgetHistory();
+      const nextBatch = await requestBatch(feedback, budgetHistory);
+      storeBudgetHistory([
+        ...budgetHistory,
+        ...nextBatch.experiences.map((candidate) => ({
+          tier: candidate.budget.tier,
+          createdAt: nextBatch.createdAt,
+        })),
+      ]);
       setBatch(nextBatch);
       setExperienceIndex(0);
       resetResponse();
@@ -323,7 +381,7 @@ export default function AdventureLab() {
               <span key={item}>{item}</span>
             ))}
           </div>
-          <h1>{experience.experiencePromise}</h1>
+          <h1>{experience.title || experience.experiencePromise}</h1>
           {experience.place ? (
             <section className={styles.place}>
               <div>

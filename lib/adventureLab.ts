@@ -2,6 +2,12 @@ import { z } from "zod";
 
 import type { ExperienceGraphRecord } from "./backendTypes";
 import {
+  CHAPTER_BUDGET_CONTRACTS,
+  CHAPTER_BUDGET_TIERS,
+  drawChapterBudgetTier,
+  type ChapterBudgetHistoryEntry,
+} from "./chapterBudget";
+import {
   auditChapterShape,
   chooseChapterShape,
   seededChapterRandom,
@@ -21,9 +27,11 @@ export const ADVENTURE_LAB_FEEDBACK_TAGS = [
   "would-do",
   "feels-real",
   "good-stretch",
+  "save-for-later",
   "too-generic",
   "just-a-venue",
   "feels-made-up",
+  "too-expensive-now",
   "too-much-effort",
   "not-for-me",
 ] as const;
@@ -36,18 +44,33 @@ export const adventureLabFeedbackSchema = z.object({
   batchId: z.string().uuid(),
   experienceId: z.enum(WEEKLY_PACK_SCALES),
   experienceSummary: z.string().trim().min(20).max(800),
-  tags: z.array(adventureLabFeedbackTagSchema).max(8),
+  tags: z.array(adventureLabFeedbackTagSchema).max(10),
   note: z.string().trim().max(800),
+  createdAt: z.number().int().positive(),
+});
+
+export const adventureLabBudgetHistoryEntrySchema = z.object({
+  tier: z.enum(CHAPTER_BUDGET_TIERS),
   createdAt: z.number().int().positive(),
 });
 
 export const adventureLabRequestSchema = z.object({
   feedback: z.array(adventureLabFeedbackSchema).max(24).default([]),
+  recentBudgets: z
+    .array(adventureLabBudgetHistoryEntrySchema)
+    .max(12)
+    .default([]),
 });
 
 const adventureLabExperienceSchema = z.object({
   id: z.enum(WEEKLY_PACK_SCALES),
   basis: z.enum(WEEKLY_PACK_BASES),
+  title: z.string().trim().min(3).max(60),
+  budget: z.object({
+    tier: z.enum(CHAPTER_BUDGET_TIERS),
+    estimatedTotalUsd: z.number().min(0).max(250),
+    costBasis: z.string().trim().min(3).max(600),
+  }),
   format: z.object({
     structure: z.enum(WEEKLY_PACK_STRUCTURES),
     effort: z.enum(WEEKLY_PACK_EFFORTS),
@@ -109,6 +132,9 @@ export type AdventureLabFeedbackTag = z.infer<
 >;
 export type AdventureLabBatch = z.infer<typeof adventureLabBatchSchema>;
 export type AdventureLabExperience = AdventureLabBatch["experiences"][number];
+export type AdventureLabBudgetHistoryEntry = z.infer<
+  typeof adventureLabBudgetHistoryEntrySchema
+>;
 
 export const adventureLabContractSchema = z.object({
   scale: z.enum(WEEKLY_PACK_SCALES),
@@ -120,6 +146,7 @@ export const adventureLabContractSchema = z.object({
   contextDimension: z
     .enum(["activity", "place", "interest"])
     .nullable(),
+  budgetTier: z.enum(CHAPTER_BUDGET_TIERS),
 });
 
 export const adventureLabDraftModelSchema = z.object({
@@ -178,11 +205,13 @@ export const adventureLabReviewSchema = z.object({
 });
 
 export const adventureLabCopyModelSchema = z.object({
+  title: z.string(),
   experiencePromise: z.string(),
   mechanismDescription: z.string(),
 });
 
 export const adventureLabCopySchema = z.object({
+  title: z.string().trim().min(3).max(60),
   experiencePromise: z.string().trim().min(30).max(500),
   mechanismDescription: z.string().trim().min(20).max(500),
 });
@@ -232,6 +261,11 @@ function graphAnchorDimensions(graph: ExperienceGraphRecord) {
 export function drawAdventureLabContract(
   graph: ExperienceGraphRecord,
   seed: string,
+  options: {
+    feedback?: readonly AdventureLabFeedback[];
+    recentBudgets?: readonly ChapterBudgetHistoryEntry[];
+    nowMs?: number;
+  } = {},
 ): AdventureLabContract {
   const random = seededChapterRandom(seed);
   const anchorCandidates = graphAnchorDimensions(graph);
@@ -250,12 +284,22 @@ export function drawAdventureLabContract(
         .join(", ")}`,
     );
   }
+  const scale = weightedScale(random);
+  const latestFeedback = options.feedback?.at(-1);
   return adventureLabContractSchema.parse({
-    scale: weightedScale(random),
+    scale,
     basis,
     anchorDimension: shape.anchor ?? null,
     twistDimension: shape.twist,
     contextDimension: shape.context ?? null,
+    budgetTier: drawChapterBudgetTier({
+      scale,
+      random,
+      recentBudgets: options.recentBudgets,
+      nowMs: options.nowMs,
+      preferAffordable: latestFeedback?.tags.includes("too-expensive-now"),
+      preserveAspirational: latestFeedback?.tags.includes("save-for-later"),
+    }),
   });
 }
 
@@ -294,6 +338,7 @@ export function buildAdventureLabPrompt(args: {
       : args.contract.scale === "mini"
         ? "2-4 hours; one destination or activity with at most one natural beat"
         : "4-12 hours; a coherent journey or short sequence worth planning";
+  const budget = CHAPTER_BUDGET_CONTRACTS[args.contract.budgetTier];
 
   return [
     "Craft exactly one exceptional real-world Chapter adventure.",
@@ -304,6 +349,8 @@ export function buildAdventureLabPrompt(args: {
     "- Follow this contract exactly. Do not change scale, basis, anchor, twist, or context.",
     "- This is solo. Do not introduce a companion, stranger, class cohort, host relationship, or group as part of the experience.",
     `- Format for this scale: ${format}.`,
+    `- Budget lane: ${args.contract.budgetTier}. ${budget.designInstruction}`,
+    "- Budget is a hard all-in ceiling for one person, including booking, admission, required materials or rentals, and necessary non-local travel. Do not design an activity whose normal real-world form is likely to exceed it.",
     "",
     "TRUTH",
     "- Design the human action first.",
@@ -335,6 +382,7 @@ export function buildAdventureLabPrompt(args: {
     "- Write experiencePromise as the complete invitation in plain language. It should be specific enough that a person can honestly say yes or no.",
     `- Write researchObjective as instructions to find one exact real place in or reachable from ${args.homeCity} where the designed action can genuinely happen.`,
     "- The research objective must require the exact venue or event name, full arrival address, current operating evidence, relevant opening or event time, booking method when needed, price when available, and sources.",
+    `- It must also require the complete expected personal cost in local currency and its current USD equivalent, proving that it is no more than USD ${budget.maxTotalUsd}.`,
     "- Research must preserve the designed action. If no real current place supports it, the candidate must fail rather than being replaced with a plausible substitute.",
     "",
     `HOME CITY: ${args.homeCity}`,
@@ -592,6 +640,7 @@ export function buildAdventureLabCompositionPrompt(args: {
     "COPY CONTRACT",
     "- Preserve the exact designed action and mechanism.",
     "- Use only claims in the accepted design and verified place facts below.",
+    "- title: a plain 3-7 word name for the experience. Name the core action and, only when useful, the neighbourhood. Do not put the provider's full name, class name, technique list, schedule, or explanatory clause in the title.",
     "- experiencePromise: one plain invitation that says what the person will actually do and includes the exact verified place name verbatim.",
     "- mechanismDescription: one plain explanation of how the real activity unfolds and why it is more than merely visiting the place.",
     "- Do not add a new provider, person, route, task, count, sequence, ritual, role, learning outcome, object, schedule, price, availability claim, or emotional meaning.",
@@ -610,6 +659,16 @@ export function validateAdventureLabCopy(args: {
   copy: AdventureLabCopy;
   place: AdventureLabExperience["place"];
 }) {
+  const titleWords = args.copy.title.split(/\s+/u).filter(Boolean);
+  if (
+    titleWords.length > 7 ||
+    /[,;:.!?—]/u.test(args.copy.title) ||
+    args.copy.title.includes(args.place.name)
+  ) {
+    throw new Error(
+      "Final title must be a short name, not a sentence or detail list.",
+    );
+  }
   if (!args.copy.experiencePromise.includes(args.place.name)) {
     throw new Error(
       "Final copy did not name the verified real-world place verbatim.",
@@ -631,9 +690,11 @@ const FEEDBACK_LABELS: Record<AdventureLabFeedbackTag, string> = {
   "would-do": "I would actually do this",
   "feels-real": "This feels grounded in reality",
   "good-stretch": "The stretch feels right",
+  "save-for-later": "This is worth saving for another day",
   "too-generic": "This could be for anyone",
   "just-a-venue": "This is only a venue in disguise",
   "feels-made-up": "Something feels invented",
+  "too-expensive-now": "The current cost puts this out of reach",
   "too-much-effort": "The effort is not worth the payoff",
   "not-for-me": "This does not feel like me",
 };
@@ -652,6 +713,17 @@ export function buildAdventureLabGenerationNotes(
   ];
   const recent = feedback.slice(-12);
   if (recent.length === 0) return notes;
+
+  if (recent.some((item) => item.tags.includes("too-expensive-now"))) {
+    notes.push(
+      "Recent feedback says cost blocked an otherwise plausible experience. The executable budget draw has already raised the odds of an affordable lane; obey its ceiling without treating paid or aspirational experiences as permanently banned.",
+    );
+  }
+  if (recent.some((item) => item.tags.includes("save-for-later"))) {
+    notes.push(
+      "Save-for-later means the underlying experience still had value. Do not treat it as a disliked activity; preserve that distinction while obeying the next candidate's pre-drawn commitment.",
+    );
+  }
 
   const observations = recent.map((item) => ({
     priorExperience: item.experienceSummary,
@@ -674,8 +746,10 @@ export function adventureLabBatchFrom(
   contract: AdventureLabContract,
   draft: AdventureLabDraftModel,
   research: {
+    title: string;
     place: AdventureLabExperience["place"];
     evidence: AdventureLabExperience["evidence"];
+    budget: AdventureLabExperience["budget"];
   },
   createdAt = Date.now(),
 ): AdventureLabBatch {
@@ -686,6 +760,8 @@ export function adventureLabBatchFrom(
       {
         id: contract.scale,
         basis: contract.basis,
+        title: research.title,
+        budget: research.budget,
         format: {
           structure: draft.format.structure,
           effort: draft.format.effort,

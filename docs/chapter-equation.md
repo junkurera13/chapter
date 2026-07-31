@@ -57,6 +57,31 @@ The runtime schemas for Now, Together, and weekly packs use these dimensions.
 Old weekly design artifacts may still be read during migration, but new
 generation cannot draw `time` as a twist.
 
+### Why cost is not a dimension either
+
+Cost changes whether a person can realistically say yes; it does not change
+what is familiar or new. Every legal chapter therefore receives a separate
+commitment lane after its scale and equation shape are drawn:
+
+| Lane | Launch ceiling | How it should feel |
+| --- | ---: | --- |
+| `accessible` | USD 30 equivalent | Free or cheap enough to do without saving up. |
+| `planned` | USD 100 equivalent | A considered purchase, but not a major event. |
+| `splurge` | USD 250 equivalent | A rare experience worth saving for. |
+
+The ceiling is all-in for one person: booking, admission, required materials
+or rentals, and any travel intrinsic to the experience. Research must prove a
+conservative normal price rather than a temporary promotional minimum.
+
+These lanes have odds and memory. Small activities are always `accessible`.
+Mini adventures usually are; proper adventures are allowed more commitment.
+After a `splurge` is shown, another is ineligible for four weeks. Feedback such
+as “too expensive right now” raises the affordable odds without deleting an
+otherwise good activity, while “save for later” preserves the possibility of a
+future aspirational experience. `lib/chapterBudget.ts` is the executable
+contract currently used by Adventure Lab; the weekly production worker still
+needs to adopt the same persisted draw before this cadence ships to Now.
+
 ---
 
 ## Company: the mode above the equation
