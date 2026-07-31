@@ -15,7 +15,7 @@ function configuredInteger(
     : fallback;
 }
 
-export async function GET(request: Request) {
+function authorizeCron(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return Response.json(
@@ -26,10 +26,15 @@ export async function GET(request: Request) {
   if (request.headers.get("authorization") !== `Bearer ${secret}`) {
     return Response.json({ error: "Unauthorized." }, { status: 401 });
   }
+}
 
+async function runCycle(args: { allowOutsidePreparationWindow: boolean }) {
   const requestId = crypto.randomUUID();
+  const mode = args.allowOutsidePreparationWindow ? "backfill" : "scheduled";
+  console.info("[weekly-pack:cron] cycle started", { requestId, mode });
   try {
     const summary = await runWeeklyPackCycle({
+      allowOutsidePreparationWindow: args.allowOutsidePreparationWindow,
       maxNewPacks: configuredInteger(
         process.env.CHAPTER_WEEKLY_PACKS_PER_RUN,
         2,
@@ -48,12 +53,14 @@ export async function GET(request: Request) {
     });
     console.info("[weekly-pack:cron] cycle completed", {
       requestId,
+      mode,
       ...summary,
     });
     return Response.json({ ok: true, requestId, summary });
   } catch (error) {
     console.error("[weekly-pack:cron] cycle failed", {
       requestId,
+      mode,
       errorName: error instanceof Error ? error.name : "UnknownError",
     });
     return Response.json(
@@ -65,4 +72,23 @@ export async function GET(request: Request) {
       { status: 502 },
     );
   }
+}
+
+export async function GET(request: Request) {
+  const unauthorized = authorizeCron(request);
+  if (unauthorized) return unauthorized;
+  return runCycle({ allowOutsidePreparationWindow: false });
+}
+
+export async function POST(request: Request) {
+  const unauthorized = authorizeCron(request);
+  if (unauthorized) return unauthorized;
+
+  const body = (await request.json().catch(() => null)) as {
+    action?: unknown;
+  } | null;
+  if (body?.action !== "backfill") {
+    return Response.json({ error: "Unknown action." }, { status: 400 });
+  }
+  return runCycle({ allowOutsidePreparationWindow: true });
 }

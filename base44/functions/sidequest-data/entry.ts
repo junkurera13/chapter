@@ -32,6 +32,10 @@ import {
   weeklyCardsHaveConcretePeopleAndPlaces,
 } from "../../shared/weekly-companion.ts";
 import { canCreateWeeklyPacks } from "../../shared/weekly-pack-creator.ts";
+import {
+  WEEKLY_PACK_MAX_INITIALIZATION_ATTEMPTS,
+  weeklyPackInitializationState,
+} from "../../shared/weekly-pack-preparation.ts";
 
 // Base44 entity rows are dynamic at this SDK boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2215,7 +2219,10 @@ Deno.serve(async (req) => {
       if (existing[0]) {
         const previous = existing[0];
         const attempts = Number(previous.attempt_count) || 1;
-        if (previous.status === "failed" && attempts < 3) {
+        if (
+          previous.status === "failed" &&
+          attempts < WEEKLY_PACK_MAX_INITIALIZATION_ATTEMPTS
+        ) {
           const retried = await packs.update(previous.id, {
             status: "preparing",
             timezone,
@@ -2237,10 +2244,57 @@ Deno.serve(async (req) => {
             },
           });
         }
+        const previousPreparation = weeklyPackPreparationRecord(previous);
+        if (
+          previous.status === "preparing" &&
+          weeklyPackInitializationState(previousPreparation) === "recoverable"
+        ) {
+          const reclaimed = await packs.updateMany(
+            {
+              id: previous.id,
+              status: "preparing",
+              generation_request_id: stringValue(
+                previous.generation_request_id,
+              ),
+            },
+            {
+              $set: {
+                timezone,
+                release_at: releaseAt,
+                expires_at: expiresAt,
+                design_json: "",
+                research_json: "",
+                research_run_ids_json: "",
+                cards_json: "",
+                generation_request_id: generationRequestId,
+                last_error: "",
+                updated_at: Date.now(),
+              },
+              $inc: { attempt_count: 1 },
+            },
+          );
+          if (Number(reclaimed.updated) === 1) {
+            const preparation = await packs.get(previous.id);
+            return Response.json({
+              value: {
+                claimed: true,
+                preparation: weeklyPackPreparationRecord(preparation),
+              },
+            });
+          }
+
+          const latest = await packs.get(previous.id);
+          return Response.json({
+            value: {
+              claimed: false,
+              preparation: weeklyPackPreparationRecord(latest),
+            },
+          });
+        }
         return Response.json({
           value: {
             claimed: false,
-            preparation: weeklyPackPreparationRecord(previous),
+            preparation: previousPreparation,
           },
         });
       }
@@ -2358,11 +2412,7 @@ Deno.serve(async (req) => {
       );
       return Response.json({
         value: {
-          preparations: rows
-            .filter((row: Row) =>
-              Boolean(row.design_json && row.research_run_ids_json)
-            )
-            .map(weeklyPackPreparationRecord),
+          preparations: rows.map(weeklyPackPreparationRecord),
         },
       });
     }

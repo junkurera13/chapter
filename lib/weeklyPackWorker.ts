@@ -37,6 +37,10 @@ import {
   isWeeklyPackRetryDay,
   weeklyPackWindow,
 } from "./weeklyPackSchedule";
+import {
+  WEEKLY_PACK_MAX_INITIALIZATION_ATTEMPTS,
+  weeklyPackInitializationState,
+} from "../base44/shared/weekly-pack-preparation";
 
 type WorkerDependencies = {
   listPreparations: (
@@ -84,6 +88,7 @@ const productionDependencies: WorkerDependencies = {
 
 export type WeeklyPackWorkerSummary = {
   preparationsExamined: number;
+  preparationsRecovered: number;
   researchPending: number;
   packsReady: number;
   preparationFailures: number;
@@ -93,6 +98,28 @@ export type WeeklyPackWorkerSummary = {
   claimsSkipped: number;
   packsStarted: number;
 };
+
+const WEEKLY_PACK_WORKER_CONCURRENCY = 2;
+
+async function mapWithLimit<Item>(
+  items: readonly Item[],
+  limit: number,
+  operation: (item: Item) => Promise<void>,
+) {
+  let nextIndex = 0;
+  const workers = Array.from(
+    { length: Math.min(Math.max(1, limit), items.length) },
+    async () => {
+      for (;;) {
+        const index = nextIndex;
+        nextIndex += 1;
+        if (index >= items.length) return;
+        await operation(items[index]);
+      }
+    },
+  );
+  await Promise.all(workers);
+}
 
 function errorName(error: unknown) {
   return error instanceof Error ? error.name : "UnknownError";
@@ -186,8 +213,46 @@ export async function startClaimedWeeklyPack(
 
 export async function advanceWeeklyPackPreparation(
   preparation: WeeklyPackPreparation,
+  now = Date.now(),
   dependencies: WorkerDependencies = productionDependencies,
 ) {
+  const initializationState = weeklyPackInitializationState({
+    ...preparation,
+    now,
+  });
+  if (initializationState === "initializing") {
+    return { status: "initializing" as const };
+  }
+  if (initializationState === "exhausted") {
+    throw new Error("Weekly pack initialization attempt limit reached.");
+  }
+  if (initializationState === "recoverable") {
+    const requestId = dependencies.newRequestId();
+    const claim = await dependencies.claimPreparation({
+      ownerUserId: preparation.ownerUserId,
+      weekKey: preparation.weekKey,
+      timezone: preparation.timezone,
+      releaseAt: preparation.releaseAt,
+      expiresAt: preparation.expiresAt,
+      generationRequestId: requestId,
+      retryOnly: true,
+    });
+    if (!claim.claimed || !claim.preparation) {
+      return { status: "initializing" as const };
+    }
+    const source = await dependencies.fetchSource(preparation.ownerUserId);
+    await startClaimedWeeklyPack(
+      {
+        source,
+        preparation: claim.preparation,
+        requestId,
+        weekKey: claim.preparation.weekKey,
+      },
+      dependencies,
+    );
+    return { status: "recovered" as const };
+  }
+
   const artifact = weeklyPackDesignArtifactSchema.parse(preparation.design);
   const runs = weeklyPackResearchRunsSchema.parse(preparation.researchRuns);
   const research = await dependencies.pollResearch({
@@ -373,12 +438,14 @@ export async function runWeeklyPackCycle(
     candidateLimit?: number;
     preparationLimit?: number;
     maxNewPacks?: number;
+    allowOutsidePreparationWindow?: boolean;
   } = {},
   dependencies: WorkerDependencies = productionDependencies,
 ): Promise<WeeklyPackWorkerSummary> {
   const now = args.now ?? Date.now();
   const summary: WeeklyPackWorkerSummary = {
     preparationsExamined: 0,
+    preparationsRecovered: 0,
     researchPending: 0,
     packsReady: 0,
     preparationFailures: 0,
@@ -393,50 +460,59 @@ export async function runWeeklyPackCycle(
   const { preparations } = await dependencies.listPreparations(
     args.preparationLimit ?? 12,
   );
-  for (const preparation of preparations) {
-    summary.preparationsExamined += 1;
-    ownersAlreadyProcessed.add(preparation.ownerUserId);
+  await mapWithLimit(
+    preparations,
+    WEEKLY_PACK_WORKER_CONCURRENCY,
+    async (preparation) => {
+      summary.preparationsExamined += 1;
+      ownersAlreadyProcessed.add(preparation.ownerUserId);
 
-    try {
-      const result = await advanceWeeklyPackPreparation(
-        preparation,
-        dependencies,
-      );
-      if (result.status === "pending") {
-        summary.researchPending += 1;
-        continue;
-      }
-      if (
-        result.status === "retrying" ||
-        result.status === "redesigning"
-      ) {
-        summary.researchPending += 1;
-        continue;
-      }
-      summary.packsReady += 1;
-    } catch (error) {
-      summary.preparationFailures += 1;
-      await safelyFail(
-        dependencies,
-        preparation.id,
-        "research or composition",
-        error,
-      );
-      if (
-        preparation.attemptCount < 3 &&
-        isWeeklyPackRetryDay({
-          timezone: preparation.timezone,
+      try {
+        const result = await advanceWeeklyPackPreparation(
+          preparation,
           now,
-        })
-      ) {
-        // Let the candidate pass claim again in this same daily cycle. Without
-        // this, the only Friday invocation can consume the retry window while
-        // failing the original preparation, leaving no later Friday run to
-        // perform the documented retry.
-        ownersAlreadyProcessed.delete(preparation.ownerUserId);
+          dependencies,
+        );
+        if (result.status === "recovered") {
+          summary.preparationsRecovered += 1;
+          summary.researchPending += 1;
+          return;
+        }
+        if (
+          result.status === "pending" ||
+          result.status === "initializing" ||
+          result.status === "retrying" ||
+          result.status === "redesigning"
+        ) {
+          summary.researchPending += 1;
+          return;
+        }
+        summary.packsReady += 1;
+      } catch (error) {
+        summary.preparationFailures += 1;
+        await safelyFail(
+          dependencies,
+          preparation.id,
+          "research or composition",
+          error,
+        );
+        if (
+          preparation.attemptCount <
+            WEEKLY_PACK_MAX_INITIALIZATION_ATTEMPTS &&
+          isWeeklyPackRetryDay({
+            timezone: preparation.timezone,
+            now,
+          })
+        ) {
+          // Let the candidate pass claim again in this same daily cycle. Without
+          // this, the only Friday invocation can consume the retry window while
+          // failing the original preparation, leaving no later Friday run to
+          // perform the documented retry.
+          ownersAlreadyProcessed.delete(preparation.ownerUserId);
+        }
       }
-    }
-  }
+    },
+  );
 
   const maxNewPacks = Math.min(
     Math.max(Math.floor(args.maxNewPacks ?? 2), 0),
@@ -444,6 +520,12 @@ export async function runWeeklyPackCycle(
   );
   if (maxNewPacks === 0) return summary;
 
+  const starts: Array<{
+    source: WeeklyPackGenerationSource;
+    preparation: WeeklyPackPreparation;
+    requestId: string;
+    weekKey: string;
+  }> = [];
   const { candidates } = await dependencies.listCandidates(
     args.candidateLimit ?? 50,
   );
@@ -460,7 +542,9 @@ export async function runWeeklyPackCycle(
     });
     if (
       ownersAlreadyProcessed.has(candidate.ownerUserId) ||
-      (!preparationDay && !retryDay)
+      (!preparationDay &&
+        !retryDay &&
+        !args.allowOutsidePreparationWindow)
     ) {
       continue;
     }
@@ -488,7 +572,7 @@ export async function runWeeklyPackCycle(
       timezone: source.timezone,
       ...window,
       generationRequestId: requestId,
-      retryOnly: retryDay,
+      retryOnly: retryDay && !args.allowOutsidePreparationWindow,
     });
     if (!claim.claimed) {
       summary.claimsSkipped += 1;
@@ -499,27 +583,31 @@ export async function runWeeklyPackCycle(
     }
     ownersAlreadyProcessed.add(source.ownerUserId);
     summary.packsStarted += 1;
-
-    try {
-      await startClaimedWeeklyPack(
-        {
-          source,
-          preparation: claim.preparation,
-          requestId,
-          weekKey: window.weekKey,
-        },
-        dependencies,
-      );
-    } catch (error) {
-      summary.preparationFailures += 1;
-      await safelyFail(
-        dependencies,
-        claim.preparation.id,
-        "design or research start",
-        error,
-      );
-    }
+    starts.push({
+      source,
+      preparation: claim.preparation,
+      requestId,
+      weekKey: window.weekKey,
+    });
   }
+
+  await mapWithLimit(
+    starts,
+    WEEKLY_PACK_WORKER_CONCURRENCY,
+    async (start) => {
+      try {
+        await startClaimedWeeklyPack(start, dependencies);
+      } catch (error) {
+        summary.preparationFailures += 1;
+        await safelyFail(
+          dependencies,
+          start.preparation.id,
+          "design or research start",
+          error,
+        );
+      }
+    },
+  );
 
   return summary;
 }

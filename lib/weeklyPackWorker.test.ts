@@ -112,7 +112,9 @@ function dependencies() {
         },
       ],
     })),
-    fetchSource: vi.fn(async () => source()),
+    fetchSource: vi.fn<WeeklyPackWorkerDependencies["fetchSource"]>(
+      async () => source(),
+    ),
     claimPreparation: vi.fn<
       WeeklyPackWorkerDependencies["claimPreparation"]
     >(async () => ({
@@ -178,6 +180,82 @@ describe("weekly pack worker", () => {
     expect(current.startResearch).not.toHaveBeenCalled();
   });
 
+  it("can explicitly backfill a missed eligible account outside the preparation window", async () => {
+    const current = dependencies();
+    const summary = await runWeeklyPackCycle(
+      {
+        now: Date.parse("2026-08-01T00:30:00.000Z"),
+        maxNewPacks: 1,
+        allowOutsidePreparationWindow: true,
+      },
+      current as unknown as WeeklyPackWorkerDependencies,
+    );
+
+    expect(summary.candidatesEligible).toBe(1);
+    expect(summary.packsStarted).toBe(1);
+    expect(current.claimPreparation).toHaveBeenCalledWith(
+      expect.objectContaining({ retryOnly: false }),
+    );
+    expect(current.designPack).toHaveBeenCalledTimes(1);
+    expect(current.startResearch).toHaveBeenCalledTimes(1);
+  });
+
+  it("recovers an abandoned initialization even outside the preparation window", async () => {
+    const current = dependencies();
+    const saturdayBeforeRelease = Date.parse("2026-07-31T23:00:00.000Z");
+    const stranded = preparation({
+      updatedAt: Date.parse("2026-07-31T16:00:00.000Z"),
+    });
+    current.listPreparations.mockResolvedValue({ preparations: [stranded] });
+    current.claimPreparation.mockResolvedValue({
+      claimed: true,
+      preparation: preparation({
+        attemptCount: 2,
+        updatedAt: saturdayBeforeRelease,
+      }),
+    });
+
+    const summary = await runWeeklyPackCycle(
+      { now: saturdayBeforeRelease, maxNewPacks: 0 },
+      current as unknown as WeeklyPackWorkerDependencies,
+    );
+
+    expect(summary.preparationsRecovered).toBe(1);
+    expect(summary.researchPending).toBe(1);
+    expect(current.claimPreparation).toHaveBeenCalledWith({
+      ownerUserId: "owner-1",
+      weekKey: "2026-08-01",
+      timezone: "Asia/Seoul",
+      releaseAt: Date.parse("2026-08-01T00:00:00.000Z"),
+      expiresAt: Date.parse("2026-08-22T00:00:00.000Z"),
+      generationRequestId: "request-1",
+      retryOnly: true,
+    });
+    expect(current.designPack).toHaveBeenCalledTimes(1);
+    expect(current.startResearch).toHaveBeenCalledTimes(1);
+    expect(current.setResearch).toHaveBeenCalledTimes(1);
+    expect(current.listCandidates).not.toHaveBeenCalled();
+  });
+
+  it("does not duplicate an initialization whose lease is still active", async () => {
+    const current = dependencies();
+    const now = Date.parse("2026-07-31T23:00:00.000Z");
+    current.listPreparations.mockResolvedValue({
+      preparations: [preparation({ updatedAt: now - 60_000 })],
+    });
+
+    const summary = await runWeeklyPackCycle(
+      { now, maxNewPacks: 0 },
+      current as unknown as WeeklyPackWorkerDependencies,
+    );
+
+    expect(summary.preparationsRecovered).toBe(0);
+    expect(summary.researchPending).toBe(1);
+    expect(current.claimPreparation).not.toHaveBeenCalled();
+    expect(current.designPack).not.toHaveBeenCalled();
+    expect(current.startResearch).not.toHaveBeenCalled();
+  });
+
   it("claims before generation and starts exactly three independent runs", async () => {
     const current = dependencies();
     const summary = await runWeeklyPackCycle(
@@ -220,6 +298,57 @@ describe("weekly pack worker", () => {
     expect(
       current.designPack.mock.calls[0][0].source.context.shapeContracts,
     ).toHaveLength(3);
+  });
+
+  it("starts two claimed accounts concurrently within the bounded worker limit", async () => {
+    const current = dependencies();
+    current.listCandidates.mockResolvedValue({
+      candidates: [
+        {
+          ownerUserId: "owner-1",
+          homeCity: "Seoul",
+          timezone: "Asia/Seoul",
+        },
+        {
+          ownerUserId: "owner-2",
+          homeCity: "Seoul",
+          timezone: "Asia/Seoul",
+        },
+      ],
+    });
+    current.fetchSource.mockImplementation(async (ownerUserId) => ({
+      ...source(),
+      ownerUserId,
+    }));
+    current.claimPreparation.mockImplementation(async (args) => ({
+      claimed: true,
+      preparation: preparation({
+        id: `pack-${args.ownerUserId}`,
+        ownerUserId: args.ownerUserId,
+      }),
+    }));
+    let activeDesigns = 0;
+    let maximumActiveDesigns = 0;
+    current.designPack.mockImplementation(async () => {
+      activeDesigns += 1;
+      maximumActiveDesigns = Math.max(maximumActiveDesigns, activeDesigns);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      activeDesigns -= 1;
+      return {
+        pack: { cards: [] },
+        review: {},
+        revisionReviews: [],
+      } as never;
+    });
+
+    const summary = await runWeeklyPackCycle(
+      { now: WEDNESDAY_IN_SEOUL, maxNewPacks: 2 },
+      current as unknown as WeeklyPackWorkerDependencies,
+    );
+
+    expect(summary.packsStarted).toBe(2);
+    expect(maximumActiveDesigns).toBe(2);
+    expect(current.setResearch).toHaveBeenCalledTimes(2);
   });
 
   it("asks Base44 for retries only on Friday", async () => {
