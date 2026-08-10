@@ -2,6 +2,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { basename, resolve } from "node:path";
 
 const requiredFromConvex = ["CHAPTER_AGENT_SECRET", "OPENROUTER_API_KEY"] as const;
+const optionalFromConvex = ["PARALLEL_API_KEY"] as const;
 const childEnvironment = { ...process.env };
 
 for (const name of requiredFromConvex) {
@@ -16,6 +17,17 @@ for (const name of requiredFromConvex) {
     throw new Error(`${name} is not configured in the linked Convex development deployment.`);
   }
   childEnvironment[name] = value;
+}
+
+for (const name of optionalFromConvex) {
+  if (childEnvironment[name]) continue;
+  const result = spawnSync("npx", ["convex", "env", "get", name], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const value = result.stdout.trim();
+  if (result.status === 0 && value) childEnvironment[name] = value;
 }
 
 const [requestedCommand, ...args] = process.argv.slice(2);

@@ -67,6 +67,9 @@ Chapter makes one confident proposal, not a recommendation feed or a ranked
 list. The experience should be immediately understandable, logistically real,
 and specific enough to act on.
 
+It defines what the person actually does before settling on the venue. A place
+can enable an experience, but a place alone is not the experience.
+
 Before sending it, Chapter verifies:
 
 - exact venue names and addresses;
@@ -76,9 +79,9 @@ Before sending it, Chapter verifies:
 - bookings, equipment, and preparation;
 - whether every beat fits the promised duration.
 
-There is no “tasteful selection” stage. Chapter designs one coherent idea,
-researches and verifies it, and retries only when that idea fails the contract.
-It never invents logistics to complete a response.
+There is no “tasteful selection” stage. Chapter gathers diverse local evidence,
+composes one coherent idea, verifies it, and retries only when that idea fails
+the contract. It never invents logistics to complete a response.
 
 ## The personal memory graph
 
@@ -139,9 +142,9 @@ relationship depth need their own product work.
 
 - **Photon/iMessage** carries the conversation.
 - **Eve** provides a thin, durable conversation runtime.
-- **The experience engine** owns a portable typed contract, an OpenRouter-backed
-  research procedure, verification rules, and evaluation harness. It must not
-  depend on iMessage or Eve.
+- **The experience engine** owns a portable typed contract, Parallel-backed
+  research, OpenRouter composition, verification rules, and an evaluation
+  harness. It must not depend on iMessage or Eve.
 - **Convex** is durable product truth for profiles, raw memories, graph data,
   experiences, and feedback.
 - **The web app** renders Now and You from Convex.

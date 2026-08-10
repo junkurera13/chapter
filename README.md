@@ -12,8 +12,8 @@ adding human matching.
 - Only handles in `CHAPTER_TEST_IMESSAGE_HANDLE` are accepted.
 - Onboarding asks for one memory, then city and optional neighborhood.
 - Convex stores the Chapter profile, raw memories, experiences, and feedback.
-- “Give me an Andy” and “Give me a Marco” trigger one OpenRouter-grounded
-  researched experience.
+- “Give me an Andy” and “Give me a Marco” trigger three concurrent Parallel
+  research lanes, followed by one OpenRouter-composed experience.
 - Every saved experience has a typed contract and at least two verification
   sources.
 - Save, Pass, Done, and natural feedback update the latest experience.
@@ -26,7 +26,7 @@ image cards are later milestones.
 ## Architecture
 
 ```text
-iMessage → Eve → Chapter experience skill → current web research
+iMessage → Eve → Chapter skill → Parallel evidence → OpenRouter composition
              ↘ Convex profile, memories, experiences, feedback
 ```
 
@@ -46,8 +46,8 @@ npm run agent:dev
 The web app uses Clerk with Convex token validation. The iMessage agent uses
 Photon project credentials, a private sender allowlist, and a shared
 `CHAPTER_AGENT_SECRET` configured in both the app runtime and the linked Convex
-deployment. Conversation and research models use `OPENROUTER_API_KEY`. See
-[`docs/agent-brain.md`](./docs/agent-brain.md).
+deployment. Composition uses `OPENROUTER_API_KEY`; research uses
+`PARALLEL_API_KEY`. See [`docs/agent-brain.md`](./docs/agent-brain.md).
 
 ## Verification
 

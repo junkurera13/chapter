@@ -51,12 +51,17 @@ migration. Eve's Photon channel does not use them.
 ## Experience generation
 
 The agent loads `agent/skills/chapter-experience/SKILL.md` only when an onboarded
-person requests an Andy or Marco. It designs one idea, researches current facts
-through OpenRouter's web-search server tool, verifies the logistics, and saves
-it through the typed contract in `lib/chapter/experience.ts`.
+person requests an Andy or Marco. Parallel runs three discovery lanes
+concurrently: local texture, public lived/social signals, and practical
+possibilities. OpenRouter composes exactly one idea from that evidence. A final
+Parallel query verifies its exact logistics before the typed experience is
+saved through `lib/chapter/experience.ts`. The participant action and mechanism
+are defined before final venue selection; research must prove the experience
+rather than collapse it into a place recommendation.
 
-There is no candidate pool or separate taste-selection call. If a key fact
-cannot be verified, the agent must not save or send the experience.
+There is no candidate pool or separate taste-selection call. Parallelism is for
+evidence diversity, not competing experience generation. If a key fact cannot
+be verified, the agent must not save or send the experience.
 
 ## Configuration
 
@@ -72,8 +77,8 @@ PHOTON_PROJECT_SECRET
 PHOTON_WEBHOOK_SECRET
 OPENROUTER_API_KEY
 OPENROUTER_CONVERSATION_MODEL
-OPENROUTER_RESEARCH_MODEL
 OPENROUTER_MODEL_CONTEXT_WINDOW_TOKENS
+PARALLEL_API_KEY
 ```
 
 `IMESSAGE_*` and `SPECTRUM_*` remain temporary aliases for existing

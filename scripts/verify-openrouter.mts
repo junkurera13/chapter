@@ -29,16 +29,3 @@ if (result.text.trim().toLocaleLowerCase() !== "connected") {
 }
 
 console.log("OpenRouter connected.");
-
-if (process.argv.includes("--research")) {
-  const { researchWithOpenRouter } = await import(
-    "../agent/lib/openrouter-search"
-  );
-  const research = await researchWithOpenRouter(
-    "Find the official OpenRouter documentation page for its web search server tool.",
-  );
-  if (!research.findings.trim() || research.sources.length === 0) {
-    throw new Error("OpenRouter web research returned no grounded sources.");
-  }
-  console.log("OpenRouter grounded research connected.");
-}

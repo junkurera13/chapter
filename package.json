@@ -11,7 +11,7 @@
     "agent:build": "eve build",
     "agent:info": "eve info",
     "agent:model:check": "tsx scripts/verify-openrouter.mts",
-    "agent:research:check": "tsx scripts/verify-openrouter.mts --research",
+    "agent:research:check": "tsx scripts/verify-parallel.mts",
     "agent:store:check": "tsx scripts/with-chapter-dev-env.mts tsx scripts/verify-chapter-store.mts",
     "lint": "eslint",
     "test": "vitest run"
