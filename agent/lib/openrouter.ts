@@ -33,4 +33,5 @@ if (
 
 export const chapterConversationModel = chapterOpenRouter(
   chapterConversationModelId,
+  { maxTokens: 4_096 },
 );

@@ -8,7 +8,7 @@ import {
 export default defineAgent({
   model: chapterConversationModel,
   modelContextWindowTokens: chapterModelContextWindowTokens,
-  reasoning: "medium",
+  reasoning: "low",
   compaction: {
     modelContextWindowTokens: chapterModelContextWindowTokens,
     thresholdPercent: 0.75,
