@@ -7,7 +7,9 @@ import {
 } from "../lib/chapter-convex";
 import { isAllowedImessageHandle } from "../lib/imessage-access";
 
-const photonConnector = connectPhotonCredentials("photon/chapter-imessage");
+const photonConnector = connectPhotonCredentials(
+  "photon/chapter-main-imessage",
+);
 
 async function portablePhotonCredentials() {
   const projectId =
