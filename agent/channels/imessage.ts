@@ -1,3 +1,4 @@
+import { connectPhotonCredentials } from "@vercel/connect/eve";
 import { photonIMessageChannel } from "eve/channels/photon";
 
 import {
@@ -6,26 +7,35 @@ import {
 } from "../lib/chapter-convex";
 import { isAllowedImessageHandle } from "../lib/imessage-access";
 
+const photonConnector = connectPhotonCredentials("photon/chapter-imessage");
+
+async function portablePhotonCredentials() {
+  const projectId =
+    process.env.PHOTON_PROJECT_ID ??
+    process.env.IMESSAGE_PROJECT_ID ??
+    process.env.SPECTRUM_PROJECT_ID;
+  const projectSecret =
+    process.env.PHOTON_PROJECT_SECRET ??
+    process.env.IMESSAGE_PROJECT_SECRET ??
+    process.env.SPECTRUM_PROJECT_SECRET;
+  if (!projectId || !projectSecret) {
+    throw new Error("Photon iMessage project credentials are required.");
+  }
+  return { projectId, projectSecret };
+}
+
+const useVercelConnect = process.env.VERCEL === "1";
+
 export default photonIMessageChannel({
   userName: "Chapter",
-  async credentials() {
-    const projectId =
-      process.env.PHOTON_PROJECT_ID ??
-      process.env.IMESSAGE_PROJECT_ID ??
-      process.env.SPECTRUM_PROJECT_ID;
-    const projectSecret =
-      process.env.PHOTON_PROJECT_SECRET ??
-      process.env.IMESSAGE_PROJECT_SECRET ??
-      process.env.SPECTRUM_PROJECT_SECRET;
-    if (!projectId || !projectSecret) {
-      throw new Error("Photon iMessage project credentials are required.");
-    }
-    return { projectId, projectSecret };
-  },
-  webhookSecret:
-    process.env.PHOTON_WEBHOOK_SECRET ??
-    process.env.IMESSAGE_WEBHOOK_SECRET ??
-    process.env.SPECTRUM_WEBHOOK_SECRET,
+  credentials: useVercelConnect
+    ? photonConnector
+    : portablePhotonCredentials,
+  webhookSecret: useVercelConnect
+    ? undefined
+    : (process.env.PHOTON_WEBHOOK_SECRET ??
+      process.env.IMESSAGE_WEBHOOK_SECRET ??
+      process.env.SPECTRUM_WEBHOOK_SECRET),
   async onMessage({ thread }, message) {
     if (message.author.isBot) return null;
     const principalId = message.author.id;
