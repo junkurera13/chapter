@@ -40,7 +40,7 @@ export default photonIMessageChannel({
       process.env.SPECTRUM_WEBHOOK_SECRET),
   async onMessage({ thread }, message) {
     if (message.author.isBot) return null;
-    const principalId = message.author.id;
+    const principalId = message.author.userId;
     if (!isAllowedImessageHandle(principalId)) {
       console.warn("Ignored an iMessage from a handle outside Chapter's allowlist.");
       return null;
