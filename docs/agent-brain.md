@@ -1,78 +1,108 @@
-# Sidequest Agent Boundary
+# Chapter agent
 
-The new Sidequest **experience** invitation has not been designed or
-implemented. That absence is intentional and enforced in code. The web app now
-has a separate human connection invitation used only to establish consensual
-relationships for Together; it cannot produce an experience or reach the
-iMessage agent.
+The V1 agent is a narrow product loop, not a general assistant.
 
-## What Is Live
-
-Eve is mounted inside the Next.js deployment. Photon can deliver correctly
-signed webhook requests to:
+## Flow
 
 ```text
-POST /eve/v1/spectrum/webhook
+Photon iMessage webhook
+  → Eve durable conversation
+  → trusted Chapter profile loaded from Convex
+  → onboarding or one researched Andy/Marco
+  → typed experience saved to Convex
+  → concise iMessage reply
 ```
 
-The channel verifies Photon's signature and accepts supported direct iMessage
-events. It then stops. It does not:
+Eve's first-party Photon channel owns webhook verification, read receipts,
+conversation continuity, cancellation, and outbound replies. The custom bridge
+that previously duplicated those concerns has been removed.
 
-- start or continue an Eve session;
-- pass message content to a model;
-- store the inbound message;
-- search for places, weather, routes, or web results;
-- create a Sidequest, invitation, itinerary, card, or other plan;
-- send anything back through iMessage.
+## Identity and access
 
-This keeps the new Photon project and signed transport intact without exposing a
-half-designed product to a person.
+V1 is private. The channel drops every message whose exact normalized sender
+handle is not listed in `CHAPTER_TEST_IMESSAGE_HANDLE`. Accepted turns receive a
+server-authored Eve principal. Chapter write tools reject sessions without that
+trusted iMessage principal.
 
-## What Was Removed
+The Eve runtime calls one Convex HTTP boundary with `CHAPTER_AGENT_SECRET` in
+the Authorization header. Convex compares the secret before routing to internal
+queries and mutations; Chapter's sensitive functions are not part of the
+public Convex client API. The secret must exist in both environments and must
+never be exposed through a `NEXT_PUBLIC_` variable.
 
-The premature experience composer, generation skill, research and logistics
-tools, structured invitation schema, and generation evaluation suite were
-deleted. The live agent has no hidden fallback capable of producing the old
-product or the unfinished replacement.
+The iMessage identity remains separate from Clerk web accounts in V1. Linking
+them later must be explicit and consented.
 
-The Convex messaging tables remain as narrow, newer transport infrastructure.
-They are not called while the iMessage doorway is paused and they do not contain
-an account profile, memory graph, onboarding state machine, quest generator, or
-invitation model.
+## Product state
 
-## Reopening The Doorway
+Convex stores:
 
-Do not connect inbound iMessage content to `send()` until all of these are true:
+- `chapterProfiles` — onboarding stage and home location;
+- `chapterMemories` — original iMessage memory text;
+- `chapterExperiences` — validated Andy/Marco objects and status;
+- `chapterFeedback` — Save, Pass, Done, and qualitative notes.
 
-1. The new invitation is defined as a product object, not an itinerary payload.
-2. Its frontstage reveal and practical-detail disclosure are designed together.
-3. The agent has an explicit output contract that cannot fall through to a
-   retired format.
-4. Taste, safety, factuality, and regression tests cover the contract.
-5. A real-device test is run only after the above ships to the main deployment.
+Every write tool carries an Eve call-based idempotency key so a durable retry
+does not duplicate a memory, experience, or feedback record.
+
+The older Spectrum delivery tables remain in the schema to avoid a destructive
+migration. Eve's Photon channel does not use them.
+
+## Experience generation
+
+The agent loads `agent/skills/chapter-experience/SKILL.md` only when an onboarded
+person requests an Andy or Marco. It designs one idea, researches current facts
+through OpenRouter's web-search server tool, verifies the logistics, and saves
+it through the typed contract in `lib/chapter/experience.ts`.
+
+There is no candidate pool or separate taste-selection call. If a key fact
+cannot be verified, the agent must not save or send the experience.
 
 ## Configuration
 
-The signed Photon receiver uses:
+App/Vercel runtime:
 
-- `SPECTRUM_WEBHOOK_SECRET`
-
-The project ID and secret remain provisioned for the future outbound transport,
-but the current code does not use them. Convex remains configured separately for
-the dormant delivery boundary.
-
-Eve is pinned exactly in `package.json` because it is a fast-moving preview.
-The scoped Spectrum packages are also pinned exactly for the future outbound
-iMessage implementation.
-
-## Commands
-
-```bash
-npm run agent:info
-npm run agent:build
-npm run agent:gateway:check
-npm run agent:dev
+```text
+NEXT_PUBLIC_CONVEX_URL
+CONVEX_SITE_URL
+CHAPTER_AGENT_SECRET
+CHAPTER_TEST_IMESSAGE_HANDLE
+PHOTON_PROJECT_ID
+PHOTON_PROJECT_SECRET
+PHOTON_WEBHOOK_SECRET
+OPENROUTER_API_KEY
+OPENROUTER_CONVERSATION_MODEL
+OPENROUTER_RESEARCH_MODEL
+OPENROUTER_MODEL_CONTEXT_WINDOW_TOKENS
 ```
 
-The model connection check is infrastructure verification only. It does not
-exercise or enable experience generation.
+`IMESSAGE_*` and `SPECTRUM_*` remain temporary aliases for existing
+environments.
+
+Convex deployment:
+
+```text
+CHAPTER_AGENT_SECRET
+```
+
+The Photon webhook route is:
+
+```text
+POST /eve/v1/photon
+```
+
+Eve and the AI SDK are pinned exactly because both move quickly.
+
+## Checks
+
+```bash
+npm test
+npx tsc --noEmit
+npm run agent:build
+npm run agent:model:check
+npm run agent:research:check
+npm run agent:store:check
+```
+
+No real-device message should be sent until the app and Convex secrets are
+configured in the same environment and the deployment is explicitly approved.

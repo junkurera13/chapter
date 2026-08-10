@@ -26,3 +26,9 @@ read the matching guide in `node_modules/eve/docs/` and keep the `eve` version
 pinned exactly in `package.json`.
 
 <!-- eve-agent-end -->
+
+## Tests
+
+Keep the suite small. Add tests only for costly boundaries such as security,
+persisted state and ownership, or core product contracts. Do not test source
+text, trivial formatting, animation constants, or other implementation trivia.

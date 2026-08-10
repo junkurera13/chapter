@@ -1,3 +1,3 @@
-import { disableTool } from "eve/tools";
+import { webFetch } from "eve/tools/defaults";
 
-export default disableTool();
+export default webFetch;

@@ -9,8 +9,11 @@
  */
 
 import type * as accounts from "../accounts.js";
+import type * as chapterAgent from "../chapterAgent.js";
+import type * as chapterValidators from "../chapterValidators.js";
 import type * as connections from "../connections.js";
 import type * as crons from "../crons.js";
+import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as messaging from "../messaging.js";
 import type * as people from "../people.js";
@@ -24,8 +27,11 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   accounts: typeof accounts;
+  chapterAgent: typeof chapterAgent;
+  chapterValidators: typeof chapterValidators;
   connections: typeof connections;
   crons: typeof crons;
+  http: typeof http;
   "lib/auth": typeof lib_auth;
   messaging: typeof messaging;
   people: typeof people;

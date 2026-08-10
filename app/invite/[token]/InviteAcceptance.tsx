@@ -9,12 +9,14 @@ import {
   useQuery,
 } from "convex/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { SidequestMark } from "@/components/SidequestMark";
 import styles from "./invite.module.css";
 
 function SignedInInvitation({ token }: { token: string }) {
+  const router = useRouter();
   const { user, isLoaded } = useUser();
   const account = useQuery(api.accounts.current);
   const ensureCurrent = useMutation(api.accounts.ensureCurrent);
@@ -45,7 +47,7 @@ function SignedInInvitation({ token }: { token: string }) {
     setError(null);
     try {
       await acceptInvite({ token });
-      window.location.assign("/app?tab=together");
+      router.replace("/app?tab=together");
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : "Could not accept invitation");
       setWorking(null);
@@ -57,7 +59,7 @@ function SignedInInvitation({ token }: { token: string }) {
     setError(null);
     try {
       await declineInvite({ token });
-      window.location.assign("/");
+      router.replace("/");
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : "Could not decline invitation");
       setWorking(null);

@@ -1,6 +1,12 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+import {
+  chapterExperienceValidator,
+  experienceKindValidator,
+  feedbackVerdictValidator,
+} from "./chapterValidators";
+
 // These tables are intentionally channel infrastructure, not the new human
 // profile or experience graph. They let the iMessage edge accept each Photon
 // delivery once and preserve a stable external conversation identity while the
@@ -85,6 +91,73 @@ export default defineSchema({
     "connectionId",
     "createdAt",
   ]),
+
+  // Chapter's iMessage identity is intentionally separate from web accounts
+  // in V1. Linking the two later will be an explicit, consented operation.
+  chapterProfiles: defineTable({
+    externalPrincipalId: v.string(),
+    onboardingStage: v.union(
+      v.literal("needs_memory"),
+      v.literal("needs_location"),
+      v.literal("complete"),
+    ),
+    homeCity: v.optional(v.string()),
+    homeArea: v.optional(v.string()),
+    homeCountry: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_external_principal_id", ["externalPrincipalId"]),
+
+  chapterMemories: defineTable({
+    profileId: v.id("chapterProfiles"),
+    externalPrincipalId: v.string(),
+    rawText: v.string(),
+    source: v.literal("imessage"),
+    idempotencyKey: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_external_principal_id_and_created_at", [
+      "externalPrincipalId",
+      "createdAt",
+    ])
+    .index("by_idempotency_key", ["idempotencyKey"]),
+
+  chapterExperiences: defineTable({
+    profileId: v.id("chapterProfiles"),
+    externalPrincipalId: v.string(),
+    kind: experienceKindValidator,
+    requestText: v.string(),
+    experience: chapterExperienceValidator,
+    status: v.union(
+      v.literal("sent"),
+      v.literal("saved"),
+      v.literal("passed"),
+      v.literal("done"),
+    ),
+    idempotencyKey: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_external_principal_id_and_created_at", [
+      "externalPrincipalId",
+      "createdAt",
+    ])
+    .index("by_idempotency_key", ["idempotencyKey"]),
+
+  chapterFeedback: defineTable({
+    profileId: v.id("chapterProfiles"),
+    externalPrincipalId: v.string(),
+    experienceId: v.optional(v.id("chapterExperiences")),
+    verdict: feedbackVerdictValidator,
+    text: v.optional(v.string()),
+    idempotencyKey: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_external_principal_id_and_created_at", [
+      "externalPrincipalId",
+      "createdAt",
+    ])
+    .index("by_idempotency_key", ["idempotencyKey"]),
 
   messagingThreads: defineTable({
     provider: v.literal("spectrum"),

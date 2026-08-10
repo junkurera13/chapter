@@ -1,16 +1,16 @@
 import { defineAgent } from "eve";
 
+import {
+  chapterConversationModel,
+  chapterModelContextWindowTokens,
+} from "./lib/openrouter";
+
 export default defineAgent({
-  model: "openai/gpt-5.6-luna",
-  modelOptions: {
-    providerOptions: {
-      gateway: {
-        models: ["deepseek/deepseek-v4-pro"],
-      },
-    },
-  },
+  model: chapterConversationModel,
+  modelContextWindowTokens: chapterModelContextWindowTokens,
   reasoning: "medium",
   compaction: {
+    modelContextWindowTokens: chapterModelContextWindowTokens,
     thresholdPercent: 0.75,
   },
   limits: {
