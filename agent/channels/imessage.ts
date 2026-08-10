@@ -2,10 +2,24 @@ import { connectPhotonCredentials } from "@vercel/connect/eve";
 import { photonIMessageChannel } from "eve/channels/photon";
 
 import {
+  type ChapterAgentContext,
   formatChapterContext,
   getChapterContext,
 } from "../lib/chapter-convex";
 import { isAllowedImessageHandle } from "../lib/imessage-access";
+
+const SIMPLE_GREETING = /^(?:hi|hey|hello|yo)(?:\s+there)?[!.?]*$/iu;
+
+function fastGreetingFor(stage: ChapterAgentContext["onboardingStage"]) {
+  switch (stage) {
+    case "needs_memory":
+      return "Hey. Let’s start with one memory you’d want to keep. What’s a moment from your life you can still picture clearly?";
+    case "needs_location":
+      return "Hey. What city and neighborhood are you in?";
+    case "complete":
+      return "Hey. Ask me for an Andy or a Marco whenever you’re ready.";
+  }
+}
 
 const photonConnector = connectPhotonCredentials(
   "photon/chapter-main-imessage",
@@ -58,6 +72,20 @@ export default photonIMessageChannel({
 
     try {
       const chapterContext = await getChapterContext(principalId);
+      if (SIMPLE_GREETING.test(message.text.trim())) {
+        try {
+          await thread.post({
+            markdown: fastGreetingFor(chapterContext.onboardingStage),
+          });
+          return null;
+        } catch (cause) {
+          console.error(
+            "Could not send Chapter's fast greeting; falling back to the agent.",
+            cause,
+          );
+        }
+      }
+
       return {
         auth,
         context: [
