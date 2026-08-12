@@ -11,7 +11,7 @@ import styles from "./page.module.css";
 const PREFILLED_MESSAGE = "Hey";
 
 function getStartHref() {
-  const phone = process.env.NEXT_PUBLIC_SIDEQUEST_PHONE?.trim();
+  const phone = process.env.NEXT_PUBLIC_CHAPTER_PHONE?.trim();
 
   return phone
     ? `sms:${phone}?&body=${encodeURIComponent(PREFILLED_MESSAGE)}`
@@ -35,9 +35,9 @@ export default function Home() {
         <div className={styles.actions}>
           <a href={startHref} className={styles.action}>
             <span className={styles.actionMark} aria-hidden="true">
-              <Image src="/sidequest-mark.svg" alt="" width={32} height={32} />
+              <Image src="/chapter-mark.svg" alt="" width={32} height={32} />
             </span>
-            Text Sidequest
+            Text Chapter
           </a>
           <Link href="/login" className={styles.loginAction}>
             Log in

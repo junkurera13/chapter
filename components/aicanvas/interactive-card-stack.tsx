@@ -108,7 +108,7 @@ const CHEVRON_BUTTON =
 const TITLE_STYLE: CSSProperties = {
   margin: 0,
   paddingRight: 34,
-  fontFamily: "var(--font-sidequest-sans), sans-serif",
+  fontFamily: "var(--font-chapter-sans), sans-serif",
   fontWeight: 600,
   fontSize: "16px",
   lineHeight: 1.3,
@@ -385,7 +385,7 @@ export default function InteractiveCardStack() {
                   {isMoment ? (
                     <>
                       <div className="relative px-3 pb-4 pt-3">
-                        <p className="m-0 font-[family-name:var(--font-sidequest-sans)] text-[16px] font-normal leading-[1.32] tracking-[-0.025em] text-[#77716f]">
+                        <p className="m-0 font-[family-name:var(--font-chapter-sans)] text-[16px] font-normal leading-[1.32] tracking-[-0.025em] text-[#77716f]">
                           You and{" "}
                           <span className="inline-flex items-baseline gap-0.5 font-semibold text-[#1c1c19]">
                             <span
@@ -506,7 +506,7 @@ export default function InteractiveCardStack() {
                   ) : isBirdwatching ? (
                     <>
                       <div className="relative px-3 pb-4 pt-3">
-                        <p className="m-0 font-[family-name:var(--font-sidequest-sans)] text-[16px] font-normal leading-[1.3] tracking-[-0.025em] text-[#77716f]">
+                        <p className="m-0 font-[family-name:var(--font-chapter-sans)] text-[16px] font-normal leading-[1.3] tracking-[-0.025em] text-[#77716f]">
                           <span className="inline-flex items-baseline gap-0.5 font-semibold text-[#1c1c19]">
                             <span
                               className="relative top-[0.16em] inline-block h-[0.9em] w-[0.9em] rounded-full border border-white/80"
@@ -589,7 +589,7 @@ export default function InteractiveCardStack() {
                   ) : isSushi ? (
                     <>
                       <div className="relative px-3 pb-4 pt-3">
-                        <p className="m-0 font-[family-name:var(--font-sidequest-sans)] text-[16px] font-normal leading-[1.3] tracking-[-0.025em] text-[#77716f]">
+                        <p className="m-0 font-[family-name:var(--font-chapter-sans)] text-[16px] font-normal leading-[1.3] tracking-[-0.025em] text-[#77716f]">
                           You&apos;ve never tried{" "}
                           <span className="inline-flex items-baseline gap-0.5 font-semibold text-[#1c1c19]">
                             <span
@@ -639,7 +639,7 @@ export default function InteractiveCardStack() {
                   ) : isOdyssey ? (
                     <>
                       <div className="relative px-3 pb-4 pt-3">
-                        <p className="m-0 font-[family-name:var(--font-sidequest-sans)] text-[16px] font-normal leading-[1.3] tracking-[-0.025em] text-[#77716f]">
+                        <p className="m-0 font-[family-name:var(--font-chapter-sans)] text-[16px] font-normal leading-[1.3] tracking-[-0.025em] text-[#77716f]">
                           Your{" "}
                           <span className="inline-flex items-baseline gap-0.5 font-semibold text-[#1c1c19]">
                             <svg

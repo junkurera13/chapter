@@ -51,7 +51,7 @@ const worldNodeSeeds: readonly WorldNodeSeed[] = [
     subtype: "centre",
     label: "you",
     description:
-      "The person at the centre of every memory, relationship and possibility Sidequest is beginning to understand.",
+      "The person at the centre of every memory, relationship and possibility Chapter is beginning to understand.",
     evidence: "This world grows from the memories you choose to share.",
     certainty: "fact",
     confidence: 1,

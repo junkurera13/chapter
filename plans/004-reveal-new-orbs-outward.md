@@ -8,7 +8,7 @@
 
 ## Problem
 
-Sidequest already computes safe outward positions for nodes whose authored
+Chapter already computes safe outward positions for nodes whose authored
 position is absent, but the rendered world has no concept of a node being newly
 learned. Every mesh and every connector exists at full size and opacity on the
 first frame. The person therefore sees a finished database rather than a living
@@ -82,7 +82,7 @@ only that node on the next mount.
 Make a newly learned node feel born at the edge of the person's world:
 
 - Persist completed node identities in local storage under
-  `sidequest:you-world:seen-node-keys:v1`, versioned as `{ version: 1, keys:
+  `chapter:you-world:seen-node-keys:v1`, versioned as `{ version: 1, keys:
   string[] }`. Invalid or unavailable storage safely behaves like an unseen
   world.
 - `self` is always present immediately and is never treated as a newly learned
@@ -138,7 +138,7 @@ Make a newly learned node feel born at the edge of the person's world:
 ## Steps
 
 1. Add `app/app/orbBirth.ts` exporting:
-   - `ORB_BIRTH_STORAGE_KEY = "sidequest:you-world:seen-node-keys:v1"`;
+   - `ORB_BIRTH_STORAGE_KEY = "chapter:you-world:seen-node-keys:v1"`;
    - `ORB_BIRTH_DELAY_MS = 160`, `ORB_BIRTH_STAGGER_MS = 70`,
      `ORB_BIRTH_DURATION_MS = 680`, `ORB_BIRTH_START_SCALE = 0.92`,
      `ORB_BIRTH_INWARD_DISTANCE = 0.22`,
@@ -232,7 +232,7 @@ Make a newly learned node feel born at the edge of the person's world:
   attached lines progressively extend rather than flash on.
 - Reload in the same browser context. The complete graph must render on frame
   one with no repeated birth sequence.
-- Remove only `sidequest:you-world:seen-node-keys:v1`, reload, and confirm the
+- Remove only `chapter:you-world:seen-node-keys:v1`, reload, and confirm the
   reveal plays once again without touching manually saved orb positions.
 - In a test context pre-populated with every current key except one, reload and
   confirm only that unseen node and its involving connections reveal; the rest

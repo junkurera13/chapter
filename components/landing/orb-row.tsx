@@ -254,7 +254,7 @@ export default function OrbRow({ onRevealComplete }: OrbRowProps) {
         <canvas
           className={styles.canvas}
           ref={canvasRef}
-          aria-label="People, Place, Activity, Interest, Feeling, Condition and Pattern shown as Sidequest orbs"
+          aria-label="People, Place, Activity, Interest, Feeling, Condition and Pattern shown as Chapter orbs"
         />
         <ul className={styles.labels} aria-hidden="true">
           {ORBS.map((orb, index) => (

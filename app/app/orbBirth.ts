@@ -1,4 +1,6 @@
 export const ORB_BIRTH_STORAGE_KEY =
+  "chapter:you-world:seen-node-keys:v1";
+const LEGACY_ORB_BIRTH_STORAGE_KEY =
   "sidequest:you-world:seen-node-keys:v1";
 export const ORB_BIRTH_DELAY_MS = 160;
 export const ORB_BIRTH_STAGGER_MS = 70;
@@ -25,14 +27,18 @@ type StoredSeenNodeKeys = {
 };
 
 export function loadSeenNodeKeys(
-  storage: Pick<Storage, "getItem"> | null,
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null,
   allowedKeys: ReadonlySet<string>,
 ) {
   const seenKeys = new Set<string>();
   if (!storage) return seenKeys;
 
   try {
-    const rawValue = storage.getItem(ORB_BIRTH_STORAGE_KEY);
+    const currentValue = storage.getItem(ORB_BIRTH_STORAGE_KEY);
+    const legacyValue = currentValue
+      ? null
+      : storage.getItem(LEGACY_ORB_BIRTH_STORAGE_KEY);
+    const rawValue = currentValue ?? legacyValue;
     if (!rawValue) return seenKeys;
 
     const parsed = JSON.parse(rawValue) as Partial<StoredSeenNodeKeys>;
@@ -40,6 +46,11 @@ export function loadSeenNodeKeys(
 
     for (const key of parsed.keys) {
       if (typeof key === "string" && allowedKeys.has(key)) seenKeys.add(key);
+    }
+
+    if (legacyValue) {
+      storage.setItem(ORB_BIRTH_STORAGE_KEY, rawValue);
+      storage.removeItem(LEGACY_ORB_BIRTH_STORAGE_KEY);
     }
   } catch {
     // Storage can be unavailable or contain stale data. Treating the current

@@ -78,30 +78,30 @@ export default function AgentOrbSection({
       aria-labelledby="agent-orb-invitation"
     >
       <h2 id="agent-orb-invitation" className={styles.invitation}>
-        Be among the first to try Sidequest
+        Be among the first to try Chapter
       </h2>
 
       <footer className={styles.footer}>
         <div className={styles.brand}>
           <span className={styles.brandMark} aria-hidden="true">
-            <Image src="/sidequest-mark.svg" alt="" width={36} height={36} />
+            <Image src="/chapter-mark.svg" alt="" width={36} height={36} />
           </span>
-          <span className={styles.brandName}>Sidequest</span>
+          <span className={styles.brandName}>Chapter</span>
         </div>
 
         <div className={styles.footerActions}>
           <a href={startHref} className={styles.textAction}>
             <span className={styles.actionMark} aria-hidden="true">
-              <Image src="/sidequest-mark.svg" alt="" width={28} height={28} />
+              <Image src="/chapter-mark.svg" alt="" width={28} height={28} />
             </span>
-            Text Sidequest
+            Text Chapter
           </a>
           <Link href="/login" className={styles.loginAction}>
             Log in
           </Link>
         </div>
 
-        <div className={styles.socialActions} aria-label="Sidequest social links">
+        <div className={styles.socialActions} aria-label="Chapter social links">
           <button
             className={styles.socialAction}
             type="button"

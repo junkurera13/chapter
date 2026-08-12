@@ -36,7 +36,7 @@ input {
 
 button {
   font: inherit;
-  font-family: var(--font-sidequest-instrument), system-ui, sans-serif;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
 }
 
 .t-stagger-line {

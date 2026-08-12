@@ -1,13 +1,13 @@
 import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
-import { SidequestMark } from "@/components/SidequestMark";
+import { ChapterMark } from "@/components/ChapterMark";
 import styles from "../../auth.module.css";
 
 export default function SignInPage() {
   return (
     <main className={styles.page}>
-      <Link href="/" className={styles.home} aria-label="Sidequest home">
-        <SidequestMark />
+      <Link href="/" className={styles.home} aria-label="Chapter home">
+        <ChapterMark />
       </Link>
       <SignIn
         routing="path"
@@ -22,7 +22,7 @@ export default function SignInPage() {
             colorInput: "#ffffff",
             colorInputForeground: "#24211e",
             borderRadius: "16px",
-            fontFamily: "var(--font-sidequest-sans), system-ui, sans-serif",
+            fontFamily: "var(--font-chapter-sans), system-ui, sans-serif",
           },
           elements: {
             rootBox: styles.authRoot,

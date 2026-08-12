@@ -22,7 +22,7 @@ export default function AccountGate({ children }: { children: ReactNode }) {
       imageUrl: user.imageUrl,
     }).catch((cause: unknown) => {
       started.current = false;
-      setError(cause instanceof Error ? cause.message : "Could not open Sidequest");
+      setError(cause instanceof Error ? cause.message : "Could not open Chapter");
     });
   }, [account, ensureCurrent, isLoaded, user]);
 
@@ -39,7 +39,7 @@ export default function AccountGate({ children }: { children: ReactNode }) {
 
   if (account === undefined || account === null) {
     return (
-      <main className={styles.accountState} aria-label="Opening Sidequest">
+      <main className={styles.accountState} aria-label="Opening Chapter">
         <span className={styles.accountPulse} aria-hidden="true" />
       </main>
     );

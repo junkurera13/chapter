@@ -65,7 +65,7 @@
 .card h1 {
   max-width: 370px;
   margin: 0;
-  font-family: var(--font-sidequest-serif), Georgia, serif;
+  font-family: var(--font-chapter-serif), Georgia, serif;
   font-size: clamp(29px, 5vw, 38px);
   font-weight: 440;
   letter-spacing: -0.042em;

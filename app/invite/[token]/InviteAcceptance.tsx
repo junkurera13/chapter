@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
-import { SidequestMark } from "@/components/SidequestMark";
+import { ChapterMark } from "@/components/ChapterMark";
 import styles from "./invite.module.css";
 
 function SignedInInvitation({ token }: { token: string }) {
@@ -90,8 +90,8 @@ export default function InviteAcceptance({ token }: { token: string }) {
 
   return (
     <main className={styles.page}>
-      <Link href="/" className={styles.home} aria-label="Sidequest home">
-        <SidequestMark />
+      <Link href="/" className={styles.home} aria-label="Chapter home">
+        <ChapterMark />
       </Link>
 
       {preview === undefined ? (
@@ -100,7 +100,7 @@ export default function InviteAcceptance({ token }: { token: string }) {
         <section className={styles.card}>
           <div className={styles.orb} aria-hidden="true" />
           <h1>This invitation cannot be found.</h1>
-          <Link href="/">Return to Sidequest</Link>
+          <Link href="/">Return to Chapter</Link>
         </section>
       ) : preview.status !== "pending" ? (
         <section className={styles.card}>
@@ -110,7 +110,7 @@ export default function InviteAcceptance({ token }: { token: string }) {
               ? "This invitation has already been accepted."
               : "This invitation is no longer open."}
           </h1>
-          <Link href="/app">Open Sidequest</Link>
+          <Link href="/app">Open Chapter</Link>
         </section>
       ) : (
         <section className={styles.card}>
@@ -120,7 +120,7 @@ export default function InviteAcceptance({ token }: { token: string }) {
           ) : (
             <div className={styles.orb} aria-hidden="true" />
           )}
-          <p className={styles.eyebrow}>A Sidequest invitation</p>
+          <p className={styles.eyebrow}>A Chapter invitation</p>
           <h1>{preview.inviterName} would like to find new memories with you.</h1>
 
           <AuthLoading>

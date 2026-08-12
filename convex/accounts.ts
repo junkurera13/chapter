@@ -29,7 +29,7 @@ export const ensureCurrent = mutation({
       )
       .unique();
     const rawName =
-      args.displayName ?? identity.name ?? identity.email ?? "Sidequest member";
+      args.displayName ?? identity.name ?? identity.email ?? "Chapter member";
     const displayName = cleanDisplayName(rawName);
     const imageUrl = args.imageUrl ?? identity.pictureUrl;
     const now = Date.now();

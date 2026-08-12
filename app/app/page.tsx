@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import AuthenticatedApp from "./AuthenticatedApp";
 
-export default async function SidequestAppPage({
+export default async function ChapterAppPage({
   searchParams,
 }: {
   searchParams: Promise<{ tab?: string }>;

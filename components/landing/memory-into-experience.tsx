@@ -514,7 +514,7 @@ function ConnectionUpdate({
             <span
               className={styles.thinkingIndicator}
               role="status"
-              aria-label="Sidequest is thinking"
+              aria-label="Chapter is thinking"
             >
               <span className={styles.thinkingDot} aria-hidden="true" />
               <span className={styles.thinkingDot} aria-hidden="true" />
@@ -559,14 +559,14 @@ function ConnectionUpdate({
 
 function cardLabelForPhase(phase: ConnectionPhase) {
   if (phase === "thinking") {
-    return "Sidequest: peaceful cycling path around Han River. Sidequest is thinking.";
+    return "Chapter: peaceful cycling path around Han River. Chapter is thinking.";
   }
 
   if (phase === "revealed") {
-    return "Sidequest: peaceful cycling path around Han River with Olivia";
+    return "Chapter: peaceful cycling path around Han River with Olivia";
   }
 
-  return "Sidequest: peaceful cycling path around Han River";
+  return "Chapter: peaceful cycling path around Han River";
 }
 
 export default function MemoryIntoExperience() {
@@ -1029,14 +1029,14 @@ export default function MemoryIntoExperience() {
           <header className={styles.questHeader}>
             <span className={styles.questMark} aria-hidden="true">
               <Image
-                src="/sidequest-mark.svg"
+                src="/chapter-mark.svg"
                 alt=""
                 width={30}
                 height={30}
               />
             </span>
             <span className={styles.questBrand}>
-              <strong>Sidequest</strong>
+              <strong>Chapter</strong>
             </span>
           </header>
 

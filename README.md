@@ -18,10 +18,10 @@ adding human matching.
   sources.
 - Save, Pass, Done, and natural feedback update the latest experience.
 
-The existing web shell is legacy Sidequest UI. It remains in place while the
-Now and You surfaces are rebuilt using the visual direction from the Chapter
-competition project. Together, Amelia, automatic delivery, Google Calendar, and
-image cards are later milestones.
+The existing web shell comes from an earlier product iteration. It remains in
+place while the Now and You surfaces are rebuilt using the visual direction
+from the Chapter competition project. Together, Amelia, automatic delivery,
+Google Calendar, and image cards are later milestones.
 
 ## Architecture
 

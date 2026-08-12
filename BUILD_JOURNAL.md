@@ -1,7 +1,9 @@
-# Sidequest Build Journal
+# Chapter Build Journal
 
-This is the human-readable history of Sidequest: what changed on each workday,
-the decisions behind it, and exactly where the project was left.
+This is the human-readable history of Chapter: what changed on each workday,
+the decisions behind it, and exactly where the project was left. Entries before
+the August 2026 canonical rename retain the product's former Sidequest name so
+the historical record stays truthful.
 
 Add a new entry at the end of every meaningful work session. Keep the newest
 entry first. Git remains the technical history; this file is the product story.

@@ -297,7 +297,7 @@
   background: transparent;
   color: rgba(255, 255, 255, 0.66);
   cursor: pointer;
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
   font-size: 13.5px;
   font-weight: 550;
   letter-spacing: -0.012em;

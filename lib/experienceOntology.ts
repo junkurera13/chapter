@@ -64,8 +64,8 @@ export const EXPERIENCE_CATEGORY_META: Record<
 > = {
   experience: {
     label: "Moment",
-    purpose: "A real episode, memory, trip, ritual, or Sidequest someone lived.",
-    subtypeExamples: ["meaningful_memory", "trip", "ritual", "sidequest"],
+    purpose: "A real episode, memory, trip, ritual, or Chapter someone lived.",
+    subtypeExamples: ["meaningful_memory", "trip", "ritual", "chapter"],
   },
   people: {
     label: "People",
@@ -99,7 +99,7 @@ export const EXPERIENCE_CATEGORY_META: Record<
   },
   pattern: {
     label: "Pattern",
-    purpose: "A transferable value or relationship Sidequest notices across evidence.",
+    purpose: "A transferable value or relationship Chapter notices across evidence.",
     subtypeExamples: ["value", "recurring_preference", "tension", "emerging_curiosity"],
   },
 };

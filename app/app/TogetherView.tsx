@@ -149,7 +149,7 @@ export default function TogetherView() {
             <div className={styles.reveal}>
               <div className={styles.seal} aria-hidden="true" />
               <h2>Your invitation is ready.</h2>
-              <p>Send this privately. It can only connect one Sidequest account.</p>
+              <p>Send this privately. It can only connect one Chapter account.</p>
               <button type="button" className={styles.copy} onClick={copyInvite}>
                 {copied ? "Copied" : "Copy invitation"}
               </button>

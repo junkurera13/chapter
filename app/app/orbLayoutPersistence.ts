@@ -1,4 +1,6 @@
 export const ORB_LAYOUT_STORAGE_KEY =
+  "chapter:you-world:orb-layout:v1";
+const LEGACY_ORB_LAYOUT_STORAGE_KEY =
   "sidequest:you-world:orb-layout:v1";
 
 export type OrbPosition = readonly [number, number, number];
@@ -24,14 +26,18 @@ function isOrbPosition(value: unknown): value is OrbPosition {
 }
 
 export function loadOrbLayout(
-  storage: Pick<Storage, "getItem"> | null,
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null,
   allowedKeys: ReadonlySet<string>,
 ) {
   const positions = new Map<string, OrbPosition>();
   if (!storage) return positions;
 
   try {
-    const rawLayout = storage.getItem(ORB_LAYOUT_STORAGE_KEY);
+    const currentLayout = storage.getItem(ORB_LAYOUT_STORAGE_KEY);
+    const legacyLayout = currentLayout
+      ? null
+      : storage.getItem(LEGACY_ORB_LAYOUT_STORAGE_KEY);
+    const rawLayout = currentLayout ?? legacyLayout;
     if (!rawLayout) return positions;
 
     const parsed = JSON.parse(rawLayout) as Partial<StoredOrbLayout>;
@@ -41,6 +47,11 @@ export function loadOrbLayout(
       if (allowedKeys.has(key) && isOrbPosition(position)) {
         positions.set(key, position);
       }
+    }
+
+    if (legacyLayout) {
+      storage.setItem(ORB_LAYOUT_STORAGE_KEY, rawLayout);
+      storage.removeItem(LEGACY_ORB_LAYOUT_STORAGE_KEY);
     }
   } catch {
     // Storage can be unavailable or contain stale/corrupt data. In either case,

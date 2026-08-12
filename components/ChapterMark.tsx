@@ -1,12 +1,12 @@
 import Image from "next/image";
-import styles from "./SidequestMark.module.css";
+import styles from "./ChapterMark.module.css";
 
-type SidequestMarkProps = {
+type ChapterMarkProps = {
   className?: string;
   label?: string;
 };
 
-export function SidequestMark({ className, label }: SidequestMarkProps) {
+export function ChapterMark({ className, label }: ChapterMarkProps) {
   return (
     <span
       className={`${styles.crop}${className ? ` ${className}` : ""}`}
@@ -16,7 +16,7 @@ export function SidequestMark({ className, label }: SidequestMarkProps) {
     >
       <Image
         className={styles.image}
-        src="/sidequest-mark.svg"
+        src="/chapter-mark.svg"
         alt=""
         width={108}
         height={108}

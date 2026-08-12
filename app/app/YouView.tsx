@@ -1447,7 +1447,7 @@ export default function YouView() {
               <span>
                 {selectedNode.category === "self"
                   ? "how this world grows"
-                  : "from what you told sidequest"}
+                  : "from what you told Chapter"}
               </span>
               <p>{selectedNode.evidence}</p>
             </div>

@@ -8,24 +8,24 @@ import {
 import ConvexClientProvider from "./ConvexClientProvider";
 import "./globals.css";
 
-const sidequestSans = DM_Sans({
-  variable: "--font-sidequest-sans",
+const chapterSans = DM_Sans({
+  variable: "--font-chapter-sans",
   subsets: ["latin"],
 });
 
-const sidequestSerif = Newsreader({
-  variable: "--font-sidequest-serif",
+const chapterSerif = Newsreader({
+  variable: "--font-chapter-serif",
   subsets: ["latin"],
   style: ["normal", "italic"],
 });
 
-const sidequestInstrument = Instrument_Sans({
-  variable: "--font-sidequest-instrument",
+const chapterInstrument = Instrument_Sans({
+  variable: "--font-chapter-instrument",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Sidequest",
+  title: "Chapter",
   description:
     "Experiences that feel strangely meant for you.",
 };
@@ -38,9 +38,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sidequestSans.variable} ${sidequestSerif.variable} ${sidequestInstrument.variable} h-full antialiased`}
+      className={`${chapterSans.variable} ${chapterSerif.variable} ${chapterInstrument.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-[#f3efe7] font-[family-name:var(--font-sidequest-sans)] text-[#1c1c19]">
+      <body className="flex min-h-full flex-col bg-[#f3efe7] font-[family-name:var(--font-chapter-sans)] text-[#1c1c19]">
         <ClerkProvider>
           <ConvexClientProvider>{children}</ConvexClientProvider>
         </ClerkProvider>
