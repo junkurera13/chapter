@@ -12,6 +12,14 @@ import {
 // delivery once and preserve a stable external conversation identity while the
 // account-owned memory model is designed separately.
 export default defineSchema({
+  waitlistEntries: defineTable({
+    email: v.string(),
+    normalizedEmail: v.string(),
+    status: v.union(v.literal("waiting"), v.literal("invited")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_normalized_email", ["normalizedEmail"]),
+
   accounts: defineTable({
     tokenIdentifier: v.string(),
     displayName: v.string(),

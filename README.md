@@ -46,10 +46,16 @@ npm run dev
 npm run agent:dev
 ```
 
-The web app uses Clerk with Convex token validation. The iMessage agent uses
-Photon project credentials, a private sender allowlist, and a shared
-`CHAPTER_AGENT_SECRET` configured in both the app runtime and the linked Convex
-deployment. Composition uses `OPENROUTER_API_KEY`; research uses
+The public web app is waitlist-first. Clerk sign-in, sign-up, invitations, and
+`/app` remain installed but sit behind a server-verified shared access cookie.
+`CHAPTER_ACCESS_PASSWORD` changes the shared password,
+`CHAPTER_ACCESS_COOKIE_SECRET` signs the cookie, and `CHAPTER_APP_OPEN=true`
+reopens the web app without the shared gate. Waitlist emails are stored in the
+Convex `waitlistEntries` table.
+
+The iMessage agent uses Photon project credentials, a private sender allowlist,
+and a shared `CHAPTER_AGENT_SECRET` configured in both the app runtime and the
+linked Convex deployment. Composition uses `OPENROUTER_API_KEY`; research uses
 `PARALLEL_API_KEY`. See [`docs/agent-brain.md`](./docs/agent-brain.md).
 
 ## Verification

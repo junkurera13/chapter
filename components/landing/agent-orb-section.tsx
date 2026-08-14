@@ -1,12 +1,12 @@
 import Image from "next/image";
-import Link from "next/link";
+
+import {
+  AccessOpenButton,
+  WaitlistOpenButton,
+} from "@/app/LandingActions";
 
 import styles from "./agent-orb-section.module.css";
 import AgentOrbVideo from "./agent-orb-video";
-
-type AgentOrbSectionProps = {
-  startHref: string;
-};
 
 function XIcon() {
   return (
@@ -45,25 +45,22 @@ function InstagramIcon() {
   );
 }
 
-export default function AgentOrbSection({
-  startHref,
-}: AgentOrbSectionProps) {
+export default function AgentOrbSection() {
   return (
     <section
       className={styles.section}
       aria-labelledby="agent-orb-invitation"
     >
       <div className={styles.content}>
-        <a
-          href={startHref}
+        <WaitlistOpenButton
           className={styles.orbAction}
-          aria-label="Text Chapter to get started"
+          aria-label="Join the Chapter waitlist"
         >
           <AgentOrbVideo
             src="/you-agent-orb.mp4"
             poster="/you-agent-orb-poster.jpg"
           />
-        </a>
+        </WaitlistOpenButton>
         <h2 id="agent-orb-invitation" className={styles.invitation}>
           See where your world takes you.
         </h2>
@@ -78,12 +75,12 @@ export default function AgentOrbSection({
         </div>
 
         <div className={styles.footerActions}>
-          <a href={startHref} className={styles.textAction}>
-            Text Chapter
-          </a>
-          <Link href="/login" className={styles.loginAction}>
-            Log in
-          </Link>
+          <WaitlistOpenButton className={styles.textAction}>
+            Join waitlist
+          </WaitlistOpenButton>
+          <AccessOpenButton className={styles.loginAction}>
+            Access
+          </AccessOpenButton>
         </div>
 
         <div

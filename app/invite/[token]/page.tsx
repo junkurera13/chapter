@@ -1,3 +1,5 @@
+import { requireChapterAccess } from "@/lib/chapter-access-server";
+
 import InviteAcceptance from "./InviteAcceptance";
 
 export default async function InvitePage({
@@ -5,6 +7,7 @@ export default async function InvitePage({
 }: {
   params: Promise<{ token: string }>;
 }) {
+  await requireChapterAccess();
   const { token } = await params;
   return <InviteAcceptance token={token} />;
 }

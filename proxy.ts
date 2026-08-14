@@ -1,7 +1,8 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
-// This makes Clerk's session available to server routes. Authorization itself
-// lives beside the protected resource instead of depending on URL matching.
+// Clerk keeps sessions available to server resources. The private Chapter
+// access check lives inside each gated page so URL matching cannot drift from
+// the resource it protects.
 export default clerkMiddleware();
 
 export const config = {

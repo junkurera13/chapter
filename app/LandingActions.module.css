@@ -1,0 +1,283 @@
+.surface {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  overflow: auto;
+  background: #fff;
+  color: #1c1c19;
+  animation: surfaceEnter 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.surfaceHeader {
+  position: absolute;
+  top: max(1.25rem, env(safe-area-inset-top));
+  right: max(1.25rem, env(safe-area-inset-right));
+  left: max(1.25rem, env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.surfaceIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.surfaceMark {
+  display: inline-flex;
+  width: 2.15rem;
+  height: 2.15rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #f7c3d5;
+}
+
+.surfaceMark img {
+  width: 100%;
+  height: 100%;
+  transform: scale(1.62);
+}
+
+.surfaceLabel {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  padding: 0 1rem;
+  border: 1px solid rgba(28, 28, 25, 0.12);
+  border-radius: 999px;
+  color: #625e5a;
+  font-size: 0.96rem;
+  letter-spacing: -0.025em;
+}
+
+.closeButton {
+  display: inline-flex;
+  width: 3rem;
+  height: 3rem;
+  appearance: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(28, 28, 25, 0.12);
+  border-radius: 50%;
+  background: #fff;
+  color: #77716f;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.closeButton svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.65;
+}
+
+.surfaceContent {
+  display: flex;
+  width: min(100% - 2.5rem, 31rem);
+  min-height: 100svh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  padding: 7.5rem 0 5rem;
+  text-align: center;
+  transform: translateY(1rem);
+}
+
+.surfaceTitle {
+  max-width: 18ch;
+  margin: 0;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(2rem, 4.2vw, 3.65rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.surfaceCopy {
+  max-width: 30ch;
+  margin: 1rem 0 0;
+  color: #77716f;
+  font-size: clamp(1.04rem, 1.7vw, 1.22rem);
+  letter-spacing: -0.025em;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.form {
+  display: flex;
+  width: min(100%, 26rem);
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 2.35rem;
+}
+
+.input,
+.primaryButton {
+  width: 100%;
+  min-height: 3.65rem;
+  border-radius: 999px;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 1rem;
+}
+
+.input {
+  appearance: none;
+  padding: 0 1.35rem;
+  border: 1px solid rgba(28, 28, 25, 0.13);
+  outline: none;
+  background: #fff;
+  box-shadow: 0 5px 16px rgba(28, 28, 25, 0.045);
+  color: #1c1c19;
+  letter-spacing: -0.02em;
+  text-align: center;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.input::placeholder {
+  color: #aaa5a1;
+}
+
+.input:focus {
+  border-color: rgba(201, 70, 116, 0.55);
+  box-shadow:
+    0 0 0 3px rgba(201, 70, 116, 0.09),
+    0 8px 22px rgba(28, 28, 25, 0.055);
+}
+
+.primaryButton {
+  appearance: none;
+  border: 1px solid #d95b86;
+  background:
+    radial-gradient(
+      circle at 30% 10%,
+      rgba(255, 255, 255, 0.58),
+      transparent 26%
+    ),
+    linear-gradient(180deg, #ffd6e3 0%, #fba6c1 48%, #ee7fa4 100%);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -2px 3px rgba(125, 35, 70, 0.2),
+    0 3px 0 #cf527d,
+    0 8px 17px rgba(201, 70, 116, 0.16);
+  color: #371521;
+  cursor: pointer;
+  font-family: var(--font-chapter-instrument), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+  transition:
+    filter 160ms ease,
+    transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.primaryButton:disabled {
+  cursor: wait;
+  filter: saturate(0.6);
+  opacity: 0.72;
+}
+
+.primaryButton:active:not(:disabled) {
+  transform: translateY(2px) scale(0.99);
+}
+
+.formMessage {
+  min-height: 1.25rem;
+  margin: 0.2rem 0 0;
+  color: #a63e62;
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.closeButton:focus-visible,
+.primaryButton:focus-visible {
+  outline: 2px solid #c94674;
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .closeButton:hover {
+    border-color: rgba(28, 28, 25, 0.22);
+    color: #1c1c19;
+    transform: scale(1.04);
+  }
+
+  .primaryButton:hover:not(:disabled) {
+    filter: saturate(1.04) brightness(1.015);
+    transform: translateY(-1px);
+  }
+}
+
+@media (max-width: 42rem) {
+  .surfaceHeader {
+    top: max(0.85rem, env(safe-area-inset-top));
+    right: max(0.85rem, env(safe-area-inset-right));
+    left: max(0.85rem, env(safe-area-inset-left));
+  }
+
+  .surfaceMark {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .surfaceLabel {
+    min-height: 2.3rem;
+    padding: 0 0.85rem;
+    font-size: 0.9rem;
+  }
+
+  .closeButton {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .surfaceContent {
+    width: min(100% - 2rem, 31rem);
+    padding-top: 6.5rem;
+    transform: none;
+  }
+
+  .surfaceTitle {
+    font-size: clamp(2rem, 9.2vw, 2.85rem);
+  }
+
+  .form {
+    margin-top: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface {
+    animation: none;
+  }
+
+  .closeButton,
+  .primaryButton {
+    transition: none;
+  }
+}
+
+@keyframes surfaceEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,9 +1,14 @@
 import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
+
 import { ChapterMark } from "@/components/ChapterMark";
+import { requireChapterAccess } from "@/lib/chapter-access-server";
+
 import styles from "../../auth.module.css";
 
-export default function SignInPage() {
+export default async function SignInPage() {
+  await requireChapterAccess();
+
   return (
     <main className={styles.page}>
       <Link href="/" className={styles.home} aria-label="Chapter home">

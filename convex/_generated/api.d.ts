@@ -18,6 +18,7 @@ import type * as lib_auth from "../lib/auth.js";
 import type * as messaging from "../messaging.js";
 import type * as people from "../people.js";
 import type * as sharedExperiences from "../sharedExperiences.js";
+import type * as waitlist from "../waitlist.js";
 
 import type {
   ApiFromModules,
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   messaging: typeof messaging;
   people: typeof people;
   sharedExperiences: typeof sharedExperiences;
+  waitlist: typeof waitlist;
 }>;
 
 /**

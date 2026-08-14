@@ -1,5 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+
+import { requireChapterAccess } from "@/lib/chapter-access-server";
+
 import AuthenticatedApp from "./AuthenticatedApp";
 
 export default async function ChapterAppPage({
@@ -7,6 +10,7 @@ export default async function ChapterAppPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
+  await requireChapterAccess();
   const { isAuthenticated } = await auth();
   if (!isAuthenticated) {
     redirect("/sign-in?redirect_url=%2Fapp");
