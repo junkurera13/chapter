@@ -9,7 +9,7 @@ import {
   useTransform,
 } from "framer-motion";
 
-import mojikoImage from "@/app/assets/mojiko-waterfront.jpg";
+import mojikoImage from "@/app/assets/mojiko-memory/waterfront-sunset.webp";
 import { categoryOrbGradient } from "@/app/app/categoryAppearance";
 
 import styles from "./mojiko-connection.module.css";

@@ -38,6 +38,7 @@ import {
 } from "@/app/app/orbMaterial";
 import type { WorldNodeCategory } from "@/app/app/graphData";
 
+import AgentOrbVideo from "./agent-orb-video";
 import styles from "./memory-into-experience.module.css";
 
 function PlacePinIcon() {
@@ -516,9 +517,7 @@ function ConnectionUpdate({
               role="status"
               aria-label="Chapter is thinking"
             >
-              <span className={styles.thinkingDot} aria-hidden="true" />
-              <span className={styles.thinkingDot} aria-hidden="true" />
-              <span className={styles.thinkingDot} aria-hidden="true" />
+              <AgentOrbVideo />
             </span>
           </motion.div>
         ) : null}

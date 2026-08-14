@@ -10,7 +10,7 @@ import {
 } from "framer-motion";
 
 import ceramicImage from "@/app/assets/ceramics-class.jpg";
-import mojikoImage from "@/app/assets/mojiko-waterfront.jpg";
+import mojikoImage from "@/app/assets/mojiko-memory/waterfront-sunset.webp";
 import odysseyImage from "@/app/assets/odyssey-cinema.png";
 import sushiImage from "@/app/assets/sushi-shibuya.webp";
 import { categoryOrbGradient } from "@/app/app/categoryAppearance";

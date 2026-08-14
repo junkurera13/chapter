@@ -6,6 +6,9 @@ adding human matching.
 
 [`VISION.md`](./VISION.md) is the product source of truth.
 
+[`TODAY.md`](./TODAY.md) holds the current day's outcomes, while
+[`DAILY_LOG.md`](./DAILY_LOG.md) records the verified closeout for each day.
+
 ## Current slice
 
 - A private Photon/iMessage channel runs through Eve.

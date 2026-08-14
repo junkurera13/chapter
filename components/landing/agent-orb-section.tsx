@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import styles from "./agent-orb-section.module.css";
+import AgentOrbVideo from "./agent-orb-video";
 
 type AgentOrbSectionProps = {
   startHref: string;
@@ -44,31 +45,6 @@ function InstagramIcon() {
   );
 }
 
-function EmailIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect
-        x="2.75"
-        y="5"
-        width="18.5"
-        height="14"
-        rx="2.4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="m4.25 6.75 7.75 6 7.75-6"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
 export default function AgentOrbSection({
   startHref,
 }: AgentOrbSectionProps) {
@@ -77,9 +53,21 @@ export default function AgentOrbSection({
       className={styles.section}
       aria-labelledby="agent-orb-invitation"
     >
-      <h2 id="agent-orb-invitation" className={styles.invitation}>
-        Be among the first to try Chapter
-      </h2>
+      <div className={styles.content}>
+        <a
+          href={startHref}
+          className={styles.orbAction}
+          aria-label="Text Chapter to get started"
+        >
+          <AgentOrbVideo
+            src="/you-agent-orb.mp4"
+            poster="/you-agent-orb-poster.jpg"
+          />
+        </a>
+        <h2 id="agent-orb-invitation" className={styles.invitation}>
+          See where your world takes you.
+        </h2>
+      </div>
 
       <footer className={styles.footer}>
         <div className={styles.brand}>
@@ -91,9 +79,6 @@ export default function AgentOrbSection({
 
         <div className={styles.footerActions}>
           <a href={startHref} className={styles.textAction}>
-            <span className={styles.actionMark} aria-hidden="true">
-              <Image src="/chapter-mark.svg" alt="" width={28} height={28} />
-            </span>
             Text Chapter
           </a>
           <Link href="/login" className={styles.loginAction}>
@@ -101,7 +86,10 @@ export default function AgentOrbSection({
           </Link>
         </div>
 
-        <div className={styles.socialActions} aria-label="Chapter social links">
+        <div
+          className={styles.socialActions}
+          aria-label="Chapter social links"
+        >
           <button
             className={styles.socialAction}
             type="button"
@@ -119,15 +107,6 @@ export default function AgentOrbSection({
             title="Instagram link coming soon"
           >
             <InstagramIcon />
-          </button>
-          <button
-            className={styles.socialAction}
-            type="button"
-            disabled
-            aria-label="Email link coming soon"
-            title="Email link coming soon"
-          >
-            <EmailIcon />
           </button>
         </div>
       </footer>
