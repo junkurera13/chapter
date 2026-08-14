@@ -18,6 +18,10 @@
   justify-content: space-between;
 }
 
+.surfaceHeaderEnd {
+  justify-content: flex-end;
+}
+
 .surfaceIdentity {
   display: flex;
   align-items: center;
@@ -149,13 +153,6 @@
 
 .input::placeholder {
   color: #aaa5a1;
-}
-
-.input:focus {
-  border-color: rgba(201, 70, 116, 0.55);
-  box-shadow:
-    0 0 0 3px rgba(201, 70, 116, 0.09),
-    0 8px 22px rgba(28, 28, 25, 0.055);
 }
 
 .primaryButton {

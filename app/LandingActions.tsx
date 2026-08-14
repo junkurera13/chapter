@@ -146,11 +146,13 @@ function SurfaceFrame({
   label,
   labelledBy,
   onClose,
+  showIdentity = true,
 }: {
   children: ReactNode;
   label: string;
   labelledBy: string;
   onClose: () => void;
+  showIdentity?: boolean;
 }) {
   return (
     <div
@@ -159,13 +161,19 @@ function SurfaceFrame({
       aria-modal="true"
       aria-labelledby={labelledBy}
     >
-      <div className={styles.surfaceHeader}>
-        <div className={styles.surfaceIdentity}>
-          <span className={styles.surfaceMark} aria-hidden="true">
-            <Image src="/chapter-mark.svg" alt="" width={30} height={30} />
-          </span>
-          <span className={styles.surfaceLabel}>{label}</span>
-        </div>
+      <div
+        className={`${styles.surfaceHeader} ${
+          showIdentity ? "" : styles.surfaceHeaderEnd
+        }`}
+      >
+        {showIdentity ? (
+          <div className={styles.surfaceIdentity}>
+            <span className={styles.surfaceMark} aria-hidden="true">
+              <Image src="/chapter-mark.svg" alt="" width={30} height={30} />
+            </span>
+            <span className={styles.surfaceLabel}>{label}</span>
+          </div>
+        ) : null}
         <button
           type="button"
           className={styles.closeButton}
@@ -210,7 +218,12 @@ function WaitlistSurface({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <SurfaceFrame label="Waitlist" labelledBy="waitlist-title" onClose={onClose}>
+    <SurfaceFrame
+      label="Waitlist"
+      labelledBy="waitlist-title"
+      onClose={onClose}
+      showIdentity={false}
+    >
       <div className={styles.surfaceContent}>
         {isJoined ? (
           <>

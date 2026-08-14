@@ -79,7 +79,7 @@ export default function AgentOrbSection() {
             Join waitlist
           </WaitlistOpenButton>
           <AccessOpenButton className={styles.loginAction}>
-            Access
+            Have access?
           </AccessOpenButton>
         </div>
 
@@ -87,24 +87,24 @@ export default function AgentOrbSection() {
           className={styles.socialActions}
           aria-label="Chapter social links"
         >
-          <button
+          <a
             className={styles.socialAction}
-            type="button"
-            disabled
-            aria-label="X link coming soon"
-            title="X link coming soon"
+            href="https://x.com/usechapter"
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="Chapter on X"
           >
             <XIcon />
-          </button>
-          <button
+          </a>
+          <a
             className={styles.socialAction}
-            type="button"
-            disabled
-            aria-label="Instagram link coming soon"
-            title="Instagram link coming soon"
+            href="https://www.instagram.com/use_chapter/"
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="Chapter on Instagram"
           >
             <InstagramIcon />
-          </button>
+          </a>
         </div>
       </footer>
     </section>

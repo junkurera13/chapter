@@ -33,7 +33,7 @@ export default function Home() {
               Join waitlist
             </WaitlistOpenButton>
             <AccessOpenButton className={styles.loginAction}>
-              Access
+              Have access?
             </AccessOpenButton>
           </div>
         </section>

@@ -209,8 +209,11 @@
   border: 0;
   background: transparent;
   color: #1c1c19;
-  cursor: default;
+  cursor: pointer;
   opacity: 1;
+  transition:
+    color 160ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .socialAction svg {
@@ -244,6 +247,11 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
+  .socialAction:hover {
+    color: #c94674;
+    transform: translateY(-1px);
+  }
+
   .orbAction:hover {
     scale: 1.045;
   }
@@ -329,7 +337,8 @@
   }
 
   .textAction,
-  .loginAction {
+  .loginAction,
+  .socialAction {
     transition: none;
   }
 }
