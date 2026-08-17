@@ -260,17 +260,9 @@
   font-size: 20px;
 }
 
-.eyebrow {
-  color: rgba(57, 49, 43, 0.42);
-  font-size: 10px;
-  font-weight: 660;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
 .composer h2 {
   max-width: 340px;
-  margin: 8px 0 27px;
+  margin: 0 0 27px;
   font-family: var(--font-chapter-serif), Georgia, serif;
   font-size: 31px;
   font-weight: 450;

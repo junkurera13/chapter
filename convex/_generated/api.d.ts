@@ -19,6 +19,8 @@ import type * as messaging from "../messaging.js";
 import type * as people from "../people.js";
 import type * as sharedExperiences from "../sharedExperiences.js";
 import type * as waitlist from "../waitlist.js";
+import type * as webExperiences from "../webExperiences.js";
+import type * as webMemory from "../webMemory.js";
 
 import type {
   ApiFromModules,
@@ -38,6 +40,8 @@ declare const fullApi: ApiFromModules<{
   people: typeof people;
   sharedExperiences: typeof sharedExperiences;
   waitlist: typeof waitlist;
+  webExperiences: typeof webExperiences;
+  webMemory: typeof webMemory;
 }>;
 
 /**

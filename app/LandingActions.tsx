@@ -3,6 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -298,6 +299,7 @@ function AccessSurface({
   onUnlocked: () => void;
 }) {
   const { isSignedIn } = useAuth();
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -325,7 +327,7 @@ function AccessSurface({
       }
 
       if (isSignedIn) {
-        window.location.assign("/app");
+        router.push("/app");
         return;
       }
       onUnlocked();

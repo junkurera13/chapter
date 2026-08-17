@@ -1,0 +1,1020 @@
+.onboarding {
+  height: 100svh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  background: #fff;
+}
+
+/*
+ * The same composer, inside a window instead of a screen. It gives up the
+ * height, the ground and the padding it takes when it is the whole page, and
+ * the orb comes down to the size of a thing that is speaking rather than the
+ * size of the thing you came here for.
+ */
+.onboarding[data-inline="true"] {
+  height: auto;
+  overflow: visible;
+  background: transparent;
+}
+
+.onboarding[data-inline="true"] .stage {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+}
+
+/* Moved, not spaced: a transform leaves the composer below it where it is. */
+.onboarding[data-inline="true"] .prompt {
+  gap: 0.7rem;
+  margin: 0;
+  transform: translateY(0.85rem);
+}
+
+.onboarding[data-inline="true"] .orb {
+  width: 4.75rem;
+  cursor: default;
+}
+
+.onboarding[data-inline="true"] .promptCopy p {
+  font-size: clamp(1.95rem, 3.7vw, 2.6rem);
+  letter-spacing: -0.042em;
+}
+
+/* A window is not a screen: the furniture comes down to the room it is in. */
+.onboarding[data-inline="true"] .memoryInput {
+  font-size: clamp(1rem, 1.3vw, 1.12rem);
+}
+
+/* Nudged off the left edge. Moved, not resized, so nothing reflows with it. */
+.onboarding[data-inline="true"] .textWindow {
+  transform: translateX(0.5rem);
+}
+
+/*
+ * How tall the window stands. Nothing here sets the window's height directly:
+ * it is only ever as tall as the two columns inside it, so this is the number
+ * that moves it.
+ */
+.onboarding[data-inline="true"] .composerSplit,
+.onboarding[data-inline="true"] .textWindow,
+.onboarding[data-inline="true"] .memoryInput,
+.onboarding[data-inline="true"] .composerPhotos,
+.onboarding[data-inline="true"] .photoStarter {
+  min-height: 30rem;
+}
+
+.onboarding[data-inline="true"] .sampleCard {
+  width: clamp(5.5rem, 9vw, 6.75rem);
+  border-width: 0.28rem;
+  border-radius: 0.7rem;
+}
+
+.onboarding[data-inline="true"] .photoGrid {
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 12.5rem));
+  gap: clamp(1rem, 1.8vw, 1.25rem);
+}
+
+.onboarding[data-inline="true"] .addButton {
+  height: 2.75rem;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.88rem;
+}
+
+.onboarding[data-inline="true"] .addButton svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.edgeBack {
+  position: fixed;
+  z-index: 10;
+  top: 0;
+  bottom: 0;
+  width: clamp(1.5rem, 4vw, 3.5rem);
+  padding: 0;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.edgeBackLeft {
+  left: 0;
+}
+
+.edgeBackRight {
+  right: 0;
+}
+
+.stage {
+  width: min(100%, 84rem);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 7vh, 4.75rem) clamp(1rem, 4vw, 3rem) 9rem;
+}
+
+.onboarding[data-started="false"] .stage {
+  display: grid;
+  padding-bottom: 7.5rem;
+  place-items: center;
+}
+
+.prompt {
+  display: flex;
+  align-items: center;
+}
+
+.onboarding[data-started="false"] .prompt {
+  flex-direction: column;
+  transform: translateY(-1.25rem);
+}
+
+.onboarding[data-started="true"] .prompt {
+  width: fit-content;
+  max-width: 100%;
+  justify-content: center;
+  gap: clamp(0.7rem, 1.8vw, 1rem);
+  margin-inline: auto;
+}
+
+.orb {
+  display: block;
+  flex: 0 0 auto;
+  width: 4.5rem;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+  scale: 1;
+  transform-origin: center;
+  transition:
+    scale 220ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 100ms ease;
+  will-change: transform, scale;
+}
+
+.onboarding[data-started="false"] .orb {
+  order: 1;
+  width: clamp(10rem, min(21.5vw, 25vh), 15.5rem);
+}
+
+.orb:focus-visible {
+  outline: 2px solid #c94674;
+  outline-offset: 4px;
+}
+
+.orb:active {
+  opacity: 0.86;
+}
+
+.promptCopy {
+  position: relative;
+  min-width: 0;
+}
+
+.promptCopy p {
+  margin: 0;
+  color: #1c1c19;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.onboarding[data-started="false"] .promptCopy {
+  max-width: 32rem;
+  margin-bottom: clamp(0.75rem, 1.8vh, 1.25rem);
+  text-align: center;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  margin-top: clamp(3rem, 7vh, 4.75rem);
+}
+
+.composerShell {
+  position: relative;
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+.memoryComposer {
+  position: relative;
+  width: 100%;
+}
+
+.composerSplit {
+  display: grid;
+  min-height: 27rem;
+  align-items: start;
+  gap: clamp(1rem, 2vw, 2rem);
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+}
+
+.textColumn {
+  min-width: 0;
+}
+
+.textWindow {
+  position: relative;
+  height: auto;
+  min-height: 27rem;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(28, 28, 25, 0.12);
+  border-radius: 1.75rem;
+  background: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px rgba(28, 28, 25, 0.018);
+}
+
+.memoryInput {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 27rem;
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  padding-bottom: 5.5rem;
+  overflow: hidden;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #1c1c19;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: clamp(1.14rem, 1.66vw, 1.37rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.5;
+}
+
+.memoryInput::placeholder {
+  color: rgba(28, 28, 25, 0.4);
+  opacity: 1;
+}
+
+.composerPhotos {
+  position: relative;
+  box-sizing: border-box;
+  height: auto;
+  min-width: 0;
+  min-height: 27rem;
+  padding: 0 0 clamp(1.5rem, 2.5vw, 2rem);
+}
+
+@media (min-width: 42.001rem) {
+  .onboarding[data-started="true"] {
+    overflow-y: hidden;
+  }
+
+  .onboarding[data-started="true"] .stage {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+    flex-direction: column;
+  }
+
+  .onboarding[data-started="true"] .prompt {
+    flex: 0 0 auto;
+  }
+
+  .onboarding[data-started="true"] .workspace {
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .onboarding[data-started="true"] .composerShell,
+  .onboarding[data-started="true"] .memoryComposer,
+  .onboarding[data-started="true"] .composerSplit {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .onboarding[data-started="true"] .textColumn {
+    height: 100%;
+    min-height: 0;
+    margin-right: -0.75rem;
+    margin-left: -0.75rem;
+    padding: 0 0.75rem calc(5.5rem + env(safe-area-inset-bottom));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: none;
+  }
+
+  .onboarding[data-started="true"] .textColumn::-webkit-scrollbar {
+    display: none;
+  }
+
+  .onboarding[data-started="true"] .composerPhotos:not(.photoStarter) {
+    height: 100%;
+    min-height: 0;
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: none;
+  }
+
+  .onboarding[data-started="true"]
+    .composerPhotos:not(.photoStarter)::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.photoStarter {
+  min-height: 27rem;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sampleCard {
+  position: absolute;
+  top: 41%;
+  left: 50%;
+  width: clamp(8rem, 13vw, 9.25rem);
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border: 0.35rem solid #fff;
+  border-radius: 0.85rem;
+  background: #e9e6e0;
+  box-shadow:
+    0 0.9rem 1.8rem rgba(28, 28, 25, 0.16),
+    0 0.2rem 0.55rem rgba(28, 28, 25, 0.1);
+  transition: transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sampleCard img {
+  object-fit: cover;
+}
+
+.sampleCardLeft {
+  z-index: 1;
+  transform: translate(-50%, -50%) translate(-6.1rem, 0.45rem) rotate(-10deg);
+}
+
+.sampleCardRight {
+  z-index: 2;
+  transform: translate(-50%, -50%) translate(6.1rem, 0.4rem) rotate(10deg);
+}
+
+.sampleCardFront {
+  z-index: 3;
+  width: clamp(8.5rem, 14vw, 9.75rem);
+  transform: translate(-50%, -50%) translateY(-0.2rem) rotate(0.75deg);
+}
+
+.starterActions,
+.photoActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.starterActions {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: 4.5rem;
+  left: 0;
+}
+
+.photoActions {
+  padding: clamp(1.5rem, 2.5vw, 2rem) 0 0.25rem;
+}
+
+.addButton {
+  position: relative;
+  top: 0.1rem;
+  display: inline-flex;
+  height: 3.3rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.72rem 1.34rem;
+  border: 1px solid rgba(28, 28, 25, 0.09);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff 0%, #fefefe 62%, #f7f7f5 100%);
+  box-shadow:
+    inset 0 2px 0 #fff,
+    inset 0 -1px 0 rgba(28, 28, 25, 0.05),
+    0 1px 1px rgba(28, 28, 25, 0.09),
+    0 3px 0 #e5e5e2,
+    0 6px 9px rgba(28, 28, 25, 0.1),
+    0 10px 18px rgba(28, 28, 25, 0.04);
+  color: #1c1c19;
+  cursor: pointer;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 450;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  text-shadow: 0 1px 0 #fff;
+  appearance: none;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 180ms ease;
+}
+
+.addButton::after {
+  position: absolute;
+  inset: 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+}
+
+.addButton svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.addButton:active:not(:disabled) {
+  transform: translateY(3px) scale(0.985);
+  box-shadow:
+    inset 0 2px 0 #fff,
+    inset 0 -1px 0 rgba(28, 28, 25, 0.06),
+    0 1px 0 #dededb,
+    0 3px 6px rgba(28, 28, 25, 0.13);
+}
+
+.addButton:focus-visible,
+.cardAction:focus-visible,
+.doneButton:focus-visible,
+.sendButton:focus-visible {
+  outline: 2px solid #c94674;
+  outline-offset: 3px;
+}
+
+.addButton:disabled {
+  cursor: default;
+  opacity: 0.32;
+  box-shadow: none;
+}
+
+.sendButton {
+  position: absolute;
+  z-index: 5;
+  right: 1.15rem;
+  bottom: 1.15rem;
+  display: grid;
+  width: 2.55rem;
+  height: 2.55rem;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #d95b86;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 30% 10%,
+      rgba(255, 255, 255, 0.58),
+      transparent 26%
+    ),
+    linear-gradient(180deg, #ffd6e3 0%, #fba6c1 48%, #ee7fa4 100%);
+  color: #371521;
+  cursor: pointer;
+  line-height: 1;
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -2px 3px rgba(125, 35, 70, 0.2),
+    0 3px 0 #cf527d,
+    0 6px 12px rgba(201, 70, 116, 0.16);
+  transform-origin: center;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.sendButton::before {
+  position: absolute;
+  inset: -0.3rem;
+  border-radius: 50%;
+  content: "";
+}
+
+.sendButton svg {
+  position: relative;
+  z-index: 1;
+  width: 0.9rem;
+  height: 0.9rem;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sendButton:active {
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.62),
+    inset 0 -2px 3px rgba(125, 35, 70, 0.24),
+    0 1px 0 #cf527d,
+    0 3px 7px rgba(201, 70, 116, 0.15);
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.feedback {
+  position: absolute;
+  z-index: 10;
+  right: 1rem;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  width: fit-content;
+  max-width: min(100%, 42rem);
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  margin: 0 auto;
+  padding: 0.65rem 1rem;
+  border: 1px solid rgba(109, 41, 66, 0.14);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0.45rem 1.4rem rgba(70, 25, 42, 0.1);
+  color: #6d2942;
+  text-align: center;
+  backdrop-filter: blur(0.75rem) saturate(115%);
+}
+
+.feedback p {
+  margin: 0;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.retryButton {
+  flex: 0 0 auto;
+  padding: 0.3rem 0;
+  border: 0;
+  border-bottom: 1px solid rgba(109, 41, 66, 0.32);
+  background: transparent;
+  color: #6d2942;
+  cursor: pointer;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.retryButton:hover {
+  border-color: currentColor;
+  color: #431526;
+}
+
+.retryButton:focus-visible {
+  outline: 2px solid #c94674;
+  outline-offset: 3px;
+}
+
+.notice {
+  position: absolute;
+  z-index: 8;
+  right: 1rem;
+  bottom: 1rem;
+  left: 1rem;
+  width: fit-content;
+  max-width: calc(100% - 2rem);
+  margin: 0 auto;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid rgba(28, 28, 25, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(28, 28, 25, 0.52);
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  text-align: center;
+  backdrop-filter: blur(0.75rem) saturate(115%);
+}
+
+.photoGrid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(min(16.5rem, 100%), 17.625rem));
+  justify-content: center;
+  align-items: start;
+  gap: clamp(1.5rem, 2.4vw, 1.75rem);
+}
+
+.photoCard {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 6 / 7;
+  padding: 0.5rem;
+  overflow: hidden;
+  border: 1px solid rgba(28, 28, 25, 0.085);
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow:
+    0 1.15rem 2.4rem rgba(28, 28, 25, 0.14),
+    0 0.3rem 0.75rem rgba(28, 28, 25, 0.085);
+  transform-origin: center;
+}
+
+.photo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 0.625rem;
+  background: #f1efeb;
+}
+
+.photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cardAction {
+  position: absolute;
+  z-index: 7;
+  top: 0.7rem;
+  display: grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 19, 18, 0.66);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  backdrop-filter: blur(0.8rem);
+  transition:
+    opacity 160ms ease,
+    background 160ms ease;
+}
+
+.cardAction svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  stroke: currentColor;
+  stroke-width: 1.55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.removeButton {
+  left: 0.7rem;
+}
+
+.editButton {
+  right: 0.7rem;
+}
+
+.photoCard:focus-within .cardAction,
+.photoCard:hover .cardAction {
+  opacity: 1;
+}
+
+.photoCard[data-editing="true"] .editButton {
+  pointer-events: none;
+  opacity: 0;
+}
+
+.noteEditor {
+  position: absolute;
+  z-index: 6;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  left: 0.55rem;
+  display: flex;
+  min-height: 9.25rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(28, 28, 25, 0.09);
+  border-radius: 0.8rem;
+  transform-origin: bottom right;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0.75rem 1.75rem rgba(28, 28, 25, 0.16),
+    0 0.2rem 0.5rem rgba(28, 28, 25, 0.08);
+  backdrop-filter: blur(1rem) saturate(130%);
+}
+
+.note {
+  width: 100%;
+  min-height: 5.75rem;
+  flex: 1;
+  padding: 0.15rem 0.15rem 0.5rem;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #1c1c19;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.32;
+}
+
+.note::placeholder {
+  color: #77716f;
+  opacity: 1;
+}
+
+.note:focus-visible {
+  outline: 0;
+}
+
+.doneButton {
+  align-self: flex-end;
+  padding: 0.35rem 0.58rem;
+  border: 0;
+  border-radius: 999px;
+  background: #1c1c19;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  transition:
+    transform 120ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 120ms ease;
+}
+
+.doneButton:active {
+  transform: scale(0.95);
+}
+
+.notePreview {
+  position: absolute;
+  z-index: 4;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  left: 0.55rem;
+  margin: 0;
+  padding: 0.75rem 0.8rem;
+  overflow: hidden;
+  border: 1px solid rgba(28, 28, 25, 0.07);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.91);
+  color: #1c1c19;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 0.86rem;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  box-shadow: 0 0.4rem 1rem rgba(28, 28, 25, 0.1);
+  backdrop-filter: blur(0.8rem);
+}
+
+.notePreview span {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .onboarding[data-started="false"] .orb:hover {
+    scale: 1.045;
+  }
+
+  .photoStarter:has(.sampleCard:hover, .addButton:hover) .sampleCardLeft {
+    transform: translate(-50%, -50%) translate(-6.6rem, 0.25rem) rotate(-11.5deg);
+  }
+
+  .photoStarter:has(.sampleCard:hover, .addButton:hover) .sampleCardRight {
+    transform: translate(-50%, -50%) translate(6.6rem, 0.2rem) rotate(11.5deg);
+  }
+
+  .photoStarter:has(.sampleCard:hover, .addButton:hover) .sampleCardFront {
+    transform: translate(-50%, -50%) translateY(-0.5rem) rotate(0);
+  }
+
+  .addButton:hover:not(:disabled) {
+    border-color: rgba(28, 28, 25, 0.12);
+    background: linear-gradient(180deg, #fff 0%, #fff 62%, #fafaf8 100%);
+    box-shadow:
+      inset 0 2px 0 #fff,
+      inset 0 -1px 0 rgba(28, 28, 25, 0.04),
+      0 1px 1px rgba(28, 28, 25, 0.09),
+      0 4px 0 #e2e2df,
+      0 8px 11px rgba(28, 28, 25, 0.1),
+      0 13px 20px rgba(28, 28, 25, 0.04);
+    transform: translateY(-1px);
+  }
+
+  .addButton:hover:active:not(:disabled) {
+    transform: translateY(3px) scale(0.985);
+    box-shadow:
+      inset 0 2px 0 #fff,
+      inset 0 -1px 0 rgba(28, 28, 25, 0.06),
+      0 1px 0 #dededb,
+      0 3px 6px rgba(28, 28, 25, 0.13);
+  }
+
+  .removeButton:hover {
+    background: rgba(20, 19, 18, 0.84);
+  }
+
+  .editButton:hover {
+    background: rgba(20, 19, 18, 0.84);
+  }
+
+  .doneButton:hover {
+    opacity: 0.82;
+  }
+
+  .sendButton:hover {
+    border-color: #d95b86;
+  }
+}
+
+@media (max-width: 42rem) {
+  .stage {
+    padding-top: clamp(2rem, 5vh, 3rem);
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .onboarding[data-started="false"] .orb {
+    width: clamp(10.25rem, 50vw, 12.75rem);
+  }
+
+  .onboarding[data-started="true"] .prompt {
+    gap: 0.5rem;
+  }
+
+  .onboarding[data-started="true"] .orb {
+    width: 3.8rem;
+  }
+
+  .promptCopy p {
+    font-size: clamp(1.55rem, 7vw, 2rem);
+  }
+
+  .workspace {
+    margin-top: 2.5rem;
+  }
+
+  .composerShell {
+    width: 100%;
+  }
+
+  .composerSplit {
+    min-height: 0;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .textWindow {
+    position: relative;
+    top: auto;
+    border-radius: 1.35rem;
+  }
+
+  .textColumn {
+    height: auto;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .memoryInput {
+    height: auto;
+    min-height: 10rem;
+    padding: 1.15rem 1rem;
+    padding-bottom: 4.75rem;
+    font-size: 1.05rem;
+  }
+
+  .composerPhotos {
+    height: auto;
+    min-height: 0;
+    padding: 1.25rem 0;
+    overflow: visible;
+  }
+
+  .photoStarter {
+    min-height: 20.5rem;
+    padding: 0;
+  }
+
+  .sampleCard {
+    top: 40%;
+    width: 7.5rem;
+  }
+
+  .sampleCardLeft {
+    transform: translate(-50%, -50%) translate(-4.8rem, 0.35rem) rotate(-9deg);
+  }
+
+  .sampleCardRight {
+    transform: translate(-50%, -50%) translate(4.8rem, 0.3rem) rotate(9deg);
+  }
+
+  .sampleCardFront {
+    width: 8rem;
+  }
+
+  .photoGrid {
+    grid-template-columns: minmax(0, 18rem);
+    justify-content: center;
+    gap: 2rem;
+  }
+
+  .photoActions {
+    padding-top: 1.5rem;
+  }
+
+  .sendButton {
+    right: 1rem;
+    bottom: 1rem;
+    width: 2.55rem;
+    height: 2.55rem;
+  }
+
+  .cardAction {
+    opacity: 1;
+  }
+
+  .feedback {
+    position: static;
+    min-height: 0;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-top: 1rem;
+    border-radius: 1.2rem;
+  }
+
+  .notice {
+    position: static;
+    max-width: 100%;
+    margin-top: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb,
+  .addButton,
+  .cardAction,
+  .doneButton,
+  .removeButton,
+  .sampleCard,
+  .sendButton {
+    transition: none;
+  }
+
+  .orb:hover {
+    scale: 1;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .cardAction {
+    background: #141312;
+    backdrop-filter: none;
+  }
+
+  .noteEditor,
+  .notePreview {
+    background: #fff;
+    backdrop-filter: none;
+  }
+}
+

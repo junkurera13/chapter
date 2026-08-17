@@ -108,13 +108,13 @@
   --tabs-dur: 280ms;
   --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Cool blue-teal crystal — default / Now */
-  --candy-hi: #b9dfe2;
-  --candy-mid: #81c8cd;
-  --candy-lo: #5ca8ae;
-  --candy-deep: #407f85;
-  --candy-glow: rgba(82, 166, 172, 0.25);
-  --candy-ink: #173638;
+  /* Raspberry crystal — the Chapter world */
+  --candy-hi: #ffd4e1;
+  --candy-mid: #ff9fbd;
+  --candy-lo: #f0719d;
+  --candy-deep: #c94674;
+  --candy-glow: rgba(239, 102, 149, 0.25);
+  --candy-ink: #371521;
 
   position: relative;
   display: grid;
@@ -146,26 +146,6 @@
     --candy-deep var(--tabs-dur) var(--tabs-ease),
     --candy-glow var(--tabs-dur) var(--tabs-ease),
     --candy-ink var(--tabs-dur) var(--tabs-ease);
-}
-
-/* Raspberry crystal — You */
-.tabs[data-active="1"] {
-  --candy-hi: #ffd4e1;
-  --candy-mid: #ff9fbd;
-  --candy-lo: #f0719d;
-  --candy-deep: #c94674;
-  --candy-glow: rgba(239, 102, 149, 0.25);
-  --candy-ink: #371521;
-}
-
-/* Grape crystal — Together */
-.tabs[data-active="2"] {
-  --candy-hi: #ead7f5;
-  --candy-mid: #d7a6f3;
-  --candy-lo: #b77ae0;
-  --candy-deep: #7f4dac;
-  --candy-glow: rgba(174, 111, 216, 0.25);
-  --candy-ink: #2b1739;
 }
 
 .candy {
@@ -316,6 +296,11 @@
   color: var(--candy-ink);
 }
 
+.tab:disabled {
+  color: rgba(255, 255, 255, 0.25);
+  cursor: not-allowed;
+}
+
 .tab:active span {
   transform: scale(0.96);
 }
@@ -326,7 +311,7 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .tab:not([aria-selected="true"]):hover {
+  .tab:not([aria-selected="true"]):not(:disabled):hover {
     color: rgba(255, 255, 255, 0.84);
   }
 }

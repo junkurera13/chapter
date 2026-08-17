@@ -156,7 +156,6 @@ export default function TogetherView() {
             </div>
           ) : (
             <form onSubmit={submitInvite}>
-              <span className={styles.eyebrow}>Together</span>
               <h2>Who would you like to invite?</h2>
 
               {unconnectedPeople.length > 0 ? (

@@ -7,6 +7,38 @@ import {
   feedbackVerdictValidator,
 } from "./chapterValidators";
 
+const graphNodeCategoryValidator = v.union(
+  v.literal("experience"),
+  v.literal("people"),
+  v.literal("place"),
+  v.literal("activity"),
+  v.literal("interest"),
+  v.literal("feeling"),
+  v.literal("condition"),
+  v.literal("pattern"),
+);
+
+const graphRelationValidator = v.union(
+  v.literal("lived"),
+  v.literal("cares_about"),
+  v.literal("shared_with"),
+  v.literal("happened_at"),
+  v.literal("involved"),
+  v.literal("evoked"),
+  v.literal("shaped_by"),
+  v.literal("supported"),
+  v.literal("reflects"),
+  v.literal("part_of"),
+  v.literal("drawn_to"),
+  v.literal("familiar_with"),
+  v.literal("curious_about"),
+  v.literal("avoids"),
+  v.literal("requires"),
+  v.literal("reinforces"),
+  v.literal("contrasts_with"),
+  v.literal("discovered_through"),
+);
+
 // These tables are intentionally channel infrastructure, not the new human
 // profile or experience graph. They let the iMessage edge accept each Photon
 // delivery once and preserve a stable external conversation identity while the
@@ -25,9 +57,115 @@ export default defineSchema({
     displayName: v.string(),
     normalizedName: v.string(),
     imageUrl: v.optional(v.string()),
+    homeCity: v.optional(v.string()),
+    homeArea: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_token_identifier", ["tokenIdentifier"]),
+
+  accountMemories: defineTable({
+    ownerAccountId: v.id("accounts"),
+    clientRequestId: v.string(),
+    source: v.union(v.literal("onboarding"), v.literal("reflection")),
+    rawText: v.string(),
+    title: v.string(),
+    summary: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_owner_account_id_and_created_at", [
+      "ownerAccountId",
+      "createdAt",
+    ])
+    .index("by_owner_account_id_and_client_request_id", [
+      "ownerAccountId",
+      "clientRequestId",
+    ]),
+
+  accountMemorySources: defineTable({
+    ownerAccountId: v.id("accounts"),
+    memoryId: v.id("accountMemories"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    mediaType: v.string(),
+    byteSize: v.number(),
+    context: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_memory_id", ["memoryId"]),
+
+  accountPendingUploads: defineTable({
+    ownerAccountId: v.id("accounts"),
+    storageId: v.id("_storage"),
+    createdAt: v.number(),
+  })
+    .index("by_owner_account_id", ["ownerAccountId"])
+    .index("by_storage_id", ["storageId"]),
+
+  accountGraphNodes: defineTable({
+    ownerAccountId: v.id("accounts"),
+    memoryId: v.id("accountMemories"),
+    personReferenceId: v.optional(v.id("personReferences")),
+    localKey: v.string(),
+    category: graphNodeCategoryValidator,
+    subtype: v.string(),
+    label: v.string(),
+    description: v.string(),
+    certainty: v.union(v.literal("fact"), v.literal("hypothesis")),
+    confidence: v.number(),
+    salience: v.number(),
+    evidence: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_owner_account_id_and_created_at", [
+      "ownerAccountId",
+      "createdAt",
+    ])
+    .index("by_memory_id", ["memoryId"]),
+
+  accountGraphEdges: defineTable({
+    ownerAccountId: v.id("accounts"),
+    memoryId: v.id("accountMemories"),
+    fromNodeId: v.id("accountGraphNodes"),
+    toNodeId: v.id("accountGraphNodes"),
+    relation: graphRelationValidator,
+    polarity: v.union(
+      v.literal("positive"),
+      v.literal("negative"),
+      v.literal("mixed"),
+      v.literal("neutral"),
+    ),
+    familiarity: v.union(
+      v.literal("familiar"),
+      v.literal("new"),
+      v.literal("mixed"),
+      v.literal("not_applicable"),
+    ),
+    strength: v.number(),
+    certainty: v.union(v.literal("fact"), v.literal("hypothesis")),
+    createdAt: v.number(),
+  })
+    .index("by_owner_account_id_and_created_at", [
+      "ownerAccountId",
+      "createdAt",
+    ])
+    .index("by_memory_id", ["memoryId"]),
+
+  accountExperiences: defineTable({
+    ownerAccountId: v.id("accounts"),
+    kind: experienceKindValidator,
+    requestText: v.string(),
+    experience: chapterExperienceValidator,
+    status: v.union(
+      v.literal("sent"),
+      v.literal("saved"),
+      v.literal("passed"),
+      v.literal("done"),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_owner_account_id_and_created_at", [
+    "ownerAccountId",
+    "createdAt",
+  ]),
 
   personReferences: defineTable({
     ownerAccountId: v.id("accounts"),

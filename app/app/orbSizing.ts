@@ -18,7 +18,8 @@ export type SizedOrbNode<T extends OrbSizingNode> = T & {
 export const SELF_ORB_RADIUS = 0.9;
 export const MIN_ORB_RADIUS = 0.22;
 export const MAX_ORB_RADIUS = 0.54;
-export const MOMENT_ORB_SCALE = 1.08;
+export const MOMENT_ORB_SCALE = 1.1;
+export const MAX_MOMENT_ORB_RADIUS = MAX_ORB_RADIUS * MOMENT_ORB_SCALE;
 export const MAJOR_ORB_IMPORTANCE = 0.8;
 
 const DEFAULT_SALIENCE = 0.5;
@@ -28,7 +29,6 @@ const IMPORTANCE_CURVE = 3.2;
 function clampUnit(value: number) {
   return Math.min(1, Math.max(0, value));
 }
-
 function roundRadius(value: number) {
   return Math.round(value * 1000) / 1000;
 }
@@ -37,8 +37,8 @@ function roundRadius(value: number) {
  * Resolves a stable visual hierarchy from human importance and graph context.
  *
  * Salience is deliberately dominant. Strong and repeated relationships add a
- * small amount of reinforcement, but category and epistemic confidence never
- * affect size. This keeps colour, scale, and opacity as separate visual signals.
+ * small amount of reinforcement. Moments receive a slight scale lift so they
+ * remain visually distinct from the places and details held inside them.
  */
 export function resolveOrbSizes<T extends OrbSizingNode>(
   nodes: readonly T[],
@@ -74,11 +74,12 @@ export function resolveOrbSizes<T extends OrbSizingNode>(
       salience +
       (1 - salience) * relationshipEvidence * RELATIONSHIP_REINFORCEMENT;
     const compressedImportance = evidencedImportance ** IMPORTANCE_CURVE;
-    const evidenceRadius =
+    const importanceRadius =
       MIN_ORB_RADIUS +
       (MAX_ORB_RADIUS - MIN_ORB_RADIUS) * compressedImportance;
     const radius = roundRadius(
-      evidenceRadius * (node.category === "experience" ? MOMENT_ORB_SCALE : 1),
+      importanceRadius *
+        (node.category === "experience" ? MOMENT_ORB_SCALE : 1),
     );
 
     return {

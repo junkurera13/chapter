@@ -9,8 +9,10 @@ import styles from "./page.module.css";
 
 export default function AuthenticatedApp({
   initialTab,
+  justConnected = false,
 }: {
   initialTab: ChapterTabIndex;
+  justConnected?: boolean;
 }) {
   return (
     <>
@@ -21,7 +23,7 @@ export default function AuthenticatedApp({
       </AuthLoading>
       <Authenticated>
         <AccountGate>
-          <ChapterApp initialTab={initialTab} />
+          <ChapterApp initialTab={initialTab} justConnected={justConnected} />
         </AccountGate>
       </Authenticated>
       <Unauthenticated>

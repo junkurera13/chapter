@@ -4,6 +4,7 @@ import {
   cleanDisplayName,
   findCurrentAccount,
   normalizeName,
+  requireCurrentAccount,
   requireIdentity,
 } from "./lib/auth";
 
@@ -56,5 +57,29 @@ export const ensureCurrent = mutation({
       createdAt: now,
       updatedAt: now,
     });
+  },
+});
+
+export const saveLocation = mutation({
+  args: {
+    homeCity: v.string(),
+    homeArea: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const account = await requireCurrentAccount(ctx);
+    const homeCity = args.homeCity.trim().replace(/\s+/g, " ");
+    const homeArea = args.homeArea?.trim().replace(/\s+/g, " ") || undefined;
+    if (homeCity.length < 2 || homeCity.length > 100) {
+      throw new Error("City must be between 2 and 100 characters.");
+    }
+    if (homeArea && homeArea.length > 100) {
+      throw new Error("Neighborhood must be at most 100 characters.");
+    }
+    await ctx.db.patch(account._id, {
+      homeCity,
+      homeArea,
+      updatedAt: Date.now(),
+    });
+    return account._id;
   },
 });

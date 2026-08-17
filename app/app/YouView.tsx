@@ -4,15 +4,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import {
+  EXPERIENCE_NODE_CATEGORIES,
   EXPERIENCE_CATEGORY_META,
   getExperienceRelationLabel,
   humanizeExperienceSubtype,
 } from "../../lib/experienceOntology";
 import { formatNodeLabel } from "../../lib/displayText";
+import { useConnectionInvite } from "../../lib/useConnectionInvite";
 import {
-  worldEdges,
-  worldNodes,
   type WorldEdge,
+  type WorldNode,
+  type WorldNodeCategory,
 } from "./graphData";
 import {
   loadOrbLayout,
@@ -55,14 +57,13 @@ import styles from "./YouView.module.css";
 const INITIAL_CAMERA_DESKTOP = new THREE.Vector3(0, 0.12, 10.25);
 const INITIAL_CAMERA_MOBILE = new THREE.Vector3(0, 0.1, 19);
 const CONNECTION_SEGMENTS = 28;
-const WORLD_NODE_BY_KEY = new Map(worldNodes.map((node) => [node.key, node]));
-const LEGEND_NODES = worldNodes.filter(
-  (node, index, nodes) =>
-    nodes.findIndex((candidate) => candidate.category === node.category) === index,
-);
+const LEGEND_CATEGORY_ORDER: readonly WorldNodeCategory[] = [
+  "self",
+  ...EXPERIENCE_NODE_CATEGORIES,
+];
 
 type RenderedConnection = {
-  edge: (typeof worldEdges)[number];
+  edge: WorldEdge;
   line: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>;
   curve: THREE.QuadraticBezierCurve3;
   point: THREE.Vector3;
@@ -71,10 +72,14 @@ type RenderedConnection = {
   totalDrawCount: number;
 };
 
-function worldCategoryLabel(node: (typeof worldNodes)[number]) {
-  return node.category === "self"
+function worldCategoryLabel(node: WorldNode) {
+  return worldCategoryName(node.category);
+}
+
+function worldCategoryName(category: WorldNodeCategory) {
+  return category === "self"
     ? "You"
-    : EXPERIENCE_CATEGORY_META[node.category].label;
+    : EXPERIENCE_CATEGORY_META[category].label;
 }
 
 function connectionOpacity(edge: WorldEdge) {
@@ -149,24 +154,57 @@ function softenBoundary(value: number, limit: number) {
   return Math.sign(value) * (limit + softenedOvershoot);
 }
 
-export default function YouView() {
+export default function YouView({
+  nodes: worldNodes,
+  edges: worldEdges,
+  onInviteCreated,
+}: {
+  nodes: readonly WorldNode[];
+  edges: readonly WorldEdge[];
+  onInviteCreated?: () => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRefs = useRef(new Map<string, HTMLButtonElement>());
   const selectedKeyRef = useRef<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-
+  // Open on arrival: the legend is what makes the colours mean anything the
+  // first time. It folds away for people who already know what they're seeing.
+  const [legendOpen, setLegendOpen] = useState(true);
+  const connectedNodeIds = useMemo(
+    () =>
+      worldNodes
+        .filter((node) => node.linkedUserId || node.connectionId)
+        .flatMap((node) => node.personReferenceId ? [node.personReferenceId] : []),
+    [worldNodes],
+  );
+  const { inviteState, prepareInvite, shareInvite } = useConnectionInvite({
+    connectedNodeIds,
+    onInviteCreated,
+  });
+  const worldNodeByKey = useMemo(
+    () => new Map(worldNodes.map((node) => [node.key, node])),
+    [worldNodes],
+  );
+  const legendCategories = useMemo(() => {
+    const presentCategories = new Set(
+      worldNodes.map((node) => node.category),
+    );
+    return LEGEND_CATEGORY_ORDER.filter((category) =>
+      presentCategories.has(category),
+    );
+  }, [worldNodes]);
 
   const selectedNode = useMemo(
-    () => (selectedKey ? (WORLD_NODE_BY_KEY.get(selectedKey) ?? null) : null),
-    [selectedKey],
+    () => (selectedKey ? (worldNodeByKey.get(selectedKey) ?? null) : null),
+    [selectedKey, worldNodeByKey],
   );
   const connectedItems = useMemo(() => {
     if (!selectedKey) return [];
 
     const items: Array<{
-      node: (typeof worldNodes)[number];
-      edge: (typeof worldEdges)[number];
+      node: WorldNode;
+      edge: WorldEdge;
       direction: "forward" | "reverse";
     }> = [];
 
@@ -180,7 +218,7 @@ export default function YouView() {
       if (!direction) continue;
 
       const connectedKey = direction === "forward" ? edge.to : edge.from;
-      const node = WORLD_NODE_BY_KEY.get(connectedKey);
+      const node = worldNodeByKey.get(connectedKey);
       if (node) items.push({ node, edge, direction });
     }
 
@@ -189,7 +227,7 @@ export default function YouView() {
         second.edge.strength - first.edge.strength ||
         first.node.label.localeCompare(second.node.label),
     );
-  }, [selectedKey]);
+  }, [selectedKey, worldEdges, worldNodeByKey]);
 
   useEffect(() => {
     selectedKeyRef.current = selectedKey;
@@ -384,6 +422,25 @@ export default function YouView() {
       }
     }
 
+    // The drag boundary follows the graph's actual extent (plus breathing
+    // room) instead of a fixed box, so orbs on far-out branches remain fully
+    // draggable while still keeping the world visually contained.
+    const dragBoundary = new THREE.Vector3(5.2, 3.8, 2.8);
+    for (const restPosition of restPositions.values()) {
+      dragBoundary.x = Math.min(
+        28,
+        Math.max(dragBoundary.x, Math.abs(restPosition.x) + 2.6),
+      );
+      dragBoundary.y = Math.min(
+        28,
+        Math.max(dragBoundary.y, Math.abs(restPosition.y) + 2.6),
+      );
+      dragBoundary.z = Math.min(
+        28,
+        Math.max(dragBoundary.z, Math.abs(restPosition.z) + 1.4),
+      );
+    }
+
     const centreRestPosition = restPositions.get("self");
     for (const node of worldNodes) {
       const restPosition = restPositions.get(node.key);
@@ -467,8 +524,7 @@ export default function YouView() {
     const panUp = new THREE.Vector3();
     const panOffset = new THREE.Vector3();
     const pointerCanvasPosition = new THREE.Vector2();
-    const timer = new THREE.Timer();
-    timer.connect(document);
+    const clock = new THREE.Clock();
     const birthEpochMs = window.performance.now();
     const focusWorldPosition = new THREE.Vector3();
     const focusViewDirection = new THREE.Vector3();
@@ -551,7 +607,7 @@ export default function YouView() {
 
     function requestCameraFocus(nodeKey: string) {
       const mesh = meshes.get(nodeKey);
-      const node = WORLD_NODE_BY_KEY.get(nodeKey);
+      const node = worldNodeByKey.get(nodeKey);
       if (!mesh || !node) return;
 
       resetCursorOffset(nodeKey);
@@ -707,9 +763,9 @@ export default function YouView() {
             draggedWorldPosition.copy(dragIntersection).add(dragOffset);
             world.worldToLocal(draggedWorldPosition);
             draggedWorldPosition.set(
-              softenBoundary(draggedWorldPosition.x, 5.2),
-              softenBoundary(draggedWorldPosition.y, 3.8),
-              softenBoundary(draggedWorldPosition.z, 2.8),
+              softenBoundary(draggedWorldPosition.x, dragBoundary.x),
+              softenBoundary(draggedWorldPosition.y, dragBoundary.y),
+              softenBoundary(draggedWorldPosition.z, dragBoundary.z),
             );
             restPosition.copy(draggedWorldPosition);
             cursorOffset.set(0, 0, 0);
@@ -1021,7 +1077,7 @@ export default function YouView() {
             .copy(cursorAwayWorld)
             .normalize()
             .applyQuaternion(inverseWorldQuaternion);
-          const node = WORLD_NODE_BY_KEY.get(influencedKey);
+          const node = worldNodeByKey.get(influencedKey);
           if (node) {
             const maximumOffset = Math.min(
               node.radius * CURSOR_MAX_RADIUS_FRACTION,
@@ -1107,10 +1163,9 @@ export default function YouView() {
     resizeObserver.observe(containerElement);
     resize();
 
-    function render(timestamp?: number) {
+    function render() {
       animationFrame = window.requestAnimationFrame(render);
-      timer.update(timestamp);
-      const deltaSeconds = timer.getDelta();
+      const deltaSeconds = clock.getDelta();
       syncCameraSelection();
 
       if (hasCameraDestination) {
@@ -1252,7 +1307,14 @@ export default function YouView() {
               verticalProjectionScale /
               depth
             : 0;
-        const labelHalfHeight = node.category === "self" ? 15.5 : 13.5;
+        // Labels can wrap onto multiple rows, so their real height decides
+        // how far below the orb they sit.
+        const labelHalfHeight =
+          label.offsetHeight > 0
+            ? label.offsetHeight / 2
+            : node.category === "self"
+              ? 15.5
+              : 13.5;
         const y =
           orbCenterY + projectedRadius + labelHalfHeight * labelScale + 6;
         const hideMinorOnMobile =
@@ -1339,7 +1401,6 @@ export default function YouView() {
       canvasElement.removeEventListener("wheel", onWheel, true);
       canvasElement.removeEventListener("contextmenu", onContextMenu);
       window.removeEventListener("pagehide", persistOrbPositions);
-      timer.dispose();
       controls.dispose();
       for (const mesh of meshes.values()) {
         for (const child of mesh.children) {
@@ -1362,7 +1423,7 @@ export default function YouView() {
       for (const texture of textures) texture.dispose();
       renderer.dispose();
     };
-  }, []);
+  }, [worldEdges, worldNodeByKey, worldNodes]);
 
   return (
     <div className={styles.world} ref={containerRef}>
@@ -1373,26 +1434,50 @@ export default function YouView() {
         aria-label="An interactive three-dimensional map of your memories"
       />
 
-      <aside className={styles.legend} aria-label="Orb legend">
-        <div className={styles.legendHeading}>
-          <h2>Legend</h2>
-          <span>{worldNodes.length} orbs</span>
-        </div>
-        <ul className={styles.legendList}>
-          {LEGEND_NODES.map((node) => (
-            <li key={node.category}>
-              <span
-                className={styles.legendOrb}
-                aria-hidden="true"
-                style={{ background: categoryOrbGradient(node.category) }}
-              />
-              <span>{worldCategoryLabel(node)}</span>
-            </li>
-          ))}
-        </ul>
+      <aside
+        className={styles.legend}
+        aria-label="Orb legend"
+      >
+        <h2>
+          <button
+            type="button"
+            className={styles.legendToggle}
+            aria-expanded={legendOpen}
+            onClick={() => setLegendOpen((open) => !open)}
+          >
+            Legend
+            <svg
+              className={styles.legendChevron}
+              data-open={legendOpen ? "true" : "false"}
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m6 8 4 4 4-4" />
+            </svg>
+          </button>
+        </h2>
+        {legendOpen ? (
+          <ul className={styles.legendList}>
+            {legendCategories.map((category) => (
+              <li key={category}>
+                <span
+                  className={styles.legendOrb}
+                  aria-hidden="true"
+                  style={{ background: categoryOrbGradient(category) }}
+                />
+                <span>{worldCategoryName(category)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </aside>
 
-      <div className={styles.labels} aria-label="Memory orbs">
+      <div className={styles.labels} aria-label="Memory graph nodes">
         {worldNodes.map((node) => (
           <button
             className={styles.nodeLabel}
@@ -1443,18 +1528,63 @@ export default function YouView() {
             </div>
             <h2>{formatNodeLabel(selectedNode.label)}</h2>
             <p className={styles.description}>{selectedNode.description}</p>
+            {selectedNode.category === "people" && selectedNode.personReferenceId ? (
+              selectedNode.linkedUserId || selectedNode.connectionId ? (
+                <div className={styles.connectedStatus}>
+                  <span aria-hidden="true" />
+                  Connected on Chapter
+                </div>
+              ) : (
+                <div className={styles.inviteAction}>
+                  <button
+                    type="button"
+                    disabled={
+                      inviteState?.nodeId === selectedNode.personReferenceId &&
+                      inviteState.status === "creating"
+                    }
+                    onClick={() => {
+                      const currentInvite =
+                        inviteState?.nodeId === selectedNode.personReferenceId
+                          ? inviteState
+                          : null;
+                      if (currentInvite?.url && currentInvite.status !== "error") {
+                        shareInvite(selectedNode.personReferenceId!, currentInvite.url);
+                      } else {
+                        void prepareInvite(selectedNode.personReferenceId!);
+                      }
+                    }}
+                  >
+                    {inviteState?.nodeId === selectedNode.personReferenceId &&
+                    inviteState.status === "creating"
+                      ? "Making invite…"
+                      : inviteState?.nodeId === selectedNode.personReferenceId &&
+                          (inviteState.status === "ready" ||
+                            inviteState.status === "shared")
+                        ? inviteState.status === "shared"
+                          ? "Share invite again"
+                          : "Share invite"
+                        : inviteState?.nodeId === selectedNode.personReferenceId &&
+                            inviteState.status === "error"
+                          ? "Try invite again"
+                          : `Invite ${formatNodeLabel(selectedNode.label)}`}
+                  </button>
+                </div>
+              )
+            ) : null}
             <div className={styles.evidence}>
               <span>
                 {selectedNode.category === "self"
-                  ? "how this world grows"
-                  : "from what you told Chapter"}
+                  ? "How this world grows"
+                  : selectedNode.sourceType === "connection"
+                    ? "How you connected"
+                    : "From what you told Chapter"}
               </span>
               <p>{selectedNode.evidence}</p>
             </div>
             {connectedItems.length > 0 ? (
               <div className={styles.connections}>
                 <div className={styles.connectionsHeading}>
-                  <span className={styles.connectionsLabel}>in your world</span>
+                  <span className={styles.connectionsLabel}>In your world</span>
                   <span className={styles.connectionsCount}>
                     {connectedItems.length} direct
                   </span>

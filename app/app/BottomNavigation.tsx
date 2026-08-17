@@ -5,21 +5,24 @@ import { useRef, type KeyboardEvent } from "react";
 import { ChapterMark } from "@/components/ChapterMark";
 import styles from "./BottomNavigation.module.css";
 
-export const CHAPTER_TABS = ["Now", "You", "Together"] as const;
+export const CHAPTER_TABS = ["You", "Now", "Together"] as const;
 export type ChapterTabIndex = 0 | 1 | 2;
 
 type BottomNavigationProps = {
   activeIndex: ChapterTabIndex;
   onChange: (index: ChapterTabIndex) => void;
+  worldLocked: boolean;
 };
 
 export default function BottomNavigation({
   activeIndex,
   onChange,
+  worldLocked,
 }: BottomNavigationProps) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   function selectTab(index: ChapterTabIndex, moveFocus = false) {
+    if (worldLocked && index !== 0) return;
     onChange(index);
 
     if (moveFocus) {
@@ -28,6 +31,7 @@ export default function BottomNavigation({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (worldLocked) return;
     let nextIndex: number | undefined;
 
     if (event.key === "ArrowRight") {
@@ -58,7 +62,9 @@ export default function BottomNavigation({
         >
           <span className={styles.candy} aria-hidden="true" />
 
-          {CHAPTER_TABS.map((tab, index) => (
+          {CHAPTER_TABS.map((tab, index) => {
+            const disabled = worldLocked && index !== 0;
+            return (
             <button
               className={styles.tab}
               type="button"
@@ -66,7 +72,10 @@ export default function BottomNavigation({
               id={`chapter-tab-${index}`}
               aria-controls={`chapter-panel-${index}`}
               aria-selected={activeIndex === index}
+              aria-label={disabled ? `${tab}, unlocks after your first memory` : tab}
               tabIndex={activeIndex === index ? 0 : -1}
+              disabled={disabled}
+              title={disabled ? "Share a memory in You to unlock" : undefined}
               key={tab}
               ref={(element) => {
                 tabRefs.current[index] = element;
@@ -76,7 +85,8 @@ export default function BottomNavigation({
             >
               <span>{tab}</span>
             </button>
-          ))}
+            );
+          })}
         </div>
       </nav>
 
