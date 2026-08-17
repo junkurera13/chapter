@@ -43,7 +43,7 @@
   position: absolute;
   right: 0;
   bottom: calc(100% + 14px);
-  width: min(276px, calc(100vw - 32px));
+  width: min(268px, calc(100vw - 32px));
   padding: 10px;
   border: 1px solid rgba(28, 28, 25, 0.08);
   border-radius: 22px;
