@@ -15,11 +15,12 @@ import {
   type ReactNode,
 } from "react";
 
+import ChapterAuth from "@/components/auth/ChapterAuth";
 import { api } from "@/convex/_generated/api";
 
 import styles from "./LandingActions.module.css";
 
-type LandingSurface = "access" | "waitlist";
+type LandingSurface = "access" | "waitlist" | "sign-in";
 
 type LandingActionsContextValue = {
   openSurface: (surface: LandingSurface, trigger: HTMLButtonElement) => void;
@@ -95,7 +96,16 @@ export function LandingActionsProvider({ children }: { children: ReactNode }) {
         <WaitlistSurface onClose={closeSurface} />
       ) : null}
       {surface === "access" ? (
-        <AccessSurface onClose={closeSurface} />
+        <AccessSurface
+          onClose={closeSurface}
+          onUnlocked={() => setSurface("sign-in")}
+        />
+      ) : null}
+      {surface === "sign-in" ? (
+        <ChapterAuth
+          redirectUrl="/app"
+          onClose={closeSurface}
+        />
       ) : null}
     </LandingActionsContext>
   );
@@ -280,7 +290,13 @@ function WaitlistSurface({ onClose }: { onClose: () => void }) {
   );
 }
 
-function AccessSurface({ onClose }: { onClose: () => void }) {
+function AccessSurface({
+  onClose,
+  onUnlocked,
+}: {
+  onClose: () => void;
+  onUnlocked: () => void;
+}) {
   const { isSignedIn } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const [password, setPassword] = useState("");
@@ -308,7 +324,11 @@ function AccessSurface({ onClose }: { onClose: () => void }) {
         return;
       }
 
-      window.location.assign(isSignedIn ? "/app" : "/sign-in");
+      if (isSignedIn) {
+        window.location.assign("/app");
+        return;
+      }
+      onUnlocked();
     } catch {
       setError("Something went wrong. Try again.");
     } finally {

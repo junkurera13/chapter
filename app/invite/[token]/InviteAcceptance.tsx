@@ -1,6 +1,6 @@
 "use client";
 
-import { SignInButton, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import {
   AuthLoading,
   Authenticated,
@@ -130,11 +130,12 @@ export default function InviteAcceptance({ token }: { token: string }) {
             <SignedInInvitation token={token} />
           </Authenticated>
           <Unauthenticated>
-            <SignInButton mode="modal" forceRedirectUrl={redirectUrl}>
-              <button type="button" className={styles.signIn}>
-                Continue
-              </button>
-            </SignInButton>
+            <Link
+              href={`/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}`}
+              className={styles.signIn}
+            >
+              Continue
+            </Link>
             <p className={styles.note}>You’ll choose whether to accept after signing in.</p>
           </Unauthenticated>
         </section>
