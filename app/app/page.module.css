@@ -127,6 +127,11 @@
   color: #25211d;
 }
 
+.worldSearch[aria-pressed="true"] {
+  background: #e9e6e1;
+  color: #25211d;
+}
+
 .worldSearch:focus-visible,
 .addMemoryButton:focus-visible {
   outline: 2px solid #9e8265;
@@ -269,26 +274,4 @@
   background: #1a1918;
   color: #fff;
   cursor: pointer;
-}
-
-.accountPulse {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #e9a9c0;
-  box-shadow: 0 0 0 0 rgba(233, 169, 192, 0.26);
-  animation: accountPulse 1.6s ease-in-out infinite;
-}
-
-@keyframes accountPulse {
-  50% {
-    box-shadow: 0 0 0 12px rgba(233, 169, 192, 0);
-    transform: scale(0.84);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .accountPulse {
-    animation: none;
-  }
 }

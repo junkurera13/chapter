@@ -35,7 +35,7 @@
 }
 
 .chrome {
-  --chrome-bottom: max(20px, env(safe-area-inset-bottom));
+  --chrome-bottom: max(28px, calc(env(safe-area-inset-bottom) + 8px));
   --chrome-side: 16px;
   --dock-size: 52px;
   --logo-size: 42px;
@@ -63,7 +63,7 @@
 
 .logo {
   position: absolute;
-  left: 40px;
+  left: 48px;
   /* Vertically center logo with the 52px nav pill */
   bottom: calc((var(--dock-size) - var(--logo-size)) / 2);
   display: block;
@@ -76,7 +76,7 @@
   --profile-size: 42px;
 
   position: absolute;
-  right: 22px;
+  right: 30px;
   /* Vertically center with the 52px nav pill */
   bottom: calc((var(--dock-size) - var(--profile-size)) / 2);
   display: grid;
@@ -84,24 +84,6 @@
   height: var(--profile-size);
   place-items: center;
   pointer-events: auto;
-}
-
-.profileTrigger {
-  width: var(--profile-size);
-  height: var(--profile-size);
-  border-radius: 50%;
-  box-shadow: 0 3px 12px rgba(25, 22, 18, 0.16);
-}
-
-.profileAvatar {
-  width: var(--profile-size);
-  height: var(--profile-size);
-  border: 1px solid rgba(255, 255, 255, 0.84);
-}
-
-.profileTrigger:focus-visible {
-  outline: 2px solid #666;
-  outline-offset: 2px;
 }
 
 .tabs {
@@ -296,11 +278,6 @@
   color: var(--candy-ink);
 }
 
-.tab:disabled {
-  color: rgba(255, 255, 255, 0.25);
-  cursor: not-allowed;
-}
-
 .tab:active span {
   transform: scale(0.96);
 }
@@ -311,7 +288,7 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .tab:not([aria-selected="true"]):not(:disabled):hover {
+  .tab:not([aria-selected="true"]):hover {
     color: rgba(255, 255, 255, 0.84);
   }
 }

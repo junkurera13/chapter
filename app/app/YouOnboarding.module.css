@@ -26,9 +26,7 @@
 
 /* Moved, not spaced: a transform leaves the composer below it where it is. */
 .onboarding[data-inline="true"] .prompt {
-  gap: 0.7rem;
   margin: 0;
-  transform: translateY(0.85rem);
 }
 
 .onboarding[data-inline="true"] .orb {
@@ -39,6 +37,10 @@
 .onboarding[data-inline="true"] .promptCopy p {
   font-size: clamp(1.95rem, 3.7vw, 2.6rem);
   letter-spacing: -0.042em;
+}
+
+.onboarding[data-inline="true"] .workspace {
+  margin-top: clamp(1.5rem, 3vh, 2rem);
 }
 
 /* A window is not a screen: the furniture comes down to the room it is in. */
@@ -1017,4 +1019,3 @@
     backdrop-filter: none;
   }
 }
-

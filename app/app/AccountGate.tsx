@@ -3,6 +3,7 @@
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import ChapterLoadingMark from "../../components/chapter-loading-mark";
 import { api } from "../../convex/_generated/api";
 import styles from "./page.module.css";
 
@@ -39,8 +40,8 @@ export default function AccountGate({ children }: { children: ReactNode }) {
 
   if (account === undefined || account === null) {
     return (
-      <main className={styles.accountState} aria-label="Opening Chapter">
-        <span className={styles.accountPulse} aria-hidden="true" />
+      <main className={styles.accountState}>
+        <ChapterLoadingMark label="Opening Chapter" />
       </main>
     );
   }

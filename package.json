@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx scripts/with-chapter-dev-env.mts next dev",
+    "dev": "npx convex dev --start 'tsx scripts/with-chapter-dev-env.mts next dev'",
     "build": "next build",
     "start": "next start",
     "agent:dev": "tsx scripts/with-chapter-dev-env.mts eve dev --name Chapter",

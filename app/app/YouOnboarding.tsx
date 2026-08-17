@@ -333,34 +333,27 @@ export default function YouOnboarding({
 
         <div className={styles.stage}>
           <div className={styles.prompt}>
-            <motion.button
-              className={styles.orb}
-              type="button"
-              aria-hidden={composerOnly || undefined}
-              tabIndex={composerOnly ? -1 : undefined}
-              aria-label={
-                started
-                  ? "Return to the memory question"
-                  : "Begin adding a memory"
-              }
-              layout
-              layoutDependency={started}
-              transition={layoutTransition}
-              disabled={submitting || composerOnly}
-              onClick={() => setStarted((current) => !current)}
-            >
-              {/*
-                In the window it plays unconditionally. The orb decides for
-                itself whether it is on screen by watching its nearest <main>,
-                and inside a fixed overlay above a clipped canvas that check
-                answers "no" forever — so the orb would sit on its poster.
-              */}
-              <AgentOrbVideo
-                src="/you-agent-orb.mp4"
-                poster="/you-agent-orb-poster.jpg"
-                playWhileMounted={composerOnly}
-              />
-            </motion.button>
+            {!composerOnly ? (
+              <motion.button
+                className={styles.orb}
+                type="button"
+                aria-label={
+                  started
+                    ? "Return to the memory question"
+                    : "Begin adding a memory"
+                }
+                layout
+                layoutDependency={started}
+                transition={layoutTransition}
+                disabled={submitting}
+                onClick={() => setStarted((current) => !current)}
+              >
+                <AgentOrbVideo
+                  src="/you-agent-orb.mp4"
+                  poster="/you-agent-orb-poster.jpg"
+                />
+              </motion.button>
+            ) : null}
 
             <motion.div
               className={styles.promptCopy}
@@ -382,7 +375,9 @@ export default function YouOnboarding({
                 >
                   {!started
                     ? "What’s a moment that still feels like yesterday?"
-                    : "Tell me everything you remember."}
+                    : composerOnly
+                      ? "Add a memory"
+                      : "Tell me everything you remember."}
                 </motion.p>
               </AnimatePresence>
             </motion.div>
@@ -441,8 +436,8 @@ export default function YouOnboarding({
                             value={memoryText}
                             maxLength={6000}
                             disabled={submitting}
-                            aria-label="Tell Chapter about this memory"
-                            placeholder="Start anywhere. The place, the people, what happened, how it felt… You can also add up to four photos, with a little context for each."
+                            aria-label="Add a memory to Chapter"
+                            placeholder="Write what happened, where, who was there, or why it mattered. You can also add up to four photos."
                             onChange={(event) => {
                               setSubmissionFailure(null);
                               setMemoryText(event.target.value);
@@ -457,8 +452,8 @@ export default function YouOnboarding({
                                 type="submit"
                                 aria-label={
                                   submitting
-                                    ? "Chapter is understanding this memory"
-                                    : "Send memory to Chapter"
+                                    ? "Chapter is processing this memory"
+                                    : "Save memory"
                                 }
                                 disabled={submitting}
                                 initial={
@@ -850,4 +845,3 @@ export default function YouOnboarding({
     </LayoutGroup>
   );
 }
-

@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import {
   DM_Sans,
   Instrument_Sans,
-  Newsreader,
 } from "next/font/google";
 import ConvexClientProvider from "./ConvexClientProvider";
 import { ClerkCaptcha } from "@/components/auth/ClerkCaptcha";
@@ -12,12 +11,6 @@ import "./globals.css";
 const chapterSans = DM_Sans({
   variable: "--font-chapter-sans",
   subsets: ["latin"],
-});
-
-const chapterSerif = Newsreader({
-  variable: "--font-chapter-serif",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
 });
 
 const chapterInstrument = Instrument_Sans({
@@ -39,7 +32,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${chapterSans.variable} ${chapterSerif.variable} ${chapterInstrument.variable} h-full antialiased`}
+      className={`${chapterSans.variable} ${chapterInstrument.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-[#f3efe7] font-[family-name:var(--font-chapter-sans)] text-[#1c1c19]">
         <ClerkProvider>

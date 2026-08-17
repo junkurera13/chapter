@@ -1,0 +1,335 @@
+.root,
+.placeholder {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 42px;
+}
+
+.placeholder {
+  border-radius: 50%;
+  background: #ebe8e2;
+}
+
+.trigger {
+  display: block;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  overflow: hidden;
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  border-radius: 50%;
+  background: #e8e4dd;
+  box-shadow: 0 3px 12px rgba(25, 22, 18, 0.16);
+  cursor: pointer;
+}
+
+.trigger img,
+.identity img,
+.photoEditor img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.trigger:focus-visible {
+  outline: 2px solid #6e6255;
+  outline-offset: 3px;
+}
+
+.panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 14px);
+  width: min(276px, calc(100vw - 32px));
+  padding: 10px;
+  border: 1px solid rgba(28, 28, 25, 0.08);
+  border-radius: 22px;
+  background: rgba(255, 254, 252, 0.98);
+  box-shadow:
+    0 1px 1px rgba(28, 28, 25, 0.04),
+    0 18px 48px rgba(28, 28, 25, 0.14);
+  color: #25211d;
+  pointer-events: auto;
+  transform-origin: right bottom;
+  animation: panelIn 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  backdrop-filter: blur(18px) saturate(112%);
+}
+
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateY(7px) scale(0.98);
+  }
+}
+
+.view {
+  animation: viewIn 150ms ease both;
+}
+
+@keyframes viewIn {
+  from {
+    opacity: 0;
+    transform: translateX(3px);
+  }
+}
+
+.identity {
+  display: flex;
+  min-height: 70px;
+  align-items: center;
+  gap: 13px;
+  padding: 7px 8px 13px;
+}
+
+.identity img {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 50%;
+  background: #e8e4dd;
+}
+
+.identity strong,
+.viewHeader strong {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu,
+.logoutSection {
+  padding: 7px 0;
+  border-top: 1px solid rgba(28, 28, 25, 0.07);
+}
+
+.menu button,
+.menu a,
+.logout {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  appearance: none;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #25211d;
+  cursor: pointer;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1;
+  text-align: left;
+  text-decoration: none;
+}
+
+.menu button:hover,
+.menu a:hover,
+.logout:hover {
+  background: #f3f0eb;
+}
+
+.menu button:focus-visible,
+.menu a:focus-visible,
+.logout:focus-visible,
+.viewHeader button:focus-visible,
+.photoEditor:focus-visible,
+.save:focus-visible,
+.field input:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 2px;
+}
+
+.chevron {
+  color: rgba(37, 33, 29, 0.35);
+  font-size: 21px;
+  font-weight: 300;
+  transform: translateY(-1px);
+}
+
+.logoutSection {
+  padding-bottom: 0;
+}
+
+.logout {
+  justify-content: flex-start;
+  gap: 10px;
+  color: #9a4055;
+}
+
+.logout svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.logout:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.viewHeader {
+  position: relative;
+  display: grid;
+  min-height: 44px;
+  align-items: center;
+  justify-items: center;
+}
+
+.viewHeader button {
+  position: absolute;
+  left: 0;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #4b443c;
+  cursor: pointer;
+  font: 400 17px/1 var(--font-chapter-sans), system-ui, sans-serif;
+}
+
+.viewHeader button:hover {
+  background: #f3f0eb;
+}
+
+.photoEditor {
+  position: relative;
+  display: block;
+  width: 76px;
+  height: 76px;
+  margin: 14px auto 20px;
+  padding: 0;
+  overflow: hidden;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: #e8e4dd;
+  cursor: pointer;
+}
+
+.photoEditor span {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 6px 0 7px;
+  background: rgba(20, 18, 16, 0.62);
+  color: #fff;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  padding: 0 5px;
+}
+
+.field span {
+  color: rgba(37, 33, 29, 0.55);
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 13px;
+  border: 1px solid rgba(28, 28, 25, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  color: #25211d;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 14px;
+  outline: 0;
+}
+
+.save {
+  width: calc(100% - 10px);
+  min-height: 44px;
+  margin: 14px 5px 3px;
+  appearance: none;
+  border: 0;
+  border-radius: 12px;
+  background: #25211d;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.save:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.error {
+  margin: 9px 7px 2px;
+  color: #9a4055;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.billingState {
+  padding: 30px 14px 26px;
+  text-align: center;
+}
+
+.billingState strong {
+  display: block;
+  margin-bottom: 7px;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.billingState p {
+  max-width: 210px;
+  margin: 0 auto;
+  color: rgba(37, 33, 29, 0.56);
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .view {
+    animation: none;
+  }
+}

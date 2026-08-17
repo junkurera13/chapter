@@ -83,7 +83,7 @@
 
 .empty h1 {
   margin: 0;
-  font-family: var(--font-chapter-serif), Georgia, serif;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
   font-size: clamp(31px, 5vw, 43px);
   font-weight: 440;
   letter-spacing: -0.04em;
@@ -191,7 +191,7 @@
     radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.76), transparent 22%),
     linear-gradient(145deg, #ead4f5, #ba84d5 64%, #76508d);
   color: rgba(51, 28, 61, 0.78);
-  font-family: var(--font-chapter-serif), Georgia, serif;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
   font-size: 35px;
 }
 
@@ -263,7 +263,7 @@
 .composer h2 {
   max-width: 340px;
   margin: 0 0 27px;
-  font-family: var(--font-chapter-serif), Georgia, serif;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
   font-size: 31px;
   font-weight: 450;
   letter-spacing: -0.04em;
@@ -300,7 +300,7 @@
   border-radius: 50%;
   background: linear-gradient(145deg, #ead4f5, #ba84d5);
   color: #4c3158;
-  font-family: var(--font-chapter-serif), Georgia, serif;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
   font-size: 15px;
 }
 

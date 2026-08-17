@@ -7,7 +7,6 @@ import { api } from "../../convex/_generated/api";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
 import AgentOrbVideo from "../../components/landing/agent-orb-video";
 import ChapterLoadingMark from "../../components/chapter-loading-mark";
-import WelcomeDialog from "../../components/welcome-dialog";
 import BottomNavigation, { type ChapterTabIndex } from "./BottomNavigation";
 import { buildWorldGraph } from "./graphData";
 import NowView from "./NowView";
@@ -20,33 +19,30 @@ const TAB_VIEWS = ["you", "now", "together"] as const;
 
 export default function ChapterApp({
   initialTab = 0,
-  justConnected = false,
 }: {
   initialTab?: ChapterTabIndex;
-  justConnected?: boolean;
 }) {
   const liveGraph = useQuery(api.webMemory.graph);
   const [activeIndex, setActiveIndex] = useState<ChapterTabIndex>(initialTab);
   const [addingMemory, setAddingMemory] = useState(false);
   const [extracting, setExtracting] = useState(false);
-  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const [searchingWorld, setSearchingWorld] = useState(false);
   const graph = liveGraph as ExperienceGraphRecord | undefined;
-  const worldLocked = graph === undefined || graph.memoryCount === 0;
-  const displayedIndex = worldLocked ? 0 : activeIndex;
+  const displayedIndex = activeIndex;
   const worldGraph = useMemo(
     () => graph && graph.nodes.length > 0 ? buildWorldGraph(graph) : null,
     [graph],
   );
 
   const changeTab = useCallback((nextIndex: ChapterTabIndex) => {
-    if (worldLocked && nextIndex !== 0) return;
     setActiveIndex(nextIndex);
+    if (nextIndex !== 0) setSearchingWorld(false);
     const url = new URL(window.location.href);
     url.searchParams.set("view", TAB_VIEWS[nextIndex]);
     url.searchParams.delete("tab");
     url.searchParams.delete("joined");
     window.history.replaceState(null, "", url);
-  }, [worldLocked]);
+  }, []);
 
   useEffect(() => {
     if (!addingMemory) return;
@@ -66,14 +62,11 @@ export default function ChapterApp({
     );
   } else if (graph.memoryCount === 0) {
     youPanel = (
-      <YouOnboarding
-        onMemoryCreated={() => {
-          setActiveIndex(0);
-          const url = new URL(window.location.href);
-          url.searchParams.set("view", "you");
-          url.searchParams.delete("joined");
-          window.history.replaceState(null, "", url);
-        }}
+      <YouView
+        nodes={[]}
+        edges={[]}
+        searchOpen={searchingWorld}
+        onSearchClose={() => setSearchingWorld(false)}
       />
     );
   } else if (!worldGraph) {
@@ -84,31 +77,12 @@ export default function ChapterApp({
     );
   } else {
     youPanel = (
-      <>
-        <YouView nodes={worldGraph.nodes} edges={worldGraph.edges} />
-        <div className={styles.worldControls}>
-          {extracting ? (
-            <p className={styles.extracting} role="status" aria-live="polite">
-              <span className={styles.extractingOrb} aria-hidden="true">
-                <AgentOrbVideo
-                  src="/you-agent-orb.mp4"
-                  poster="/you-agent-orb-poster.jpg"
-                  playWhileMounted
-                  preload="auto"
-                />
-              </span>
-              Extracting
-            </p>
-          ) : (
-            <button type="button" className={styles.addMemoryButton} onClick={() => setAddingMemory(true)}>
-              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                <path d="M10 4.5v11M4.5 10h11" />
-              </svg>
-              New Memory
-            </button>
-          )}
-        </div>
-      </>
+      <YouView
+        nodes={worldGraph.nodes}
+        edges={worldGraph.edges}
+        searchOpen={searchingWorld}
+        onSearchClose={() => setSearchingWorld(false)}
+      />
     );
   }
 
@@ -128,6 +102,46 @@ export default function ChapterApp({
       >
         {activePanel}
       </section>
+
+      {displayedIndex === 0 && graph !== undefined ? (
+        <div className={styles.worldControls}>
+          <button
+            type="button"
+            className={styles.worldSearch}
+            aria-label="Search your world"
+            aria-pressed={searchingWorld}
+            onClick={() => setSearchingWorld((open) => !open)}
+          >
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+              <circle cx="8.7" cy="8.7" r="4.7" />
+              <path d="m12.2 12.2 3.8 3.8" />
+            </svg>
+          </button>
+          {extracting ? (
+            <p className={styles.extracting} role="status" aria-live="polite">
+              <span className={styles.extractingOrb} aria-hidden="true">
+                <AgentOrbVideo
+                  src="/you-agent-orb.mp4"
+                  poster="/you-agent-orb-poster.jpg"
+                  playWhileMounted
+                  preload="auto"
+                />
+              </span>
+              Extracting
+            </p>
+          ) : (
+            <button type="button" className={styles.addMemoryButton} onClick={() => {
+              setSearchingWorld(false);
+              setAddingMemory(true);
+            }}>
+              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M10 4.5v11M4.5 10h11" />
+              </svg>
+              New Memory
+            </button>
+          )}
+        </div>
+      ) : null}
 
       {addingMemory ? (
         <div className={styles.memoryScrim} role="dialog" aria-modal="true" aria-label="Add a memory">
@@ -152,14 +166,7 @@ export default function ChapterApp({
         </div>
       ) : null}
 
-      {justConnected && worldLocked && !welcomeDismissed ? (
-        <WelcomeDialog
-          message="You’re connected — add one memory and Chapter can plan something for the two of you."
-          onDismiss={() => setWelcomeDismissed(true)}
-        />
-      ) : null}
-
-      <BottomNavigation activeIndex={displayedIndex} onChange={changeTab} worldLocked={worldLocked} />
+      <BottomNavigation activeIndex={displayedIndex} onChange={changeTab} />
     </main>
   );
 }

@@ -58,7 +58,6 @@ const INITIAL_CAMERA_DESKTOP = new THREE.Vector3(0, 0.12, 10.25);
 const INITIAL_CAMERA_MOBILE = new THREE.Vector3(0, 0.1, 19);
 const CONNECTION_SEGMENTS = 28;
 const LEGEND_CATEGORY_ORDER: readonly WorldNodeCategory[] = [
-  "self",
   ...EXPERIENCE_NODE_CATEGORIES,
 ];
 
@@ -158,19 +157,23 @@ export default function YouView({
   nodes: worldNodes,
   edges: worldEdges,
   onInviteCreated,
+  searchOpen = false,
+  onSearchClose,
 }: {
   nodes: readonly WorldNode[];
   edges: readonly WorldEdge[];
   onInviteCreated?: () => void;
+  searchOpen?: boolean;
+  onSearchClose?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRefs = useRef(new Map<string, HTMLButtonElement>());
   const selectedKeyRef = useRef<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  // Open on arrival: the legend is what makes the colours mean anything the
-  // first time. It folds away for people who already know what they're seeing.
-  const [legendOpen, setLegendOpen] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [legendOpen, setLegendOpen] = useState(false);
   const connectedNodeIds = useMemo(
     () =>
       worldNodes
@@ -187,6 +190,7 @@ export default function YouView({
     [worldNodes],
   );
   const legendCategories = useMemo(() => {
+    if (worldNodes.length === 0) return LEGEND_CATEGORY_ORDER;
     const presentCategories = new Set(
       worldNodes.map((node) => node.category),
     );
@@ -194,6 +198,16 @@ export default function YouView({
       presentCategories.has(category),
     );
   }, [worldNodes]);
+
+  const searchResults = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase();
+    if (!query) return worldNodes.slice(0, 8);
+    return worldNodes
+      .filter((node) =>
+        `${node.label} ${node.description}`.toLocaleLowerCase().includes(query),
+      )
+      .slice(0, 8);
+  }, [searchQuery, worldNodes]);
 
   const selectedNode = useMemo(
     () => (selectedKey ? (worldNodeByKey.get(selectedKey) ?? null) : null),
@@ -234,12 +248,22 @@ export default function YouView({
   }, [selectedKey]);
 
   useEffect(() => {
+    if (!searchOpen) return;
+    requestAnimationFrame(() => searchInputRef.current?.focus());
+  }, [searchOpen]);
+
+  useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setSelectedKey(null);
+      if (event.key !== "Escape") return;
+      if (searchOpen) {
+        onSearchClose?.();
+      } else {
+        setSelectedKey(null);
+      }
     }
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, []);
+  }, [onSearchClose, searchOpen]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -1434,8 +1458,54 @@ export default function YouView({
         aria-label="An interactive three-dimensional map of your memories"
       />
 
+      {searchOpen ? (
+        <aside className={styles.searchPanel} role="dialog" aria-label="Search your world">
+          <div className={styles.searchField}>
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+              <circle cx="8.5" cy="8.5" r="4.5" />
+              <path d="m11.8 11.8 3.7 3.7" />
+            </svg>
+            <input
+              ref={searchInputRef}
+              value={searchQuery}
+              aria-label="Search memories"
+              placeholder="Search your world"
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+            <button type="button" aria-label="Close search" onClick={onSearchClose}>×</button>
+          </div>
+          {worldNodes.length === 0 ? (
+            <p className={styles.searchEmpty}>No memories to search yet.</p>
+          ) : searchResults.length > 0 ? (
+            <div className={styles.searchResults}>
+              {searchResults.map((node) => (
+                <button
+                  type="button"
+                  key={node.key}
+                  onClick={() => {
+                    selectedKeyRef.current = node.key;
+                    setSelectedKey(node.key);
+                    onSearchClose?.();
+                  }}
+                >
+                  <span
+                    className={styles.searchOrb}
+                    aria-hidden="true"
+                    style={{ background: categoryOrbGradient(node.category) }}
+                  />
+                  <span>{formatNodeLabel(node.label)}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.searchEmpty}>No matches.</p>
+          )}
+        </aside>
+      ) : null}
+
       <aside
         className={styles.legend}
+        data-open={legendOpen ? "true" : "false"}
         aria-label="Orb legend"
       >
         <h2>
