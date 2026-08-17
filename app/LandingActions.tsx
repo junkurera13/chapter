@@ -317,7 +317,12 @@ function AccessSurface({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <SurfaceFrame label="Access" labelledBy="access-title" onClose={onClose}>
+    <SurfaceFrame
+      label="Access"
+      labelledBy="access-title"
+      onClose={onClose}
+      showIdentity={false}
+    >
       <div className={styles.surfaceContent}>
         <h2 id="access-title" className={styles.surfaceTitle}>
           Chapter is private for now.
