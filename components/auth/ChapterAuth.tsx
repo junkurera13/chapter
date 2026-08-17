@@ -222,7 +222,6 @@ export default function ChapterAuth({
               aria-label="Password"
               required
             />
-            <div id="clerk-captcha" className={styles.captcha} />
           </>
         )}
         <button className={overlay.primaryButton} type="submit" disabled={busy}>

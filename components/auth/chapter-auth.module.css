@@ -98,12 +98,6 @@
   background: rgba(28, 28, 25, 0.1);
 }
 
-.captcha {
-  display: flex;
-  width: 100%;
-  justify-content: center;
-}
-
 .page {
   min-height: 100svh;
   background: #fff;

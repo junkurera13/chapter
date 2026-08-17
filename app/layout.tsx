@@ -6,6 +6,7 @@ import {
   Newsreader,
 } from "next/font/google";
 import ConvexClientProvider from "./ConvexClientProvider";
+import { ClerkCaptcha } from "@/components/auth/ClerkCaptcha";
 import "./globals.css";
 
 const chapterSans = DM_Sans({
@@ -43,6 +44,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-[#f3efe7] font-[family-name:var(--font-chapter-sans)] text-[#1c1c19]">
         <ClerkProvider>
           <ConvexClientProvider>{children}</ConvexClientProvider>
+          <ClerkCaptcha />
         </ClerkProvider>
       </body>
     </html>
