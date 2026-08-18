@@ -186,22 +186,31 @@
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
 }
 
+.legendHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .legend h2 {
   margin: 0;
   color: #1f1c19;
-  font-size: 17px;
+  font-size: 13px;
   font-weight: 650;
   letter-spacing: -0.03em;
   line-height: 1.15;
 }
 
 .legendCount {
-  margin: 8px 0 0;
-  color: rgba(32, 29, 26, 0.82);
+  margin: 0;
+  flex: none;
+  color: rgba(32, 29, 26, 0.5);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: -0.02em;
-  line-height: 1.2;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .legendList {
@@ -659,14 +668,6 @@
     width: 178px;
     padding: 14px var(--legend-inline) 10px;
     border-radius: 20px;
-  }
-
-  .legend h2 {
-    font-size: 16px;
-  }
-
-  .legendCount {
-    font-size: 12px;
   }
 
   .legendList {

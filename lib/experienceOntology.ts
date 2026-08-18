@@ -3,14 +3,28 @@ export const EXPERIENCE_NODE_CATEGORIES = [
   "people",
   "place",
   "activity",
-  "interest",
-  "feeling",
   "condition",
-  "pattern",
 ] as const;
 
 export type ExperienceNodeCategory =
   (typeof EXPERIENCE_NODE_CATEGORIES)[number];
+
+const RETIRED_CATEGORY_MAP = {
+  interest: "activity",
+  feeling: null,
+  pattern: null,
+} as const;
+
+export function normalizeExperienceCategory(
+  category: string,
+): ExperienceNodeCategory | null {
+  if (category in RETIRED_CATEGORY_MAP) {
+    return RETIRED_CATEGORY_MAP[category as keyof typeof RETIRED_CATEGORY_MAP];
+  }
+  return (EXPERIENCE_NODE_CATEGORIES as readonly string[]).includes(category)
+    ? (category as ExperienceNodeCategory)
+    : null;
+}
 
 export const EXPERIENCE_RELATIONS = [
   "lived",
@@ -79,28 +93,14 @@ export const EXPERIENCE_CATEGORY_META: Record<
   },
   activity: {
     label: "Activity",
-    purpose: "Something a person can actively do or participate in.",
+    purpose:
+      "Something a person can do, taste, or be drawn to — a practice, food, medium, or domain.",
     subtypeExamples: ["movement", "food", "culture", "craft"],
-  },
-  interest: {
-    label: "Interest",
-    purpose: "A subject, taste, cuisine, medium, or domain that draws attention.",
-    subtypeExamples: ["cuisine", "music", "film", "architecture"],
-  },
-  feeling: {
-    label: "Feeling",
-    purpose: "An emotional or embodied state that arose or is desired.",
-    subtypeExamples: ["nostalgia", "connection", "freedom", "calm"],
   },
   condition: {
     label: "Condition",
     purpose: "A circumstance, preference, or hard boundary that shapes fit.",
     subtypeExamples: ["planning_style", "crowd_level", "time", "hard_boundary"],
-  },
-  pattern: {
-    label: "Pattern",
-    purpose: "A transferable value or relationship Chapter notices across evidence.",
-    subtypeExamples: ["value", "recurring_preference", "tension", "emerging_curiosity"],
   },
 };
 

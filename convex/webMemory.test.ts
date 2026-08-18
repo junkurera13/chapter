@@ -56,4 +56,50 @@ describe("Chapter web memory ownership", () => {
       edges: [],
     });
   });
+
+  test("maps retired interest into activity and drops feeling", async () => {
+    const t = convexTest(schema, modules);
+    const user = t.withIdentity({ subject: "graph-user", name: "Graph" });
+    await user.mutation(api.accounts.ensureCurrent, { displayName: "Graph" });
+
+    await user.mutation(api.webMemory.persistExtraction, {
+      ...memory,
+      clientRequestId: "retired-categories",
+      nodes: [
+        memory.nodes[0],
+        {
+          localKey: "tea",
+          category: "interest" as const,
+          subtype: "cuisine",
+          label: "Earl Grey",
+          description: "A tea flavour from the memory.",
+          certainty: "fact" as const,
+          confidence: 0.8,
+          salience: 0.7,
+          evidence: "The person named Earl Grey ice cream.",
+        },
+        {
+          localKey: "calm",
+          category: "feeling" as const,
+          subtype: "calm",
+          label: "Calm",
+          description: "A guessed mood.",
+          certainty: "hypothesis" as const,
+          confidence: 0.4,
+          salience: 0.3,
+          evidence: "Not stated directly.",
+        },
+      ],
+    });
+
+    const graph = await user.query(api.webMemory.graph, {});
+    expect(graph.nodes.map((node) => node.category).sort()).toEqual([
+      "activity",
+      "experience",
+    ]);
+    expect(graph.nodes.map((node) => node.label).sort()).toEqual([
+      "Earl Grey",
+      "River ride",
+    ]);
+  });
 });

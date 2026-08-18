@@ -595,7 +595,7 @@ export default function InteractiveCardStack() {
                             <span
                               className="relative top-[0.16em] inline-block h-[0.9em] w-[0.9em] rounded-full border border-white/80"
                               style={{
-                                background: categoryOrbGradient("interest"),
+                                background: categoryOrbGradient("activity"),
                                 boxShadow:
                                   "inset 3px 4px 5px rgba(255,255,255,0.24), inset -2px -3px 5px rgba(24,17,13,0.18), 0 2px 5px rgba(47,34,24,0.13)",
                               }}
@@ -663,7 +663,7 @@ export default function InteractiveCardStack() {
                             <span
                               className="relative top-[0.16em] inline-block h-[0.9em] w-[0.9em] rounded-full border border-white/80"
                               style={{
-                                background: categoryOrbGradient("interest"),
+                                background: categoryOrbGradient("activity"),
                                 boxShadow:
                                   "inset 3px 4px 5px rgba(255,255,255,0.24), inset -2px -3px 5px rgba(24,17,13,0.18), 0 2px 5px rgba(47,34,24,0.13)",
                               }}

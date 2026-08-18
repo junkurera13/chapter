@@ -163,7 +163,7 @@ export async function extractMemory(args: {
         output: Output.object({
           name: "chapter_memory_graph",
           description:
-            "A grounded memory graph with one experience node and separate specific people, places, activities, interests, feelings, conditions, and patterns.",
+            "A grounded memory graph with one experience node and separate specific people, places, activities, and conditions.",
           schema: memoryExtractionSchema,
         }),
         reasoning: "none",

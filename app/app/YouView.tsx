@@ -1507,10 +1507,12 @@ export default function YouView({
       ) : null}
 
       <aside className={styles.legend} aria-label="Orb legend">
-        <h2>Legend</h2>
-        <p className={styles.legendCount}>
-          {formatLegendNodeCount(worldNodes.length)}
-        </p>
+        <div className={styles.legendHeader}>
+          <h2>Legend</h2>
+          <p className={styles.legendCount}>
+            {formatLegendNodeCount(worldNodes.length)}
+          </p>
+        </div>
         <ul className={styles.legendList}>
           {legendCategories.map((category) => (
             <li key={category}>

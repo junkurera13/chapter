@@ -5,10 +5,7 @@ export const memoryNodeCategories = [
   "people",
   "place",
   "activity",
-  "interest",
-  "feeling",
   "condition",
-  "pattern",
 ] as const;
 
 export const memoryRelations = [

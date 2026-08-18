@@ -12,10 +12,7 @@ export const WORLD_CATEGORY_PALETTES: Record<WorldNodeCategory, OrbPalette> = {
   people: ["#ffe9ed", "#c97687", "#603846"],
   place: ["#dff7f4", "#4d9997", "#173f48"],
   activity: ["#edf4de", "#7f9a65", "#304634"],
-  interest: ["#e8edff", "#7889b5", "#343c65"],
-  feeling: ["#f3eaff", "#9a7eb8", "#4b395d"],
   condition: ["#ededeb", "#84837e", "#292a29"],
-  pattern: ["#f5f0df", "#aaa185", "#4d4b42"],
 };
 
 export function categoryPalette(category: WorldNodeCategory) {

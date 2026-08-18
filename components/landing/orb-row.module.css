@@ -22,7 +22,7 @@
 
 .labels {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   margin: 0;
   padding: 0;
@@ -58,18 +58,13 @@
 }
 
 .labels li:nth-child(1),
-.labels li:nth-child(7) {
-  transform: translateY(clamp(-46px, -3.2vw, -16px));
+.labels li:nth-child(4) {
+  transform: translateY(clamp(-42px, -3vw, -14px));
 }
 
 .labels li:nth-child(2),
-.labels li:nth-child(6) {
-  transform: translateY(clamp(-26px, -1.8vw, -9px));
-}
-
-.labels li:nth-child(3),
-.labels li:nth-child(5) {
-  transform: translateY(clamp(-8px, -0.58vw, -3px));
+.labels li:nth-child(3) {
+  transform: translateY(clamp(-12px, -0.9vw, -4px));
 }
 
 @media (max-width: 640px) {

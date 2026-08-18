@@ -14,14 +14,7 @@ import type {
  * relationship lives in the graph rather than the words.
  */
 
-const REPAIRABLE_CATEGORIES = new Set([
-  "activity",
-  "interest",
-  "feeling",
-  "condition",
-  "pattern",
-  "place",
-]);
+const REPAIRABLE_CATEGORIES = new Set(["activity", "condition", "place"]);
 
 const COMPANION_CLAUSE = /\s+(?:together\s+with|with|alongside)\s+(.+)$/i;
 
@@ -78,8 +71,6 @@ function repairRelation(
         toNodeId: node.id,
         relation: "familiar_with",
       };
-    case "feeling":
-      return { fromNodeId: person.id, toNodeId: node.id, relation: "evoked" };
     default:
       return { fromNodeId: node.id, toNodeId: person.id, relation: "involved" };
   }

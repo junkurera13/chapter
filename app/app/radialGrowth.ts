@@ -219,7 +219,7 @@ export function resolveOutwardPositions<T extends GrowthNode>(
     let placedDuringPass = false;
 
     // Branch roots first, then by anchor priority (people before the
-    // activities and feelings that mention them), so a node placed later in
+    // activities that mention them), so a node placed later in
     // the same pass can chain under its most meaningful connection.
     const pendingOrdered = [...pending.entries()].sort(
       ([, nodeA], [, nodeB]) =>

@@ -12,9 +12,11 @@ const graphNodeCategoryValidator = v.union(
   v.literal("people"),
   v.literal("place"),
   v.literal("activity"),
+  v.literal("condition"),
+  // Retired categories still present on older documents. Reads remap
+  // interest → activity and drop feeling/pattern.
   v.literal("interest"),
   v.literal("feeling"),
-  v.literal("condition"),
   v.literal("pattern"),
 );
 

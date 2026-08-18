@@ -88,7 +88,7 @@ export function createWorldOrbMaterial(
   return new THREE.MeshPhysicalMaterial({
     color: 0xffffff,
     map: texture,
-    roughness: isSelf ? 0.13 : node.category === "pattern" ? 0.34 : 0.2,
+    roughness: isSelf ? 0.13 : 0.2,
     metalness: isSelf ? 0.1 : node.category === "condition" ? 0.16 : 0.04,
     clearcoat: 1,
     clearcoatRoughness: isSelf ? 0.09 : 0.16,

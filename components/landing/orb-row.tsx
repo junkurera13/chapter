@@ -25,10 +25,7 @@ const LANDING_CATEGORY_LABELS: Record<ExperienceNodeCategory, string> = {
   people: "People",
   place: "Places",
   activity: "Activities",
-  interest: "Interests",
-  feeling: "Feelings",
   condition: "Conditions",
-  pattern: "Patterns",
 };
 
 const ORBS = EXPERIENCE_NODE_CATEGORIES.filter(
@@ -39,7 +36,7 @@ const ORBS = EXPERIENCE_NODE_CATEGORIES.filter(
   category,
 }));
 
-const ARC_PROFILE = [1, 0.56, 0.18, 0, 0.18, 0.56, 1] as const;
+const ARC_PROFILE = [0.92, 0.28, 0.28, 0.92] as const;
 
 type OrbRowProps = {
   onRevealComplete?: () => void;
@@ -254,7 +251,7 @@ export default function OrbRow({ onRevealComplete }: OrbRowProps) {
         <canvas
           className={styles.canvas}
           ref={canvasRef}
-          aria-label="People, Place, Activity, Interest, Feeling, Condition and Pattern shown as Chapter orbs"
+          aria-label="People, Place, Activity, and Condition shown as Chapter orbs"
         />
         <ul className={styles.labels} aria-hidden="true">
           {ORBS.map((orb, index) => (

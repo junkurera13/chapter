@@ -120,7 +120,7 @@ const MEMORY_FRAGMENTS: MemoryFragmentDefinition[] = [
     driftY: -210,
     rotation: 0,
     nodes: [
-      { label: "Earl Grey Ice Cream", category: "interest" },
+      { label: "Earl Grey Ice Cream", category: "activity" },
     ],
     hiddenNodeCount: 2,
   },
@@ -177,7 +177,7 @@ const MEMORY_FRAGMENTS: MemoryFragmentDefinition[] = [
     driftY: 200,
     rotation: 0,
     nodes: [
-      { label: "Mischief", category: "feeling" },
+      { label: "Mischief", category: "activity" },
       { label: "Shinmog", category: "people" },
     ],
   },
@@ -190,7 +190,7 @@ const MEMORY_FRAGMENTS: MemoryFragmentDefinition[] = [
     driftY: 250,
     rotation: 0,
     nodes: [
-      { label: "Yaki Curry", category: "interest" },
+      { label: "Yaki Curry", category: "activity" },
     ],
   },
   {

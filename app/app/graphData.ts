@@ -1,8 +1,9 @@
-import type {
-  ExperienceFamiliarity,
-  ExperienceNodeCategory,
-  ExperiencePolarity,
-  ExperienceRelation,
+import {
+  normalizeExperienceCategory,
+  type ExperienceFamiliarity,
+  type ExperienceNodeCategory,
+  type ExperiencePolarity,
+  type ExperienceRelation,
 } from "../../lib/experienceOntology";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
 import { repairExperienceGraph } from "../../lib/graphRepair";
@@ -83,6 +84,25 @@ function currentBrandCopy(value: string) {
     .replace(/\bTBA\b/g, "Chapter");
 }
 
+function collapseRetiredCategories(
+  graph: ExperienceGraphRecord,
+): ExperienceGraphRecord {
+  const nodes = graph.nodes.flatMap((node) => {
+    const category = normalizeExperienceCategory(node.category);
+    if (!category) return [];
+    return [{ ...node, category }];
+  });
+  const keptIds = new Set(nodes.map((node) => node.id));
+  return {
+    ...graph,
+    nodes,
+    edges: graph.edges.filter(
+      (edge) =>
+        keptIds.has(edge.fromNodeId) && keptIds.has(edge.toNodeId),
+    ),
+  };
+}
+
 function rootEdge(target: string): WorldEdge {
   return {
     from: "self",
@@ -97,7 +117,7 @@ function rootEdge(target: string): WorldEdge {
 }
 
 export function buildWorldGraph(rawGraph: ExperienceGraphRecord): WorldGraph {
-  const graph = repairExperienceGraph(rawGraph);
+  const graph = repairExperienceGraph(collapseRetiredCategories(rawGraph));
   const graphNodeIds = new Set(graph.nodes.map((node) => node.id));
   const graphEdges: WorldEdge[] = graph.edges
     .filter(

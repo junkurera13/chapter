@@ -4,14 +4,32 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { normalizeName, requireCurrentAccount } from "./lib/auth";
 
+const CURRENT_NODE_CATEGORIES = [
+  "experience",
+  "people",
+  "place",
+  "activity",
+  "condition",
+] as const;
+
+type CurrentNodeCategory = (typeof CURRENT_NODE_CATEGORIES)[number];
+
+function normalizeStoredCategory(category: string): CurrentNodeCategory | null {
+  if (category === "interest") return "activity";
+  if (category === "feeling" || category === "pattern") return null;
+  return CURRENT_NODE_CATEGORIES.includes(category as CurrentNodeCategory)
+    ? (category as CurrentNodeCategory)
+    : null;
+}
+
 const nodeCategoryValidator = v.union(
   v.literal("experience"),
   v.literal("people"),
   v.literal("place"),
   v.literal("activity"),
+  v.literal("condition"),
   v.literal("interest"),
   v.literal("feeling"),
-  v.literal("condition"),
   v.literal("pattern"),
 );
 
@@ -259,9 +277,11 @@ export const persistExtraction = mutation({
       .take(100);
     const nodeIds = new Map<string, Id<"accountGraphNodes">>();
     for (const [index, node] of args.nodes.entries()) {
+      const category = normalizeStoredCategory(node.category);
+      if (!category) continue;
       const localKey = cleanText(node.localKey, 100, "Graph node key");
       const personReferenceId =
-        node.category === "people"
+        category === "people"
           ? await personReferenceForNode(
               ctx,
               account._id,
@@ -274,7 +294,7 @@ export const persistExtraction = mutation({
         memoryId,
         personReferenceId,
         localKey,
-        category: node.category,
+        category,
         subtype: cleanText(node.subtype, 100, "Graph node subtype"),
         label: cleanText(node.label, 140, "Graph node label"),
         description: cleanText(
@@ -392,6 +412,42 @@ export const graph = query({
         .map((invite) => invite.personReferenceId),
     );
 
+    const keptNodeIds = new Set<Id<"accountGraphNodes">>();
+    const graphNodes = [];
+    for (const node of nodes) {
+      const category = normalizeStoredCategory(node.category);
+      if (!category) continue;
+      keptNodeIds.add(node._id);
+      const person = node.personReferenceId
+        ? peopleById.get(node.personReferenceId)
+        : undefined;
+      const connection = person?.identityAccountId
+        ? connectionByAccountId.get(person.identityAccountId)
+        : undefined;
+      graphNodes.push({
+        id: node._id,
+        memoryId: node.memoryId,
+        sourceType: "memory" as const,
+        personReferenceId: node.personReferenceId,
+        linkedUserId: person?.identityAccountId,
+        connectionId: connection?._id,
+        inviteStatus:
+          node.personReferenceId && pendingPersonIds.has(node.personReferenceId)
+            ? ("pending" as const)
+            : undefined,
+        category,
+        subtype: node.subtype,
+        kind: node.subtype,
+        label: node.label,
+        description: node.description,
+        certainty: node.certainty,
+        confidence: node.confidence,
+        salience: node.salience,
+        evidence: node.evidence,
+        createdAt: node.createdAt,
+      });
+    }
+
     return {
       memoryCount: memories.length,
       memories: memories.map((memory) => ({
@@ -400,48 +456,29 @@ export const graph = query({
         summary: memory.summary,
         createdAt: memory.createdAt,
       })),
-      nodes: nodes.map((node) => {
-        const person = node.personReferenceId
-          ? peopleById.get(node.personReferenceId)
-          : undefined;
-        const connection = person?.identityAccountId
-          ? connectionByAccountId.get(person.identityAccountId)
-          : undefined;
-        return {
-          id: node._id,
-          memoryId: node.memoryId,
-          sourceType: "memory" as const,
-          personReferenceId: node.personReferenceId,
-          linkedUserId: person?.identityAccountId,
-          connectionId: connection?._id,
-          inviteStatus:
-            node.personReferenceId && pendingPersonIds.has(node.personReferenceId)
-              ? ("pending" as const)
-              : undefined,
-          category: node.category,
-          subtype: node.subtype,
-          kind: node.subtype,
-          label: node.label,
-          description: node.description,
-          certainty: node.certainty,
-          confidence: node.confidence,
-          salience: node.salience,
-          evidence: node.evidence,
-          createdAt: node.createdAt,
-        };
+      nodes: graphNodes,
+      edges: edges.flatMap((edge) => {
+        if (
+          !keptNodeIds.has(edge.fromNodeId) ||
+          !keptNodeIds.has(edge.toNodeId)
+        ) {
+          return [];
+        }
+        return [
+          {
+            id: edge._id,
+            memoryId: edge.memoryId,
+            fromNodeId: edge.fromNodeId,
+            toNodeId: edge.toNodeId,
+            relation: edge.relation,
+            polarity: edge.polarity,
+            familiarity: edge.familiarity,
+            strength: edge.strength,
+            certainty: edge.certainty,
+            createdAt: edge.createdAt,
+          },
+        ];
       }),
-      edges: edges.map((edge) => ({
-        id: edge._id,
-        memoryId: edge.memoryId,
-        fromNodeId: edge.fromNodeId,
-        toNodeId: edge.toNodeId,
-        relation: edge.relation,
-        polarity: edge.polarity,
-        familiarity: edge.familiarity,
-        strength: edge.strength,
-        certainty: edge.certainty,
-        createdAt: edge.createdAt,
-      })),
     };
   },
 });
