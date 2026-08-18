@@ -104,7 +104,13 @@ export default function ChapterApp({
   const activePanel = displayedIndex === 1
     ? <NowView />
     : displayedIndex === 2
-      ? <TogetherView />
+      ? <TogetherView
+          onAddMemory={() => {
+            changeTab(0);
+            setAddingMemory(true);
+          }}
+          onOpenNow={() => changeTab(1)}
+        />
       : youPanel;
 
   return (

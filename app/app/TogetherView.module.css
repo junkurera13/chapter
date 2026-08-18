@@ -91,11 +91,59 @@
 }
 
 .empty p {
-  max-width: 310px;
+  max-width: 340px;
   margin: 14px 0 0;
   color: rgba(52, 47, 43, 0.56);
   font-size: 14px;
   line-height: 1.5;
+}
+
+.progress {
+  max-width: none;
+  margin-top: 10px;
+  color: rgba(52, 47, 43, 0.4);
+  font-size: 13px;
+  font-weight: 540;
+  letter-spacing: -0.02em;
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 25px;
+}
+
+.emptyActions button {
+  display: inline-flex;
+  min-height: 42px;
+  padding: 0 19px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: #1b1918;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 590;
+  letter-spacing: -0.01em;
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.emptyActions button[data-quiet="true"] {
+  background: #f3f2ef;
+  color: #25211d;
+}
+
+.emptyActions button:active {
+  transform: scale(0.96);
+}
+
+.emptyActions button:focus-visible {
+  outline: 2px solid #9e8265;
+  outline-offset: 3px;
 }
 
 .empty > button,
@@ -501,6 +549,7 @@
   .scrim,
   .composer,
   .empty > button,
+  .emptyActions button,
   .content header button {
     transition: none;
   }

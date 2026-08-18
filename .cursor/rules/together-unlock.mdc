@@ -1,0 +1,14 @@
+---
+description: Together only opens after five memories or five completed Andys/Marcos
+alwaysApply: true
+---
+
+# Together unlock
+
+Together is locked until the current account has **5 memories** in the graph, **or** has marked **5 Andy/Marco experiences** as done.
+
+Either path is enough. Do not raise the threshold, combine the counts, or unlock Together from invites, connections, or generated-but-unlived experiences.
+
+- Gate the Together page and `connections.createInvite`.
+- Direct people to add memories on You, or to go on Andys/Marcos on Now.
+- Status `done` counts as lived. `sent`, `saved`, and `passed` do not.

@@ -6,6 +6,10 @@ import {
   normalizeName,
   requireCurrentAccount,
 } from "./lib/auth";
+import {
+  loadTogetherUnlock,
+  requireTogetherUnlocked,
+} from "./lib/togetherUnlock";
 
 const INVITE_LIFETIME_MS = 14 * 24 * 60 * 60 * 1_000;
 const INVITE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{40,96}$/;
@@ -40,6 +44,14 @@ function pairKey(first: Id<"accounts">, second: Id<"accounts">) {
   return `${pair.accountAId}:${pair.accountBId}`;
 }
 
+export const togetherReady = query({
+  args: {},
+  handler: async (ctx) => {
+    const account = await requireCurrentAccount(ctx);
+    return await loadTogetherUnlock(ctx, account._id);
+  },
+});
+
 export const createInvite = mutation({
   args: {
     personReferenceId: v.id("personReferences"),
@@ -47,6 +59,7 @@ export const createInvite = mutation({
   },
   handler: async (ctx, args) => {
     const account = await requireCurrentAccount(ctx);
+    await requireTogetherUnlocked(ctx, account._id);
     const person = await ctx.db.get(args.personReferenceId);
     if (person === null || person.ownerAccountId !== account._id) {
       throw new Error("Person not found");

@@ -15,6 +15,7 @@ import type * as connections from "../connections.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_togetherUnlock from "../lib/togetherUnlock.js";
 import type * as messaging from "../messaging.js";
 import type * as people from "../people.js";
 import type * as sharedExperiences from "../sharedExperiences.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/togetherUnlock": typeof lib_togetherUnlock;
   messaging: typeof messaging;
   people: typeof people;
   sharedExperiences: typeof sharedExperiences;

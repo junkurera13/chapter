@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useMemo, useState, type FormEvent } from "react";
 import type { Id } from "../../convex/_generated/dataModel";
 import { api } from "../../convex/_generated/api";
+import { TOGETHER_UNLOCK_COUNT } from "../../lib/togetherUnlock";
 import styles from "./TogetherView.module.css";
 
 function createInviteToken() {
@@ -17,7 +18,14 @@ function createInviteToken() {
     .replaceAll("=", "");
 }
 
-export default function TogetherView() {
+export default function TogetherView({
+  onAddMemory,
+  onOpenNow,
+}: {
+  onAddMemory: () => void;
+  onOpenNow: () => void;
+}) {
+  const unlock = useQuery(api.connections.togetherReady);
   const connections = useQuery(api.connections.listAccepted);
   const people = useQuery(api.people.listMine);
   const pendingInvites = useQuery(api.connections.listPendingInvites);
@@ -77,13 +85,42 @@ export default function TogetherView() {
   }
 
   const isEmpty = connections !== undefined && connections.length === 0;
+  const progress = unlock
+    ? Math.min(
+        TOGETHER_UNLOCK_COUNT,
+        Math.max(unlock.memoryCount, unlock.completedExperienceCount),
+      )
+    : 0;
 
   return (
     <div className={styles.view}>
       <div className={styles.atmosphere} aria-hidden="true" />
 
-      {connections === undefined ? (
+      {unlock === undefined || connections === undefined ? (
         <div className={styles.loading} aria-label="Loading connections" />
+      ) : !unlock.unlocked ? (
+        <section className={styles.empty}>
+          <div className={styles.emptyOrbits} aria-hidden="true">
+            <span />
+            <span />
+          </div>
+          <h1>Together isn't open yet.</h1>
+          <p>
+            It waits until five memories are in your graph. Add them on You, or
+            go on five Andys and Marcos.
+          </p>
+          <p className={styles.progress}>
+            {progress} of {TOGETHER_UNLOCK_COUNT}
+          </p>
+          <div className={styles.emptyActions}>
+            <button type="button" onClick={onAddMemory}>
+              Add a memory
+            </button>
+            <button type="button" data-quiet="true" onClick={onOpenNow}>
+              Find an Andy
+            </button>
+          </div>
+        </section>
       ) : isEmpty ? (
         <section className={styles.empty}>
           <div className={styles.emptyOrbits} aria-hidden="true">
