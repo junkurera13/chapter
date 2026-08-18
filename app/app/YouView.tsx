@@ -162,21 +162,21 @@ export default function YouView({
   edges: worldEdges,
   onInviteCreated,
   searchOpen = false,
+  searchQuery = "",
   onSearchClose,
 }: {
   nodes: readonly WorldNode[];
   edges: readonly WorldEdge[];
   onInviteCreated?: () => void;
   searchOpen?: boolean;
+  searchQuery?: string;
   onSearchClose?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRefs = useRef(new Map<string, HTMLButtonElement>());
   const selectedKeyRef = useRef<string | null>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const connectedNodeIds = useMemo(
     () =>
       worldNodes
@@ -204,10 +204,10 @@ export default function YouView({
 
   const searchResults = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase();
-    if (!query) return worldNodes.slice(0, 8);
+    if (!query) return [];
     return worldNodes
       .filter((node) =>
-        `${node.label} ${node.description}`.toLocaleLowerCase().includes(query),
+        `${node.label} ${node.description} ${worldCategoryName(node.category)}`.toLocaleLowerCase().includes(query),
       )
       .slice(0, 8);
   }, [searchQuery, worldNodes]);
@@ -249,11 +249,6 @@ export default function YouView({
   useEffect(() => {
     selectedKeyRef.current = selectedKey;
   }, [selectedKey]);
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    requestAnimationFrame(() => searchInputRef.current?.focus());
-  }, [searchOpen]);
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -1461,25 +1456,9 @@ export default function YouView({
         aria-label="An interactive three-dimensional map of your memories"
       />
 
-      {searchOpen ? (
-        <aside className={styles.searchPanel} role="dialog" aria-label="Search your world">
-          <div className={styles.searchField}>
-            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-              <circle cx="8.5" cy="8.5" r="4.5" />
-              <path d="m11.8 11.8 3.7 3.7" />
-            </svg>
-            <input
-              ref={searchInputRef}
-              value={searchQuery}
-              aria-label="Search memories"
-              placeholder="Search your world"
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
-            <button type="button" aria-label="Close search" onClick={onSearchClose}>×</button>
-          </div>
-          {worldNodes.length === 0 ? (
-            <p className={styles.searchEmpty}>No memories to search yet.</p>
-          ) : searchResults.length > 0 ? (
+      {searchOpen && searchQuery.trim() ? (
+        <aside className={styles.searchPanel} role="listbox" aria-label="Search results">
+          {searchResults.length > 0 ? (
             <div className={styles.searchResults}>
               {searchResults.map((node) => (
                 <button
@@ -1496,12 +1475,17 @@ export default function YouView({
                     aria-hidden="true"
                     style={{ background: categoryOrbGradient(node.category) }}
                   />
-                  <span>{formatNodeLabel(node.label)}</span>
+                  <span className={styles.searchResultName}>
+                    {formatNodeLabel(node.label)}
+                  </span>
+                  <span className={styles.searchResultCategory}>
+                    {worldCategoryName(node.category)}
+                  </span>
                 </button>
               ))}
             </div>
           ) : (
-            <p className={styles.searchEmpty}>No matches.</p>
+            <p className={styles.searchEmpty}>No matching nodes.</p>
           )}
         </aside>
       ) : null}

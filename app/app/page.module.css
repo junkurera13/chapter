@@ -74,6 +74,8 @@
  * object wherever Chapter puts one.
  */
 .worldControls {
+  --chapter-search-width: min(22rem, calc(100vw - 40px));
+
   position: absolute;
   z-index: 4;
   top: 22px;
@@ -84,36 +86,134 @@
   transform: translateX(-50%);
 }
 
-.worldSearch,
-.addMemoryButton {
-  display: flex;
-  min-height: 38px;
+.searchAnchor {
+  width: 38px;
+  height: 38px;
+  flex: none;
+}
+
+.searchShell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: grid;
+  width: 38px;
+  height: 38px;
   align-items: center;
-  appearance: none;
-  border: 0;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  overflow: hidden;
   border-radius: 999px;
   background: #f8f7f5;
   color: rgba(45, 39, 34, 0.66);
-  cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
+  transform: translateX(0);
+  transition:
+    width 280ms cubic-bezier(0.23, 1, 0.32, 1),
+    left 280ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 280ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.worldSearch {
-  width: 38px;
-  justify-content: center;
-  padding: 0;
+.searchShell[data-open="true"] {
+  left: 50%;
+  width: var(--chapter-search-width);
+  transform: translateX(-50%);
 }
 
-.worldSearch svg {
+.searchGlyph {
   width: 18px;
   height: 18px;
+  justify-self: center;
+  pointer-events: none;
+}
+
+.searchInput {
+  min-width: 0;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #25211d;
+  font-family: var(--font-chapter-sans), system-ui, sans-serif;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.searchInput::placeholder {
+  color: rgba(38, 35, 31, 0.4);
+}
+
+.searchClose {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(45, 39, 34, 0.5);
+  cursor: pointer;
+  font: 400 20px/1 var(--font-chapter-sans), system-ui, sans-serif;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    color 150ms ease,
+    opacity 120ms ease;
+}
+
+.searchShell[data-open="true"] .searchInput,
+.searchShell[data-open="true"] .searchClose {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 180ms ease 70ms;
+}
+
+.searchClose:hover {
+  color: #25211d;
+}
+
+.searchHit {
+  position: absolute;
+  inset: 0;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.searchHit:active {
+  transform: scale(0.97);
+}
+
+.searchShell:has(.searchHit:hover) {
+  background: #f0eeea;
+  color: #25211d;
 }
 
 .addMemoryButton {
+  display: flex;
+  min-height: 38px;
   gap: 6px;
+  align-items: center;
   padding: 0 16px 0 13px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: #f3f2ef;
+  color: rgba(45, 39, 34, 0.66);
+  cursor: pointer;
   font: 620 13px/38px var(--font-chapter-instrument), system-ui, sans-serif;
   letter-spacing: -0.01em;
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    opacity 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .addMemoryButton svg {
@@ -121,18 +221,20 @@
   height: 16px;
 }
 
-.worldSearch:hover,
 .addMemoryButton:hover {
   background: #f0eeea;
   color: #25211d;
 }
 
-.worldSearch[aria-pressed="true"] {
-  background: #e9e6e1;
-  color: #25211d;
+.worldControls[data-searching="true"] .addMemoryButton,
+.worldControls[data-searching="true"] .extracting {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.97);
 }
 
-.worldSearch:focus-visible,
+.searchHit:focus-visible,
+.searchClose:focus-visible,
 .addMemoryButton:focus-visible {
   outline: 2px solid #9e8265;
   outline-offset: 2px;
@@ -151,6 +253,9 @@
   color: rgba(45, 39, 34, 0.72);
   font: 620 13px/38px var(--font-chapter-instrument), system-ui, sans-serif;
   letter-spacing: -0.01em;
+  transition:
+    opacity 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .extractingOrb {
@@ -244,9 +349,19 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .searchShell,
+  .searchInput,
+  .searchClose,
+  .addMemoryButton,
+  .extracting,
   .memoryScrim,
   .memoryWindow {
+    transition: none;
     animation: none;
+  }
+
+  .searchHit:active {
+    transform: none;
   }
 }
 

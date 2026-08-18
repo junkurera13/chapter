@@ -1,7 +1,7 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "convex/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api } from "../../convex/_generated/api";
 import type { ExperienceGraphRecord } from "../../lib/backendTypes";
@@ -27,6 +27,8 @@ export default function ChapterApp({
   const [addingMemory, setAddingMemory] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [searchingWorld, setSearchingWorld] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const graph = liveGraph as ExperienceGraphRecord | undefined;
   const displayedIndex = activeIndex;
   const worldGraph = useMemo(
@@ -34,15 +36,26 @@ export default function ChapterApp({
     [graph],
   );
 
+  const closeSearch = useCallback(() => {
+    setSearchingWorld(false);
+    setSearchQuery("");
+  }, []);
+
   const changeTab = useCallback((nextIndex: ChapterTabIndex) => {
     setActiveIndex(nextIndex);
-    if (nextIndex !== 0) setSearchingWorld(false);
+    if (nextIndex !== 0) closeSearch();
     const url = new URL(window.location.href);
     url.searchParams.set("view", TAB_VIEWS[nextIndex]);
     url.searchParams.delete("tab");
     url.searchParams.delete("joined");
     window.history.replaceState(null, "", url);
-  }, []);
+  }, [closeSearch]);
+
+  useEffect(() => {
+    if (!searchingWorld) return;
+    const frame = requestAnimationFrame(() => searchInputRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [searchingWorld]);
 
   useEffect(() => {
     if (!addingMemory) return;
@@ -66,7 +79,8 @@ export default function ChapterApp({
         nodes={[]}
         edges={[]}
         searchOpen={searchingWorld}
-        onSearchClose={() => setSearchingWorld(false)}
+        searchQuery={searchQuery}
+        onSearchClose={closeSearch}
       />
     );
   } else if (!worldGraph) {
@@ -81,7 +95,8 @@ export default function ChapterApp({
         nodes={worldGraph.nodes}
         edges={worldGraph.edges}
         searchOpen={searchingWorld}
-        onSearchClose={() => setSearchingWorld(false)}
+        searchQuery={searchQuery}
+        onSearchClose={closeSearch}
       />
     );
   }
@@ -104,19 +119,57 @@ export default function ChapterApp({
       </section>
 
       {displayedIndex === 0 && graph !== undefined ? (
-        <div className={styles.worldControls}>
-          <button
-            type="button"
-            className={styles.worldSearch}
-            aria-label="Search your world"
-            aria-pressed={searchingWorld}
-            onClick={() => setSearchingWorld((open) => !open)}
-          >
-            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-              <circle cx="8.7" cy="8.7" r="4.7" />
-              <path d="m12.2 12.2 3.8 3.8" />
-            </svg>
-          </button>
+        <div
+          className={styles.worldControls}
+          data-searching={searchingWorld ? "true" : "false"}
+        >
+          <div className={styles.searchAnchor}>
+            <div
+              className={styles.searchShell}
+              data-open={searchingWorld ? "true" : "false"}
+            >
+              <svg
+                className={styles.searchGlyph}
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+              >
+                <circle cx="8.7" cy="8.7" r="4.7" />
+                <path d="m12.2 12.2 3.8 3.8" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                className={styles.searchInput}
+                value={searchQuery}
+                aria-label="Search the graph"
+                placeholder="Search the graph..."
+                tabIndex={searchingWorld ? 0 : -1}
+                aria-hidden={!searchingWorld}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+              <button
+                type="button"
+                className={styles.searchClose}
+                aria-label="Close search"
+                tabIndex={searchingWorld ? 0 : -1}
+                aria-hidden={!searchingWorld}
+                onClick={closeSearch}
+              >
+                ×
+              </button>
+              {searchingWorld ? null : (
+                <button
+                  type="button"
+                  className={styles.searchHit}
+                  aria-label="Search your world"
+                  onClick={() => setSearchingWorld(true)}
+                />
+              )}
+            </div>
+          </div>
           {extracting ? (
             <p className={styles.extracting} role="status" aria-live="polite">
               <span className={styles.extractingOrb} aria-hidden="true">
@@ -130,10 +183,14 @@ export default function ChapterApp({
               Extracting
             </p>
           ) : (
-            <button type="button" className={styles.addMemoryButton} onClick={() => {
-              setSearchingWorld(false);
-              setAddingMemory(true);
-            }}>
+            <button
+              type="button"
+              className={styles.addMemoryButton}
+              onClick={() => {
+                closeSearch();
+                setAddingMemory(true);
+              }}
+            >
               <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                 <path d="M10 4.5v11M4.5 10h11" />
               </svg>
