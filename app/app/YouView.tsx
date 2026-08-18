@@ -81,6 +81,10 @@ function worldCategoryName(category: WorldNodeCategory) {
     : EXPERIENCE_CATEGORY_META[category].label;
 }
 
+function formatLegendNodeCount(count: number) {
+  return `${count.toLocaleString("en-US")} ${count === 1 ? "node" : "nodes"}`;
+}
+
 function connectionOpacity(edge: WorldEdge) {
   if (edge.role === "root") return 0.54;
   return edge.certainty === "fact" ? 0.44 : 0.35;
@@ -173,7 +177,6 @@ export default function YouView({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [legendOpen, setLegendOpen] = useState(false);
   const connectedNodeIds = useMemo(
     () =>
       worldNodes
@@ -1503,48 +1506,23 @@ export default function YouView({
         </aside>
       ) : null}
 
-      <aside
-        className={styles.legend}
-        data-open={legendOpen ? "true" : "false"}
-        aria-label="Orb legend"
-      >
-        <h2>
-          <button
-            type="button"
-            className={styles.legendToggle}
-            aria-expanded={legendOpen}
-            onClick={() => setLegendOpen((open) => !open)}
-          >
-            Legend
-            <svg
-              className={styles.legendChevron}
-              data-open={legendOpen ? "true" : "false"}
-              aria-hidden="true"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m6 8 4 4 4-4" />
-            </svg>
-          </button>
-        </h2>
-        {legendOpen ? (
-          <ul className={styles.legendList}>
-            {legendCategories.map((category) => (
-              <li key={category}>
-                <span
-                  className={styles.legendOrb}
-                  aria-hidden="true"
-                  style={{ background: categoryOrbGradient(category) }}
-                />
-                <span>{worldCategoryName(category)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+      <aside className={styles.legend} aria-label="Orb legend">
+        <h2>Legend</h2>
+        <p className={styles.legendCount}>
+          {formatLegendNodeCount(worldNodes.length)}
+        </p>
+        <ul className={styles.legendList}>
+          {legendCategories.map((category) => (
+            <li key={category}>
+              <span
+                className={styles.legendOrb}
+                aria-hidden="true"
+                style={{ background: categoryOrbGradient(category) }}
+              />
+              <span>{worldCategoryName(category)}</span>
+            </li>
+          ))}
+        </ul>
       </aside>
 
       <div className={styles.labels} aria-label="Memory graph nodes">
